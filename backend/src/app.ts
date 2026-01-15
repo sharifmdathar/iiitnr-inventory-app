@@ -7,7 +7,19 @@ import { UserRole } from '@prisma/client';
 import { prisma, pool } from './lib/prisma.js';
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: {
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          colorizeObjects: true,
+          translateTime: 'SYS:standard',
+          ignore: 'pid,hostname',
+        },
+      },
+    },
+  });
 
   await app.register(cors, { origin: true });
 
@@ -132,6 +144,37 @@ export async function buildApp() {
       token,
     });
   });
+
+  app.get(
+    '/auth/me',
+    {
+      preHandler: async (request) => {
+        await request.jwtVerify();
+      },
+    },
+    async (request, reply) => {
+      const userId = (request.user as { sub?: string })?.sub;
+      if (!userId) {
+        return reply.code(401).send({ error: 'invalid token' });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+        },
+      });
+
+      if (!user) {
+        return reply.code(401).send({ error: 'invalid token' });
+      }
+
+      return reply.send({ user });
+    },
+  );
 
   app.addHook('onClose', async () => {
     await prisma.$disconnect();
