@@ -1,0 +1,11 @@
+{
+  "name": "iiitnr-inventory-app",
+  "private": true,
+  "packageManager": "pnpm@10.26.1",
+  "scripts": {
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "typecheck": "pnpm -r typecheck",
+    "format": "pnpm -r format"
+  }
+}
