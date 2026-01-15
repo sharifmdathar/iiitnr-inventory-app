@@ -16,12 +16,17 @@
   },
   "dependencies": {
     "@fastify/cors": "11.2.0",
+    "@fastify/jwt": "10.0.0",
+    "@prisma/adapter-pg": "7.2.0",
     "@prisma/client": "7.2.0",
+    "bcryptjs": "3.0.3",
     "dotenv": "17.2.3",
-    "fastify": "5.6.2"
+    "fastify": "5.6.2",
+    "pg": "8.17.1"
   },
   "devDependencies": {
     "@types/node": "25.0.8",
+    "@types/pg": "8.16.0",
     "@typescript-eslint/eslint-plugin": "8.53.0",
     "@typescript-eslint/parser": "8.53.0",
     "eslint": "9.39.2",
