@@ -7,18 +7,23 @@ import { UserRole } from '@prisma/client';
 import { prisma, pool } from './lib/prisma.js';
 
 export async function buildApp() {
+  const isTest =
+    process.env.NODE_ENV === 'test' ||
+    process.argv.some((arg) => arg.includes('--test') || arg.includes('test'));
   const app = Fastify({
-    logger: {
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          colorizeObjects: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname',
+    logger: isTest
+      ? false
+      : {
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              colorizeObjects: true,
+              translateTime: 'SYS:standard',
+              ignore: 'pid,hostname',
+            },
+          },
         },
-      },
-    },
   });
 
   await app.register(cors, { origin: true });
@@ -88,14 +93,11 @@ export async function buildApp() {
         },
       });
 
-      const token = app.jwt.sign(
-        { sub: user.id, role: user.role },
-        { expiresIn: '1d' },
-      );
+      const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '1d' });
 
       return reply.code(201).send({ user, token });
-    } catch (error) {
-      app.log.error(error);
+    } catch (err) {
+      app.log.error(err);
       return reply.code(400).send({ error: 'email already in use' });
     }
   });
@@ -129,10 +131,7 @@ export async function buildApp() {
       return reply.code(401).send({ error: 'invalid credentials' });
     }
 
-    const token = app.jwt.sign(
-      { sub: user.id, role: user.role },
-      { expiresIn: '1d' },
-    );
+    const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '1d' });
 
     return reply.send({
       user: {
@@ -173,6 +172,201 @@ export async function buildApp() {
       }
 
       return reply.send({ user });
+    },
+  );
+
+  const requireManagerOrTA = async (request: any, reply: any) => {
+    await request.jwtVerify();
+    const userRole = (request.user as { role?: UserRole })?.role;
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.TA) {
+      return reply.code(403).send({ error: 'forbidden: manager or TA role required' });
+    }
+  };
+
+  app.get(
+    '/components',
+    {
+      preHandler: requireManagerOrTA,
+    },
+    async (request, reply) => {
+      try {
+        const components = await prisma.component.findMany({
+          orderBy: { createdAt: 'desc' },
+        });
+        return reply.send({ components });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to fetch components' });
+      }
+    },
+  );
+
+  app.get(
+    '/components/:id',
+    {
+      preHandler: requireManagerOrTA,
+    },
+    async (request, reply) => {
+      const params = request.params as { id?: string };
+      const id = params?.id;
+
+      if (!id) {
+        return reply.code(400).send({ error: 'component id is required' });
+      }
+
+      try {
+        const component = await prisma.component.findUnique({
+          where: { id },
+        });
+
+        if (!component) {
+          return reply.code(404).send({ error: 'component not found' });
+        }
+
+        return reply.send({ component });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to fetch component' });
+      }
+    },
+  );
+
+  app.post(
+    '/components',
+    {
+      preHandler: requireManagerOrTA,
+    },
+    async (request, reply) => {
+      const body = request.body as {
+        name?: string;
+        description?: string;
+        quantity?: number;
+        category?: string;
+        location?: string;
+      };
+
+      const name = body?.name?.trim();
+      const description = body?.description?.trim();
+      const quantity = body?.quantity;
+      const category = body?.category?.trim();
+      const location = body?.location?.trim();
+
+      if (!name) {
+        return reply.code(400).send({ error: 'name is required' });
+      }
+
+      if (quantity !== undefined && (typeof quantity !== 'number' || quantity < 0)) {
+        return reply.code(400).send({ error: 'quantity must be a non-negative number' });
+      }
+
+      try {
+        const component = await prisma.component.create({
+          data: {
+            name,
+            description: description || null,
+            quantity: quantity ?? 0,
+            category: category || null,
+            location: location || null,
+          },
+        });
+
+        return reply.code(201).send({ component });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to create component' });
+      }
+    },
+  );
+
+  app.put(
+    '/components/:id',
+    {
+      preHandler: requireManagerOrTA,
+    },
+    async (request, reply) => {
+      const params = request.params as { id?: string };
+      const id = params?.id;
+      const body = request.body as {
+        name?: string;
+        description?: string;
+        quantity?: number;
+        category?: string;
+        location?: string;
+      };
+
+      if (!id) {
+        return reply.code(400).send({ error: 'component id is required' });
+      }
+
+      const name = body?.name?.trim();
+      const description = body?.description?.trim();
+      const quantity = body?.quantity;
+      const category = body?.category?.trim();
+      const location = body?.location?.trim();
+
+      if (quantity !== undefined && (typeof quantity !== 'number' || quantity < 0)) {
+        return reply.code(400).send({ error: 'quantity must be a non-negative number' });
+      }
+
+      try {
+        const existingComponent = await prisma.component.findUnique({
+          where: { id },
+        });
+
+        if (!existingComponent) {
+          return reply.code(404).send({ error: 'component not found' });
+        }
+
+        const component = await prisma.component.update({
+          where: { id },
+          data: {
+            ...(name !== undefined && { name }),
+            ...(description !== undefined && { description: description || null }),
+            ...(quantity !== undefined && { quantity }),
+            ...(category !== undefined && { category: category || null }),
+            ...(location !== undefined && { location: location || null }),
+          },
+        });
+
+        return reply.send({ component });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to update component' });
+      }
+    },
+  );
+
+  app.delete(
+    '/components/:id',
+    {
+      preHandler: requireManagerOrTA,
+    },
+    async (request, reply) => {
+      const params = request.params as { id?: string };
+      const id = params?.id;
+
+      if (!id) {
+        return reply.code(400).send({ error: 'component id is required' });
+      }
+
+      try {
+        const existingComponent = await prisma.component.findUnique({
+          where: { id },
+        });
+
+        if (!existingComponent) {
+          return reply.code(404).send({ error: 'component not found' });
+        }
+
+        await prisma.component.delete({
+          where: { id },
+        });
+
+        return reply.code(204).send();
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to delete component' });
+      }
     },
   );
 
