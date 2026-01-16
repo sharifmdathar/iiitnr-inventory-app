@@ -7,7 +7,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -17,6 +23,8 @@ import com.iiitnr.inventoryapp.ui.screens.HomeScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
 import com.iiitnr.inventoryapp.ui.screens.RegisterScreen
 import com.iiitnr.inventoryapp.ui.theme.IIITNRInventoryAppTheme
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var tokenManager: TokenManager
@@ -41,12 +49,22 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AuthNavigation(tokenManager: TokenManager) {
     val navController = rememberNavController()
-    rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+    var startDestination by remember { mutableStateOf<String?>(null) }
 
-    NavHost(
-        navController = navController,
-        startDestination = "login"
-    ) {
+    LaunchedEffect(Unit) {
+        scope.launch {
+            val token = tokenManager.token.first()
+            startDestination = if (token != null) "home" else "login"
+        }
+    }
+
+    // Don't render NavHost until we know the start destination
+    startDestination?.let { destination ->
+        NavHost(
+            navController = navController,
+            startDestination = destination
+        ) {
         composable("login") {
             LoginScreen(
                 tokenManager = tokenManager,
@@ -74,7 +92,15 @@ fun AuthNavigation(tokenManager: TokenManager) {
             )
         }
         composable("home") {
-            HomeScreen(tokenManager = tokenManager)
+            HomeScreen(
+                tokenManager = tokenManager,
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }
+            )
+        }
         }
     }
 }
