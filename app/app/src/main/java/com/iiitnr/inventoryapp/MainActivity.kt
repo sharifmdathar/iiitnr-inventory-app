@@ -19,6 +19,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.iiitnr.inventoryapp.data.preferences.TokenManager
+import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
 import com.iiitnr.inventoryapp.ui.screens.HomeScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
 import com.iiitnr.inventoryapp.ui.screens.RegisterScreen
@@ -98,6 +99,17 @@ fun AuthNavigation(tokenManager: TokenManager) {
                     navController.navigate("login") {
                         popUpTo("home") { inclusive = true }
                     }
+                },
+                onNavigateToComponents = {
+                    navController.navigate("components")
+                }
+            )
+        }
+            composable("components") {
+                ComponentsScreen(
+                    tokenManager = tokenManager,
+                    onNavigateBack = {
+                        navController.popBackStack()
                 }
             )
         }

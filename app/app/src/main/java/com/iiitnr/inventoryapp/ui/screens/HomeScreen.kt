@@ -3,9 +3,12 @@ package com.iiitnr.inventoryapp.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,7 +33,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(tokenManager: TokenManager, onLogout: () -> Unit) {
+fun HomeScreen(
+    tokenManager: TokenManager,
+    onLogout: () -> Unit,
+    onNavigateToComponents: () -> Unit = {}
+) {
     var userData by remember { mutableStateOf<com.iiitnr.inventoryapp.data.models.User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -130,6 +137,16 @@ fun HomeScreen(tokenManager: TokenManager, onLogout: () -> Unit) {
                         InfoRow("Name", userData!!.name ?: "Not provided")
                         InfoRow("Role", userData!!.role)
                     }
+                }
+
+                val userRole = userData!!.role.uppercase()
+                val isAdminOrTA = userRole == "TA" || userRole == "ADMIN"
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = onNavigateToComponents,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isAdminOrTA) "Manage Components" else "View Components")
                 }
             }
         }

@@ -175,18 +175,22 @@ export async function buildApp() {
     },
   );
 
-  const requireManagerOrTA = async (request: any, reply: any) => {
+  const requireAuth = async (request: any, reply: any) => {
+    await request.jwtVerify();
+  };
+
+  const requireAdminOrTA = async (request: any, reply: any) => {
     await request.jwtVerify();
     const userRole = (request.user as { role?: UserRole })?.role;
     if (userRole !== UserRole.ADMIN && userRole !== UserRole.TA) {
-      return reply.code(403).send({ error: 'forbidden: manager or TA role required' });
+      return reply.code(403).send({ error: 'forbidden: admin or TA role required' });
     }
   };
 
   app.get(
     '/components',
     {
-      preHandler: requireManagerOrTA,
+      preHandler: requireAuth,
     },
     async (request, reply) => {
       try {
@@ -204,7 +208,7 @@ export async function buildApp() {
   app.get(
     '/components/:id',
     {
-      preHandler: requireManagerOrTA,
+      preHandler: requireAdminOrTA,
     },
     async (request, reply) => {
       const params = request.params as { id?: string };
@@ -234,7 +238,7 @@ export async function buildApp() {
   app.post(
     '/components',
     {
-      preHandler: requireManagerOrTA,
+      preHandler: requireAdminOrTA,
     },
     async (request, reply) => {
       const body = request.body as {
@@ -281,7 +285,7 @@ export async function buildApp() {
   app.put(
     '/components/:id',
     {
-      preHandler: requireManagerOrTA,
+      preHandler: requireAdminOrTA,
     },
     async (request, reply) => {
       const params = request.params as { id?: string };
@@ -339,7 +343,7 @@ export async function buildApp() {
   app.delete(
     '/components/:id',
     {
-      preHandler: requireManagerOrTA,
+      preHandler: requireAdminOrTA,
     },
     async (request, reply) => {
       const params = request.params as { id?: string };
