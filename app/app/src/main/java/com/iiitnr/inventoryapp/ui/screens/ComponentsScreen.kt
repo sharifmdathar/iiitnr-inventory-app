@@ -16,8 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -61,12 +63,26 @@ fun ComponentsScreen(
     var editingComponent by remember { mutableStateOf<Component?>(null) }
     var showDeleteDialog by remember { mutableStateOf<Component?>(null) }
     var userRole by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     val isReadOnly = userRole?.let { role ->
         val roleUpper = role.uppercase()
         roleUpper != "TA" && roleUpper != "ADMIN"
     } ?: true
+
+    val filteredComponents = if (searchQuery.isBlank()) {
+        components
+    } else {
+        val query = searchQuery.lowercase().trim()
+        components.filter { component ->
+            component.name.lowercase().contains(query) ||
+                    component.description?.lowercase()?.contains(query) == true ||
+                    component.category?.lowercase()?.contains(query) == true ||
+                    component.location?.lowercase()?.contains(query) == true ||
+                    component.quantity.toString().contains(query)
+        }
+    }
 
     fun loadComponents() {
         scope.launch {
@@ -112,21 +128,33 @@ fun ComponentsScreen(
                 })
         }
     }) { paddingValues ->
-        ComponentsContent(
-            isLoading = isLoading,
-            errorMessage = errorMessage,
-            components = components,
-            isReadOnly = isReadOnly,
-            onRetry = { loadComponents() },
-            onEdit = { component ->
-                editingComponent = component
-                showDialog = true
-            },
-            onDelete = { component ->
-                showDeleteDialog = component
-            },
-            modifier = Modifier.padding(paddingValues)
-        )
+        Column(modifier = Modifier.padding(paddingValues)) {
+            // Search bar
+            SearchBar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            ComponentsContent(
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                components = filteredComponents,
+                allComponents = components,
+                searchQuery = searchQuery,
+                isReadOnly = isReadOnly,
+                onRetry = { loadComponents() },
+                onEdit = { component ->
+                    editingComponent = component
+                    showDialog = true
+                },
+                onDelete = { component ->
+                    showDeleteDialog = component
+                }
+            )
+        }
     }
 
     if (showDialog && !isReadOnly) {
@@ -232,10 +260,44 @@ private fun AddComponentFAB(onClick: () -> Unit) {
 }
 
 @Composable
+private fun SearchBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        modifier = modifier,
+        placeholder = { Text("Search components...") },
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search"
+            )
+        },
+        trailingIcon = {
+            if (searchQuery.isNotBlank()) {
+                IconButton(onClick = { onSearchQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear search"
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+    )
+}
+
+@Composable
 private fun ComponentsContent(
     isLoading: Boolean,
     errorMessage: String?,
     components: List<Component>,
+    allComponents: List<Component>,
+    searchQuery: String,
     isReadOnly: Boolean,
     onRetry: () -> Unit,
     onEdit: (Component) -> Unit,
@@ -248,7 +310,8 @@ private fun ComponentsContent(
         when {
             isLoading -> LoadingIndicator()
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
-            components.isEmpty() -> EmptyState(isReadOnly)
+            components.isEmpty() && allComponents.isEmpty() -> EmptyState(isReadOnly)
+            components.isEmpty() && searchQuery.isNotBlank() -> SearchEmptyState()
             else -> ComponentsList(components, isReadOnly, onEdit, onDelete)
         }
     }
@@ -304,6 +367,23 @@ private fun EmptyState(isReadOnly: Boolean) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun SearchEmptyState() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "No components match your search",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

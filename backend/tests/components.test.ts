@@ -92,7 +92,7 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 401);
     });
 
-    test('returns 403 for STUDENT role', async () => {
+    test('returns 200 for STUDENT role', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -101,12 +101,12 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 403);
+      assert.equal(response.statusCode, 200);
       const body = response.json();
-      assert.ok(body.error.includes('forbidden'));
+      assert.ok(Array.isArray(body.components));
     });
 
-    test('returns 403 for FACULTY role', async () => {
+    test('returns 200 for FACULTY role', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -115,9 +115,9 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 403);
+      assert.equal(response.statusCode, 200);
       const body = response.json();
-      assert.ok(body.error.includes('forbidden'));
+      assert.ok(Array.isArray(body.components));
     });
 
     test('returns empty array when no components exist (ADMIN)', async () => {
@@ -189,16 +189,28 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 401);
     });
 
-    test('returns 403 for STUDENT role', async () => {
+    test('returns component by id (STUDENT)', async () => {
+      const component = await prisma.component.create({
+        data: {
+          name: 'Student View Component',
+          description: 'Visible to all roles',
+          quantity: 3,
+        },
+      });
+
       const response = await app.inject({
         method: 'GET',
-        url: '/components/test-id',
+        url: `/components/${component.id}`,
         headers: {
           authorization: `Bearer ${studentToken}`,
         },
       });
 
-      assert.equal(response.statusCode, 403);
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.component.id, component.id);
+
+      await prisma.component.deleteMany({});
     });
 
     test('returns 404 for non-existent component', async () => {

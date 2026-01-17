@@ -208,7 +208,7 @@ export async function buildApp() {
   app.get(
     '/components/:id',
     {
-      preHandler: requireAdminOrTA,
+      preHandler: requireAuth,
     },
     async (request, reply) => {
       const params = request.params as { id?: string };
