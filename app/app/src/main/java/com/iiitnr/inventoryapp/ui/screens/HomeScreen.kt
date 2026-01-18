@@ -36,7 +36,8 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     tokenManager: TokenManager,
     onLogout: () -> Unit,
-    onNavigateToComponents: () -> Unit = {}
+    onNavigateToComponents: () -> Unit = {},
+    onNavigateToRequests: () -> Unit = {}
 ) {
     var userData by remember { mutableStateOf<com.iiitnr.inventoryapp.data.models.User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -147,6 +148,13 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(if (isAdminOrTA) "Manage Components" else "View Components")
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onNavigateToRequests,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("My Requests")
                 }
             }
         }

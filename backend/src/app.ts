@@ -14,16 +14,16 @@ export async function buildApp() {
     logger: isTest
       ? false
       : {
-          transport: {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              colorizeObjects: true,
-              translateTime: 'SYS:standard',
-              ignore: 'pid,hostname',
-            },
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            colorizeObjects: true,
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname',
           },
         },
+      },
   });
 
   await app.register(cors, { origin: true });
@@ -386,7 +386,7 @@ export async function buildApp() {
     },
     async (request, reply) => {
       const body = request.body as {
-        items?: Array<{ itemId?: string; quantity?: number }>;
+        items?: Array<{ componentId?: string; quantity?: number }>;
       };
 
       const userId = (request.user as { sub?: string })?.sub;
@@ -400,33 +400,33 @@ export async function buildApp() {
       }
 
       const normalizedItems = items.map((item) => ({
-        itemId: item?.itemId?.trim(),
+        componentId: item?.componentId?.trim(),
         quantity: item?.quantity,
       }));
 
       for (const item of normalizedItems) {
-        if (!item.itemId) {
-          return reply.code(400).send({ error: 'itemId is required' });
+        if (!item.componentId) {
+          return reply.code(400).send({ error: 'componentId is required' });
         }
         if (typeof item.quantity !== 'number' || item.quantity <= 0) {
           return reply.code(400).send({ error: 'quantity must be a positive number' });
         }
       }
 
-      const itemIds = normalizedItems.map((item) => item.itemId as string);
-      const uniqueItemIds = new Set(itemIds);
-      if (uniqueItemIds.size !== itemIds.length) {
-        return reply.code(400).send({ error: 'duplicate itemId in request' });
+      const componentIds = normalizedItems.map((item) => item.componentId as string);
+      const uniqueComponentIds = new Set(componentIds);
+      if (uniqueComponentIds.size !== componentIds.length) {
+        return reply.code(400).send({ error: 'duplicate componentId in request' });
       }
 
       try {
-        const existingItems = await prisma.inventoryItem.findMany({
-          where: { id: { in: itemIds } },
+        const existingComponents = await prisma.component.findMany({
+          where: { id: { in: componentIds } },
           select: { id: true },
         });
 
-        if (existingItems.length !== itemIds.length) {
-          return reply.code(400).send({ error: 'one or more items not found' });
+        if (existingComponents.length !== componentIds.length) {
+          return reply.code(400).send({ error: 'one or more components not found' });
         }
 
         const createdRequest = await (prisma as any).request.create({
@@ -434,7 +434,7 @@ export async function buildApp() {
             userId,
             items: {
               create: normalizedItems.map((item) => ({
-                itemId: item.itemId,
+                componentId: item.componentId,
                 quantity: item.quantity!,
               })),
             },
@@ -442,7 +442,7 @@ export async function buildApp() {
           include: {
             items: {
               include: {
-                item: true,
+                component: true,
               },
             },
           },
@@ -499,7 +499,7 @@ export async function buildApp() {
           include: {
             items: {
               include: {
-                item: true,
+                component: true,
               },
             },
             user: {

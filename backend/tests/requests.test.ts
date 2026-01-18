@@ -1,6 +1,6 @@
 import './setup.js';
 
-import { describe, test, before, after, beforeEach } from 'node:test';
+import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { buildApp } from '../src/app.js';
@@ -13,6 +13,7 @@ let studentToken: string;
 let studentId: string;
 let adminUserId: string;
 let createdOtherUserIds: string[] = [];
+let createdComponentIds: string[] = [];
 const requestStatus = {
   APPROVED: 'APPROVED',
 } as const;
@@ -22,7 +23,6 @@ before(async () => {
 
   await (prisma as any).requestItem.deleteMany({});
   await (prisma as any).request.deleteMany({});
-  await prisma.inventoryItem.deleteMany({});
 
   const suffix = randomUUID();
   const adminEmail = `admin_${suffix}@example.com`;
@@ -59,7 +59,6 @@ before(async () => {
 after(async () => {
   await (prisma as any).requestItem.deleteMany({});
   await (prisma as any).request.deleteMany({});
-  await prisma.inventoryItem.deleteMany({});
   const userIds = [adminUserId, studentId, ...createdOtherUserIds].filter(Boolean);
   if (userIds.length > 0) {
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
@@ -71,7 +70,13 @@ describe('Request API', () => {
   beforeEach(async () => {
     await (prisma as any).requestItem.deleteMany({});
     await (prisma as any).request.deleteMany({});
-    await prisma.inventoryItem.deleteMany({});
+    createdComponentIds = [];
+  });
+
+  afterEach(async () => {
+    if (createdComponentIds.length > 0) {
+      await prisma.component.deleteMany({ where: { id: { in: createdComponentIds } } });
+    }
   });
 
   describe('POST /requests - Create request', () => {
@@ -80,7 +85,7 @@ describe('Request API', () => {
         method: 'POST',
         url: '/requests',
         payload: {
-          items: [{ itemId: 'item-1', quantity: 1 }],
+          items: [{ componentId: 'component-1', quantity: 1 }],
         },
       });
 
@@ -101,9 +106,10 @@ describe('Request API', () => {
     });
 
     test('returns 400 when quantity is invalid', async () => {
-      const item = await prisma.inventoryItem.create({
+      const component = await prisma.component.create({
         data: { name: 'Resistor', quantity: 10 },
       });
+      createdComponentIds.push(component.id);
 
       const response = await app.inject({
         method: 'POST',
@@ -112,7 +118,7 @@ describe('Request API', () => {
           authorization: `Bearer ${studentToken}`,
         },
         payload: {
-          items: [{ itemId: item.id, quantity: 0 }],
+          items: [{ componentId: component.id, quantity: 0 }],
         },
       });
 
@@ -127,7 +133,7 @@ describe('Request API', () => {
           authorization: `Bearer ${studentToken}`,
         },
         payload: {
-          items: [{ itemId: 'missing-item', quantity: 2 }],
+          items: [{ componentId: 'missing-component', quantity: 2 }],
         },
       });
 
@@ -135,12 +141,13 @@ describe('Request API', () => {
     });
 
     test('creates a request with multiple items', async () => {
-      const item1 = await prisma.inventoryItem.create({
+      const item1 = await prisma.component.create({
         data: { name: 'Arduino', quantity: 5 },
       });
-      const item2 = await prisma.inventoryItem.create({
+      const item2 = await prisma.component.create({
         data: { name: 'Breadboard', quantity: 20 },
       });
+      createdComponentIds.push(item1.id, item2.id);
 
       const response = await app.inject({
         method: 'POST',
@@ -150,8 +157,8 @@ describe('Request API', () => {
         },
         payload: {
           items: [
-            { itemId: item1.id, quantity: 1 },
-            { itemId: item2.id, quantity: 2 },
+            { componentId: item1.id, quantity: 1 },
+            { componentId: item2.id, quantity: 2 },
           ],
         },
       });
@@ -175,9 +182,10 @@ describe('Request API', () => {
     });
 
     test('student only sees own requests even with userId filter', async () => {
-      const item = await prisma.inventoryItem.create({
+      const item = await prisma.component.create({
         data: { name: 'Sensor', quantity: 10 },
       });
+      createdComponentIds.push(item.id);
 
       const otherUser = await prisma.user.create({
         data: {
@@ -193,7 +201,7 @@ describe('Request API', () => {
         data: {
           userId: otherUser.id,
           items: {
-            create: [{ itemId: item.id, quantity: 1 }],
+            create: [{ componentId: item.id, quantity: 1 }],
           },
         },
       });
@@ -202,7 +210,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           items: {
-            create: [{ itemId: item.id, quantity: 1 }],
+            create: [{ componentId: item.id, quantity: 1 }],
           },
         },
       });
@@ -222,16 +230,17 @@ describe('Request API', () => {
     });
 
     test('admin can filter by user and status', async () => {
-      const item = await prisma.inventoryItem.create({
+      const item = await prisma.component.create({
         data: { name: 'Display', quantity: 10 },
       });
+      createdComponentIds.push(item.id);
 
       const request = await (prisma as any).request.create({
         data: {
           userId: studentId,
           status: requestStatus.APPROVED,
           items: {
-            create: [{ itemId: item.id, quantity: 1 }],
+            create: [{ componentId: item.id, quantity: 1 }],
           },
         },
       });

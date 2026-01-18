@@ -1,0 +1,2 @@
+ALTER TABLE "InventoryItem"
+ALTER COLUMN "id" DROP DEFAULT;

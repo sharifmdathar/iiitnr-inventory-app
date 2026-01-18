@@ -23,6 +23,7 @@ import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
 import com.iiitnr.inventoryapp.ui.screens.HomeScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
 import com.iiitnr.inventoryapp.ui.screens.RegisterScreen
+import com.iiitnr.inventoryapp.ui.screens.RequestsScreen
 import com.iiitnr.inventoryapp.ui.theme.IIITNRInventoryAppTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -102,11 +103,22 @@ fun AuthNavigation(tokenManager: TokenManager) {
                 },
                 onNavigateToComponents = {
                     navController.navigate("components")
+                },
+                onNavigateToRequests = {
+                    navController.navigate("requests")
                 }
             )
         }
             composable("components") {
                 ComponentsScreen(
+                    tokenManager = tokenManager,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable("requests") {
+                RequestsScreen(
                     tokenManager = tokenManager,
                     onNavigateBack = {
                         navController.popBackStack()
