@@ -12,6 +12,7 @@ model InventoryItem {
   quantity  Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  requestItems RequestItem[]
 }
 
 enum UserRole {
@@ -29,6 +30,7 @@ model User {
   role      UserRole @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  requests  Request[]
 }
 
 model Component {
@@ -40,4 +42,37 @@ model Component {
   location    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+model Request {
+  id        String        @id @default(uuid())
+  userId    String
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user      User          @relation(fields: [userId], references: [id])
+  items     RequestItem[]
+}
+
+model RequestItem {
+  id        String   @id @default(uuid())
+  requestId String
+  itemId    String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  request   Request       @relation(fields: [requestId], references: [id])
+  item      InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([requestId])
+  @@index([itemId])
 }

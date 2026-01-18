@@ -187,6 +187,11 @@ export async function buildApp() {
     }
   };
 
+  const isAdminOrTA = (role?: UserRole) => role === UserRole.ADMIN || role === UserRole.TA;
+
+  const requestStatusValues = ['PENDING', 'APPROVED', 'REJECTED', 'FULFILLED'] as const;
+  type RequestStatusValue = (typeof requestStatusValues)[number];
+
   app.get(
     '/components',
     {
@@ -370,6 +375,148 @@ export async function buildApp() {
       } catch (err) {
         app.log.error(err);
         return reply.code(500).send({ error: 'failed to delete component' });
+      }
+    },
+  );
+
+  app.post(
+    '/requests',
+    {
+      preHandler: requireAuth,
+    },
+    async (request, reply) => {
+      const body = request.body as {
+        items?: Array<{ itemId?: string; quantity?: number }>;
+      };
+
+      const userId = (request.user as { sub?: string })?.sub;
+      if (!userId) {
+        return reply.code(401).send({ error: 'invalid token' });
+      }
+
+      const items = body?.items ?? [];
+      if (!Array.isArray(items) || items.length === 0) {
+        return reply.code(400).send({ error: 'items are required' });
+      }
+
+      const normalizedItems = items.map((item) => ({
+        itemId: item?.itemId?.trim(),
+        quantity: item?.quantity,
+      }));
+
+      for (const item of normalizedItems) {
+        if (!item.itemId) {
+          return reply.code(400).send({ error: 'itemId is required' });
+        }
+        if (typeof item.quantity !== 'number' || item.quantity <= 0) {
+          return reply.code(400).send({ error: 'quantity must be a positive number' });
+        }
+      }
+
+      const itemIds = normalizedItems.map((item) => item.itemId as string);
+      const uniqueItemIds = new Set(itemIds);
+      if (uniqueItemIds.size !== itemIds.length) {
+        return reply.code(400).send({ error: 'duplicate itemId in request' });
+      }
+
+      try {
+        const existingItems = await prisma.inventoryItem.findMany({
+          where: { id: { in: itemIds } },
+          select: { id: true },
+        });
+
+        if (existingItems.length !== itemIds.length) {
+          return reply.code(400).send({ error: 'one or more items not found' });
+        }
+
+        const createdRequest = await (prisma as any).request.create({
+          data: {
+            userId,
+            items: {
+              create: normalizedItems.map((item) => ({
+                itemId: item.itemId,
+                quantity: item.quantity!,
+              })),
+            },
+          },
+          include: {
+            items: {
+              include: {
+                item: true,
+              },
+            },
+          },
+        });
+
+        return reply.code(201).send({ request: createdRequest });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to create request' });
+      }
+    },
+  );
+
+  app.get(
+    '/requests',
+    {
+      preHandler: requireAuth,
+    },
+    async (request, reply) => {
+      const user = request.user as { sub?: string; role?: UserRole };
+      const currentUserId = user?.sub;
+      if (!currentUserId) {
+        return reply.code(401).send({ error: 'invalid token' });
+      }
+
+      const query = request.query as { userId?: string; status?: string };
+      const requestedUserId = query?.userId?.trim();
+      const status = query?.status?.trim();
+
+      const where: {
+        userId?: string;
+        status?: RequestStatusValue;
+      } = {};
+
+      if (status) {
+        if (!requestStatusValues.includes(status as RequestStatusValue)) {
+          return reply.code(400).send({ error: 'invalid status' });
+        }
+        where.status = status as RequestStatusValue;
+      }
+
+      if (isAdminOrTA(user?.role)) {
+        if (requestedUserId) {
+          where.userId = requestedUserId;
+        }
+      } else {
+        where.userId = currentUserId;
+      }
+
+      try {
+        const requests = await (prisma as any).request.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            items: {
+              include: {
+                item: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+              },
+            },
+          },
+        });
+
+        return reply.send({ requests });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to fetch requests' });
       }
     },
   );

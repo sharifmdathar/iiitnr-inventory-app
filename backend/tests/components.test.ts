@@ -11,6 +11,10 @@ let adminToken: string;
 let taToken: string;
 let studentToken: string;
 let facultyToken: string;
+let adminUserId: string;
+let taUserId: string;
+let studentUserId: string;
+let facultyUserId: string;
 
 before(async () => {
   app = await buildApp();
@@ -34,6 +38,7 @@ before(async () => {
       role: UserRole.ADMIN,
     },
   });
+  adminUserId = adminUser.id;
   adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1d' });
 
   // Register other roles through API
@@ -48,6 +53,7 @@ before(async () => {
     },
   });
   taToken = taResponse.json().token;
+  taUserId = taResponse.json().user.id;
 
   const studentResponse = await app.inject({
     method: 'POST',
@@ -60,6 +66,7 @@ before(async () => {
     },
   });
   studentToken = studentResponse.json().token;
+  studentUserId = studentResponse.json().user.id;
 
   const facultyResponse = await app.inject({
     method: 'POST',
@@ -72,12 +79,16 @@ before(async () => {
     },
   });
   facultyToken = facultyResponse.json().token;
+  facultyUserId = facultyResponse.json().user.id;
 });
 
 after(async () => {
   // Clean up test data
   await prisma.component.deleteMany({});
-  await prisma.user.deleteMany({});
+  const userIds = [adminUserId, taUserId, studentUserId, facultyUserId].filter(Boolean);
+  if (userIds.length > 0) {
+    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+  }
   await app.close();
 });
 
@@ -138,14 +149,14 @@ describe('Component CRUD API', () => {
     test('returns all components (TA)', async () => {
       // Create test components
       const component1 = await prisma.component.create({
-    data: {
-      name: 'Resistor 10k',
-      description: '10k ohm resistor',
-      quantity: 50,
-      category: 'Electronics',
-      location: 'Lab A',
-    },
-  });
+        data: {
+          name: 'Resistor 10k',
+          description: '10k ohm resistor',
+          quantity: 50,
+          category: 'Electronics',
+          location: 'Lab A',
+        },
+      });
 
       const component2 = await prisma.component.create({
         data: {
