@@ -12,21 +12,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,23 +33,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.iiitnr.inventoryapp.data.api.ApiClient
-import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestItem
-import com.iiitnr.inventoryapp.data.models.RequestItemPayload
 import com.iiitnr.inventoryapp.data.preferences.TokenManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
-private data class RequestItemInput(
-    val componentId: String,
-    val quantity: String
-)
 
 private fun extractErrorMessage(raw: String?): String? {
     if (raw.isNullOrBlank()) return null
@@ -71,16 +55,12 @@ private fun extractErrorMessage(raw: String?): String? {
 @Composable
 fun RequestsScreen(
     tokenManager: TokenManager,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToComponents: () -> Unit
 ) {
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showDialog by remember { mutableStateOf(false) }
-    var dialogError by remember { mutableStateOf<String?>(null) }
-    var itemInputs by remember {
-        mutableStateOf(listOf(RequestItemInput(componentId = "", quantity = "")))
-    }
     val scope = rememberCoroutineScope()
 
     fun loadRequests() {
@@ -109,51 +89,6 @@ fun RequestsScreen(
         }
     }
 
-    fun submitRequest() {
-        scope.launch {
-            dialogError = null
-            val cleanedItems = itemInputs.map {
-                RequestItemPayload(
-                    componentId = it.componentId.trim(),
-                    quantity = it.quantity.trim().toIntOrNull() ?: 0
-                )
-            }
-
-            if (cleanedItems.isEmpty() || cleanedItems.any { it.componentId.isBlank() }) {
-                dialogError = "All component IDs are required"
-                return@launch
-            }
-
-            if (cleanedItems.any { it.quantity <= 0 }) {
-                dialogError = "Quantity must be a positive number"
-                return@launch
-            }
-
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    val response = ApiClient.requestApiService.createRequest(
-                        "Bearer $token",
-                        CreateRequestPayload(items = cleanedItems)
-                    )
-                    if (response.isSuccessful) {
-                        showDialog = false
-                        itemInputs = listOf(RequestItemInput(componentId = "", quantity = ""))
-                        loadRequests()
-                    } else {
-                        dialogError =
-                            extractErrorMessage(response.errorBody()?.string())
-                                ?: "Failed to create request"
-                    }
-                } else {
-                    dialogError = "No authentication token"
-                }
-            } catch (e: Exception) {
-                dialogError = "Error: ${e.message}"
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
         loadRequests()
     }
@@ -163,7 +98,7 @@ fun RequestsScreen(
             RequestsTopBar(onNavigateBack = onNavigateBack)
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { onNavigateToComponents() }) {
                 Icon(Icons.Default.Add, contentDescription = "Create Request")
             }
         }
@@ -174,29 +109,6 @@ fun RequestsScreen(
             requests = requests,
             onRetry = { loadRequests() },
             modifier = Modifier.padding(paddingValues)
-        )
-    }
-
-    if (showDialog) {
-        RequestDialog(
-            itemInputs = itemInputs,
-            dialogError = dialogError,
-            onItemChange = { index, updated ->
-                itemInputs = itemInputs.toMutableList().apply { this[index] = updated }
-            },
-            onAddItem = {
-                itemInputs = itemInputs + RequestItemInput(componentId = "", quantity = "")
-            },
-            onRemoveItem = { index ->
-                if (itemInputs.size > 1) {
-                    itemInputs = itemInputs.toMutableList().apply { removeAt(index) }
-                }
-            },
-            onDismiss = {
-                showDialog = false
-                dialogError = null
-            },
-            onSubmit = { submitRequest() }
         )
     }
 }
@@ -364,89 +276,3 @@ private fun RequestItemRow(item: RequestItem) {
     }
 }
 
-@Composable
-private fun RequestDialog(
-    itemInputs: List<RequestItemInput>,
-    dialogError: String?,
-    onItemChange: (Int, RequestItemInput) -> Unit,
-    onAddItem: () -> Unit,
-    onRemoveItem: (Int) -> Unit,
-    onDismiss: () -> Unit,
-    onSubmit: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Create Request") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                itemInputs.forEachIndexed { index, item ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Component ${index + 1}",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium
-                            )
-                            if (itemInputs.size > 1) {
-                                IconButton(onClick = { onRemoveItem(index) }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Remove item"
-                                    )
-                                }
-                            }
-                        }
-                        OutlinedTextField(
-                            value = item.componentId,
-                            onValueChange = { onItemChange(index, item.copy(componentId = it)) },
-                            label = { Text("Component ID") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = item.quantity,
-                            onValueChange = { value ->
-                                if (value.all { it.isDigit() }) {
-                                    onItemChange(index, item.copy(quantity = value))
-                                }
-                            },
-                            label = { Text("Quantity") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                    }
-                }
-
-                TextButton(onClick = onAddItem) {
-                    Text("Add Another Component")
-                }
-
-                if (dialogError != null) {
-                    Text(
-                        text = dialogError,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onSubmit) {
-                Text("Submit")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}

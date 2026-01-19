@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,17 +10,23 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,16 +52,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.gson.Gson
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
+import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
+import com.iiitnr.inventoryapp.data.models.RequestItemPayload
 import com.iiitnr.inventoryapp.data.preferences.TokenManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private fun extractErrorMessage(raw: String?): String? {
+    if (raw.isNullOrBlank()) return null
+    return try {
+        val map = Gson().fromJson(raw, Map::class.java)
+        map["error"]?.toString()
+    } catch (_: Exception) {
+        null
+    }
+}
+
 @Composable
 fun ComponentsScreen(
-    tokenManager: TokenManager, onNavigateBack: () -> Unit
+    tokenManager: TokenManager,
+    onNavigateBack: () -> Unit,
+    onNavigateToRequests: (() -> Unit)? = null
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -64,6 +86,10 @@ fun ComponentsScreen(
     var showDeleteDialog by remember { mutableStateOf<Component?>(null) }
     var userRole by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var cartQuantities by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var showCartDialog by remember { mutableStateOf(false) }
+    var cartError by remember { mutableStateOf<String?>(null) }
+    var isSubmittingRequest by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val isReadOnly = userRole?.let { role ->
@@ -76,11 +102,10 @@ fun ComponentsScreen(
     } else {
         val query = searchQuery.lowercase().trim()
         components.filter { component ->
-            component.name.lowercase().contains(query) ||
-                    component.description?.lowercase()?.contains(query) == true ||
-                    component.category?.lowercase()?.contains(query) == true ||
-                    component.location?.lowercase()?.contains(query) == true ||
-                    component.quantity.toString().contains(query)
+            component.name.lowercase().contains(query) || component.description?.lowercase()
+                ?.contains(query) == true || component.category?.lowercase()
+                ?.contains(query) == true || component.location?.lowercase()
+                ?.contains(query) == true || component.quantity.toString().contains(query)
         }
     }
 
@@ -113,6 +138,58 @@ fun ComponentsScreen(
         }
     }
 
+    fun updateCartQuantity(component: Component, delta: Int) {
+        val current = cartQuantities[component.id] ?: 0
+        val maxAllowed = component.quantity
+        val next = (current + delta).coerceIn(0, maxAllowed)
+        cartQuantities = if (next == 0) {
+            cartQuantities - component.id
+        } else {
+            cartQuantities + (component.id to next)
+        }
+    }
+
+    fun submitRequest() {
+        scope.launch {
+            cartError = null
+            isSubmittingRequest = true
+            val cleanedItems =
+                cartQuantities.filterValues { it > 0 }.map { (componentId, quantity) ->
+                    RequestItemPayload(componentId = componentId, quantity = quantity)
+                }
+
+            if (cleanedItems.isEmpty()) {
+                cartError = "Add at least one component to the request"
+                isSubmittingRequest = false
+                return@launch
+            }
+
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val response = ApiClient.requestApiService.createRequest(
+                        "Bearer $token", CreateRequestPayload(items = cleanedItems)
+                    )
+                    if (response.isSuccessful) {
+                        showCartDialog = false
+                        cartQuantities = emptyMap()
+                        cartError = null
+                        onNavigateToRequests?.invoke()
+                    } else {
+                        cartError = extractErrorMessage(response.errorBody()?.string())
+                            ?: "Failed to create request"
+                    }
+                } else {
+                    cartError = "No authentication token"
+                }
+            } catch (e: Exception) {
+                cartError = "Error: ${e.message}"
+            } finally {
+                isSubmittingRequest = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         loadComponents()
     }
@@ -120,12 +197,19 @@ fun ComponentsScreen(
     Scaffold(topBar = {
         ComponentsTopBar(onNavigateBack = onNavigateBack)
     }, floatingActionButton = {
-        if (!isReadOnly) {
-            AddComponentFAB(
-                onClick = {
-                    editingComponent = null
-                    showDialog = true
-                })
+        when {
+            cartQuantities.isNotEmpty() -> {
+                CartFAB(
+                    itemCount = cartQuantities.values.sum(), onClick = { showCartDialog = true })
+            }
+
+            !isReadOnly -> {
+                AddComponentFAB(
+                    onClick = {
+                        editingComponent = null
+                        showDialog = true
+                    })
+            }
         }
     }) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
@@ -145,6 +229,7 @@ fun ComponentsScreen(
                 allComponents = components,
                 searchQuery = searchQuery,
                 isReadOnly = isReadOnly,
+                cartQuantities = cartQuantities,
                 onRetry = { loadComponents() },
                 onEdit = { component ->
                     editingComponent = component
@@ -152,8 +237,13 @@ fun ComponentsScreen(
                 },
                 onDelete = { component ->
                     showDeleteDialog = component
-                }
-            )
+                },
+                onAddToCart = { component ->
+                    updateCartQuantity(component, 1)
+                },
+                onUpdateCartQuantity = { component, delta ->
+                    updateCartQuantity(component, delta)
+                })
         }
     }
 
@@ -230,6 +320,25 @@ fun ComponentsScreen(
                 })
         }
     }
+
+    if (showCartDialog) {
+        CartDialog(
+            components = components,
+            cartQuantities = cartQuantities,
+            cartError = cartError,
+            isSubmitting = isSubmittingRequest,
+            onUpdateQuantity = { component, delta ->
+                updateCartQuantity(component, delta)
+            },
+            onRemoveItem = { component ->
+                cartQuantities = cartQuantities - component.id
+            },
+            onDismiss = {
+                showCartDialog = false
+                cartError = null
+            },
+            onSubmit = { submitRequest() })
+    }
 }
 
 @Composable
@@ -260,10 +369,35 @@ private fun AddComponentFAB(onClick: () -> Unit) {
 }
 
 @Composable
+private fun CartFAB(itemCount: Int, onClick: () -> Unit) {
+    FloatingActionButton(onClick = onClick) {
+        Box {
+            Icon(
+                Icons.Default.ShoppingCart, contentDescription = "View Cart"
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.error, shape = CircleShape
+                    )
+                    .size(18.dp), contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (itemCount > 99) "99+" else itemCount.toString(),
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onError,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SearchBar(
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    searchQuery: String, onSearchQueryChange: (String) -> Unit, modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
         value = searchQuery,
@@ -272,16 +406,14 @@ private fun SearchBar(
         placeholder = { Text("Search components...") },
         leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search"
+                imageVector = Icons.Default.Search, contentDescription = "Search"
             )
         },
         trailingIcon = {
             if (searchQuery.isNotBlank()) {
                 IconButton(onClick = { onSearchQueryChange("") }) {
                     Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear search"
+                        imageVector = Icons.Default.Clear, contentDescription = "Clear search"
                     )
                 }
             }
@@ -299,9 +431,12 @@ private fun ComponentsContent(
     allComponents: List<Component>,
     searchQuery: String,
     isReadOnly: Boolean,
+    cartQuantities: Map<String, Int>,
     onRetry: () -> Unit,
     onEdit: (Component) -> Unit,
     onDelete: (Component) -> Unit,
+    onAddToCart: (Component) -> Unit,
+    onUpdateCartQuantity: (Component, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -312,7 +447,15 @@ private fun ComponentsContent(
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
             components.isEmpty() && allComponents.isEmpty() -> EmptyState(isReadOnly)
             components.isEmpty() && searchQuery.isNotBlank() -> SearchEmptyState()
-            else -> ComponentsList(components, isReadOnly, onEdit, onDelete)
+            else -> ComponentsList(
+                components = components,
+                isReadOnly = isReadOnly,
+                cartQuantities = cartQuantities,
+                onEdit = onEdit,
+                onDelete = onDelete,
+                onAddToCart = onAddToCart,
+                onUpdateCartQuantity = onUpdateCartQuantity
+            )
         }
     }
 }
@@ -391,8 +534,11 @@ private fun SearchEmptyState() {
 private fun ComponentsList(
     components: List<Component>,
     isReadOnly: Boolean,
+    cartQuantities: Map<String, Int>,
     onEdit: (Component) -> Unit,
-    onDelete: (Component) -> Unit
+    onDelete: (Component) -> Unit,
+    onAddToCart: (Component) -> Unit,
+    onUpdateCartQuantity: (Component, Int) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -403,15 +549,24 @@ private fun ComponentsList(
             ComponentCard(
                 component = component,
                 isReadOnly = isReadOnly,
+                cartQuantity = cartQuantities[component.id] ?: 0,
                 onEdit = { onEdit(component) },
-                onDelete = { onDelete(component) })
+                onDelete = { onDelete(component) },
+                onAddToCart = { onAddToCart(component) },
+                onUpdateCartQuantity = { delta -> onUpdateCartQuantity(component, delta) })
         }
     }
 }
 
 @Composable
 fun ComponentCard(
-    component: Component, isReadOnly: Boolean = false, onEdit: () -> Unit, onDelete: () -> Unit
+    component: Component,
+    isReadOnly: Boolean = false,
+    cartQuantity: Int = 0,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onAddToCart: (() -> Unit)? = null,
+    onUpdateCartQuantity: ((Int) -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -473,6 +628,59 @@ fun ComponentCard(
                 }
                 if (!component.location.isNullOrBlank()) {
                     InfoChip("Location", component.location)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            if (cartQuantity == 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = { onAddToCart?.invoke() }, enabled = component.quantity > 0
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add to cart",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(4.dp))
+                        Text("Add to Cart")
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "In Cart: $cartQuantity",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { onUpdateCartQuantity?.invoke(-1) }) {
+                            Icon(
+                                Icons.Default.Remove, contentDescription = "Decrease quantity"
+                            )
+                        }
+                        Text(
+                            text = cartQuantity.toString(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(
+                            onClick = { onUpdateCartQuantity?.invoke(1) },
+                            enabled = cartQuantity < component.quantity
+                        ) {
+                            Icon(
+                                Icons.Default.Add, contentDescription = "Increase quantity"
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -617,4 +825,111 @@ private fun ComponentDialogSaveButton(
             Text("Save")
         }
     }
+}
+
+@Composable
+private fun CartDialog(
+    components: List<Component>,
+    cartQuantities: Map<String, Int>,
+    cartError: String?,
+    isSubmitting: Boolean,
+    onUpdateQuantity: (Component, Int) -> Unit,
+    onRemoveItem: (Component) -> Unit,
+    onDismiss: () -> Unit,
+    onSubmit: () -> Unit
+) {
+    val cartItems = cartQuantities.filterValues { it > 0 }.mapNotNull { (componentId, qty) ->
+        components.firstOrNull { it.id == componentId }?.let { it to qty }
+    }
+
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Cart") }, text = {
+        Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (cartItems.isEmpty()) {
+                Text(
+                    text = "Cart is empty", color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                cartItems.forEach { (component, qty) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = component.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Available: ${component.quantity}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            IconButton(
+                                onClick = { onUpdateQuantity(component, -1) },
+                                enabled = qty > 0 && !isSubmitting
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Remove,
+                                    contentDescription = "Decrease quantity"
+                                )
+                            }
+                            Text(
+                                text = qty.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(
+                                onClick = { onUpdateQuantity(component, 1) },
+                                enabled = qty < component.quantity && !isSubmitting
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Increase quantity"
+                                )
+                            }
+                            IconButton(
+                                onClick = { onRemoveItem(component) }, enabled = !isSubmitting
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Remove from cart",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (cartError != null) {
+                Text(
+                    text = cartError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp
+                )
+            }
+        }
+    }, confirmButton = {
+        TextButton(
+            onClick = onSubmit, enabled = cartItems.isNotEmpty() && !isSubmitting
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp))
+            } else {
+                Text("Submit Request")
+            }
+        }
+    }, dismissButton = {
+        TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+            Text("Cancel")
+        }
+    })
 }

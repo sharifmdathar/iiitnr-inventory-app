@@ -16,12 +16,6 @@ interface ComponentApiService {
     @GET("components")
     suspend fun getComponents(@Header("Authorization") token: String): Response<ComponentsResponse>
 
-    @GET("components/{id}")
-    suspend fun getComponent(
-        @Header("Authorization") token: String,
-        @Path("id") id: String
-    ): Response<ComponentResponse>
-
     @POST("components")
     suspend fun createComponent(
         @Header("Authorization") token: String,

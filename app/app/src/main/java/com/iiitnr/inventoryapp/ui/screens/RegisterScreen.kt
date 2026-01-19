@@ -117,9 +117,10 @@ fun RegisterScreen(
                     try {
                         val response = ApiClient.authApiService.register(
                             RegisterRequest(
-                            email = email.trim(),
-                            password = password,
-                            name = name.takeIf { it.isNotBlank() }))
+                                email = email.trim(),
+                                password = password,
+                                name = name.takeIf { it.isNotBlank() })
+                        )
                         if (response.isSuccessful && response.body() != null) {
                             val authResponse = response.body()!!
                             tokenManager.saveToken(authResponse.token)

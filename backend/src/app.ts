@@ -14,16 +14,16 @@ export async function buildApp() {
     logger: isTest
       ? false
       : {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            colorizeObjects: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              colorizeObjects: true,
+              translateTime: 'SYS:standard',
+              ignore: 'pid,hostname',
+            },
           },
         },
-      },
   });
 
   await app.register(cors, { origin: true });

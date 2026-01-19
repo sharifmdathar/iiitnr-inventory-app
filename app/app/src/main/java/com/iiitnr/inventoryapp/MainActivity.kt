@@ -67,53 +67,58 @@ fun AuthNavigation(tokenManager: TokenManager) {
             navController = navController,
             startDestination = destination
         ) {
-        composable("login") {
-            LoginScreen(
-                tokenManager = tokenManager,
-                onLoginSuccess = {
-                    navController.navigate("home") {
-                        popUpTo("login") { inclusive = true }
+            composable("login") {
+                LoginScreen(
+                    tokenManager = tokenManager,
+                    onLoginSuccess = {
+                        navController.navigate("home") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate("register")
                     }
-                },
-                onNavigateToRegister = {
-                    navController.navigate("register")
-                }
-            )
-        }
-        composable("register") {
-            RegisterScreen(
-                tokenManager = tokenManager,
-                onRegisterSuccess = {
-                    navController.navigate("home") {
-                        popUpTo("login") { inclusive = true }
+                )
+            }
+            composable("register") {
+                RegisterScreen(
+                    tokenManager = tokenManager,
+                    onRegisterSuccess = {
+                        navController.navigate("home") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.popBackStack()
                     }
-                },
-                onNavigateToLogin = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        composable("home") {
-            HomeScreen(
-                tokenManager = tokenManager,
-                onLogout = {
-                    navController.navigate("login") {
-                        popUpTo("home") { inclusive = true }
+                )
+            }
+            composable("home") {
+                HomeScreen(
+                    tokenManager = tokenManager,
+                    onLogout = {
+                        navController.navigate("login") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    },
+                    onNavigateToComponents = {
+                        navController.navigate("components")
+                    },
+                    onNavigateToRequests = {
+                        navController.navigate("requests")
                     }
-                },
-                onNavigateToComponents = {
-                    navController.navigate("components")
-                },
-                onNavigateToRequests = {
-                    navController.navigate("requests")
-                }
-            )
-        }
+                )
+            }
             composable("components") {
                 ComponentsScreen(
                     tokenManager = tokenManager,
                     onNavigateBack = {
                         navController.popBackStack()
+                    },
+                    onNavigateToRequests = {
+                        navController.navigate("requests") {
+                            popUpTo("components") { inclusive = true }
+                        }
                     }
                 )
             }
@@ -122,9 +127,12 @@ fun AuthNavigation(tokenManager: TokenManager) {
                     tokenManager = tokenManager,
                     onNavigateBack = {
                         navController.popBackStack()
-                }
-            )
-        }
+                    },
+                    onNavigateToComponents = {
+                        navController.navigate("components")
+                    }
+                )
+            }
         }
     }
 }

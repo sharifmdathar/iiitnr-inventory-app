@@ -13,8 +13,8 @@ android {
         applicationId = "com.iiitnr.inventoryapp"
         minSdk = 24
         targetSdk = 36
-        versionCode = 111
-        versionName = "1.1.1"
+        versionCode = 130
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -47,20 +47,20 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    
+
     // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
-    
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
-    
+
     // DataStore
     implementation(libs.androidx.datastore.preferences)
-    
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
