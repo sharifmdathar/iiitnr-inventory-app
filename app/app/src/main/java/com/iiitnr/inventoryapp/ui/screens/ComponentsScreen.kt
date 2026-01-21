@@ -66,6 +66,7 @@ import com.iiitnr.inventoryapp.data.models.ComponentLocation
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.RequestItemPayload
+import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.preferences.TokenManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -98,6 +99,10 @@ fun ComponentsScreen(
     var showCartDialog by remember { mutableStateOf(false) }
     var cartError by remember { mutableStateOf<String?>(null) }
     var isSubmittingRequest by remember { mutableStateOf(false) }
+
+    var facultyOptions by remember { mutableStateOf<List<User>>(emptyList()) }
+    var selectedFacultyId by remember { mutableStateOf<String?>(null) }
+    var isLoadingFaculty by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val isReadOnly = userRole?.let { role ->
@@ -176,12 +181,15 @@ fun ComponentsScreen(
                 val token = tokenManager.token.first()
                 if (token != null) {
                     val response = ApiClient.requestApiService.createRequest(
-                        "Bearer $token", CreateRequestPayload(items = cleanedItems)
+                        "Bearer $token", CreateRequestPayload(
+                            items = cleanedItems, targetFacultyId = selectedFacultyId
+                        )
                     )
                     if (response.isSuccessful) {
                         showCartDialog = false
                         cartQuantities = emptyMap()
                         cartError = null
+                        selectedFacultyId = null
                         onNavigateToRequests?.invoke()
                     } else {
                         cartError = extractErrorMessage(response.errorBody()?.string())
@@ -202,10 +210,34 @@ fun ComponentsScreen(
         loadComponents()
     }
 
+    LaunchedEffect(showCartDialog) {
+        if (!showCartDialog) return@LaunchedEffect
+
+        scope.launch {
+            isLoadingFaculty = true
+            try {
+                val token = tokenManager.token.first()
+                facultyOptions = if (token != null) {
+                    val response = ApiClient.requestApiService.getFaculty("Bearer $token")
+                    if (response.isSuccessful && response.body() != null) {
+                        response.body()!!.faculty
+                    } else {
+                        emptyList()
+                    }
+                } else {
+                    emptyList()
+                }
+            } catch (_: Exception) {
+                facultyOptions = emptyList()
+            } finally {
+                isLoadingFaculty = false
+            }
+        }
+    }
+
     Scaffold(topBar = {
         ComponentsTopBar(
-            onNavigateToHome = onNavigateToHome,
-            onNavigateToRequests = onNavigateToRequests
+            onNavigateToHome = onNavigateToHome, onNavigateToRequests = onNavigateToRequests
         )
     }, floatingActionButton = {
         when {
@@ -337,6 +369,10 @@ fun ComponentsScreen(
             cartQuantities = cartQuantities,
             cartError = cartError,
             isSubmitting = isSubmittingRequest,
+            facultyOptions = facultyOptions,
+            selectedFacultyId = selectedFacultyId,
+            isLoadingFaculty = isLoadingFaculty,
+            onSelectFaculty = { selectedFacultyId = it },
             onUpdateQuantity = { component, delta ->
                 updateCartQuantity(component, delta)
             },
@@ -353,8 +389,7 @@ fun ComponentsScreen(
 
 @Composable
 private fun ComponentsTopBar(
-    onNavigateToHome: () -> Unit,
-    onNavigateToRequests: (() -> Unit)? = null
+    onNavigateToHome: () -> Unit, onNavigateToRequests: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -376,15 +411,13 @@ private fun ComponentsTopBar(
             onNavigateToRequests?.let {
                 TextButton(onClick = it) {
                     Text(
-                        "Requests",
-                        color = MaterialTheme.colorScheme.primary
+                        "Requests", color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
             TextButton(onClick = onNavigateToHome) {
                 Text(
-                    "Profile",
-                    color = MaterialTheme.colorScheme.primary
+                    "Profile", color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -849,8 +882,7 @@ private fun CategoryDropdownField(
     onSelect: (String) -> Unit
 ) {
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = onExpandedChange
+        expanded = expanded, onExpandedChange = onExpandedChange
     ) {
         OutlinedTextField(
             value = value,
@@ -859,25 +891,18 @@ private fun CategoryDropdownField(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(
-                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                    enabled = true
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
                 ),
             readOnly = true,
             singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-        )
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })
         ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) }
-        ) {
+            expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
             options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = {
-                        onSelect(option)
-                        onExpandedChange(false)
-                    }
-                )
+                DropdownMenuItem(text = { Text(option) }, onClick = {
+                    onSelect(option)
+                    onExpandedChange(false)
+                })
             }
         }
     }
@@ -893,8 +918,7 @@ private fun LocationDropdownField(
     onSelect: (String) -> Unit
 ) {
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = onExpandedChange
+        expanded = expanded, onExpandedChange = onExpandedChange
     ) {
         OutlinedTextField(
             value = value,
@@ -903,25 +927,18 @@ private fun LocationDropdownField(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(
-                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                    enabled = true
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
                 ),
             readOnly = true,
             singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-        )
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })
         ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) }
-        ) {
+            expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
             options.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option) },
-                    onClick = {
-                        onSelect(option)
-                        onExpandedChange(false)
-                    }
-                )
+                DropdownMenuItem(text = { Text(option) }, onClick = {
+                    onSelect(option)
+                    onExpandedChange(false)
+                })
             }
         }
     }
@@ -948,6 +965,10 @@ private fun CartDialog(
     cartQuantities: Map<String, Int>,
     cartError: String?,
     isSubmitting: Boolean,
+    facultyOptions: List<User>,
+    selectedFacultyId: String?,
+    isLoadingFaculty: Boolean,
+    onSelectFaculty: (String?) -> Unit,
     onUpdateQuantity: (Component, Int) -> Unit,
     onRemoveItem: (Component) -> Unit,
     onDismiss: () -> Unit,
@@ -962,6 +983,13 @@ private fun CartDialog(
             modifier = Modifier.verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            FacultyDropdown(
+                facultyOptions = facultyOptions,
+                selectedFacultyId = selectedFacultyId,
+                isLoading = isLoadingFaculty,
+                onSelectFaculty = onSelectFaculty
+            )
+
             if (cartItems.isEmpty()) {
                 Text(
                     text = "Cart is empty", color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1047,4 +1075,51 @@ private fun CartDialog(
             Text("Cancel")
         }
     })
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FacultyDropdown(
+    facultyOptions: List<User>,
+    selectedFacultyId: String?,
+    isLoading: Boolean,
+    onSelectFaculty: (String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val selectedLabel = facultyOptions.firstOrNull { it.id == selectedFacultyId }?.let {
+        (it.name?.takeIf { n -> n.isNotBlank() } ?: it.email)
+    } ?: "None"
+
+    ExposedDropdownMenuBox(
+        expanded = expanded, onExpandedChange = { if (!isLoading) expanded = it }) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            label = { Text("Faculty (optional)") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
+                ),
+            readOnly = true,
+            singleLine = true,
+            enabled = !isLoading,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })
+
+        ExposedDropdownMenu(
+            expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text("None") }, onClick = {
+                onSelectFaculty(null)
+                expanded = false
+            })
+            facultyOptions.forEach { faculty ->
+                val label = (faculty.name?.takeIf { it.isNotBlank() } ?: faculty.email)
+                DropdownMenuItem(text = { Text(label) }, onClick = {
+                    onSelectFaculty(faculty.id)
+                    expanded = false
+                })
+            }
+        }
+    }
 }

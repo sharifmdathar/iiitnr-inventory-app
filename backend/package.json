@@ -11,10 +11,11 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
     "format": "prettier -w .",
-    "test": "node --test --test-concurrency=1 --import tsx/esm tests/**/*.test.ts",
+    "test": "prisma generate && node --test --test-concurrency=1 --import tsx/esm tests/**/*.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "create:user": "tsx scripts/create-user.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

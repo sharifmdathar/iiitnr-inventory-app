@@ -73,8 +73,7 @@ fun LoginScreen(
                     val errorBody = response.errorBody()?.string()
                     errorMessage = try {
                         val gson = Gson()
-                        val errorResponse =
-                            gson.fromJson(errorBody, ErrorResponse::class.java)
+                        val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
                         errorResponse.error
                     } catch (_: Exception) {
                         "Login failed"
@@ -119,8 +118,7 @@ fun LoginScreen(
                     } else {
                         passwordFocusRequester.requestFocus()
                     }
-                }
-            )
+                })
         )
 
         OutlinedTextField(
@@ -136,8 +134,7 @@ fun LoginScreen(
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(
-                onDone = { performLogin() }
-            )
+                onDone = { performLogin() })
         )
 
         errorMessage?.let {

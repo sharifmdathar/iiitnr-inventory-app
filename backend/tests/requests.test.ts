@@ -12,6 +12,7 @@ let adminToken: string;
 let studentToken: string;
 let studentId: string;
 let adminUserId: string;
+let facultyId: string;
 let createdOtherUserIds: string[] = [];
 let createdComponentIds: string[] = [];
 const requestStatus = {
@@ -54,6 +55,16 @@ before(async () => {
   });
   studentToken = studentResponse.json().token;
   studentId = studentResponse.json().user.id;
+
+  const facultyUser = await prisma.user.create({
+    data: {
+      email: `faculty_${suffix}@example.com`,
+      passwordHash,
+      name: 'Faculty User',
+      role: UserRole.FACULTY,
+    },
+  });
+  facultyId = facultyUser.id;
 });
 
 after(async () => {
@@ -79,6 +90,29 @@ describe('Request API', () => {
     if (createdComponentIds.length > 0) {
       await prisma.component.deleteMany({ where: { id: { in: createdComponentIds } } });
     }
+  });
+
+  describe('GET /faculty - List faculty', () => {
+    test('returns 401 without token', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/faculty',
+      });
+      assert.equal(response.statusCode, 401);
+    });
+
+    test('returns list of faculty users', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/faculty',
+        headers: { authorization: `Bearer ${studentToken}` },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.ok(Array.isArray(body.faculty));
+      assert.ok(body.faculty.some((u: { id: string; role: string }) => u.id === facultyId && u.role === 'FACULTY'));
+    });
   });
 
   describe('POST /requests - Create request', () => {
@@ -170,6 +204,49 @@ describe('Request API', () => {
       assert.equal(body.request.userId, studentId);
       assert.equal(body.request.status, 'PENDING');
       assert.equal(body.request.items.length, 2);
+    });
+
+    test('creates a request with targetFacultyId', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Requested to Faculty', quantity: 5 },
+      });
+      createdComponentIds.push(item.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/requests',
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: {
+          items: [{ componentId: item.id, quantity: 1 }],
+          targetFacultyId: facultyId,
+        },
+      });
+
+      assert.equal(response.statusCode, 201);
+      const body = response.json();
+      assert.equal(body.request.targetFacultyId, facultyId);
+      assert.ok(body.request.targetFaculty);
+      assert.equal(body.request.targetFaculty.id, facultyId);
+      assert.equal(body.request.targetFaculty.role, 'FACULTY');
+    });
+
+    test('returns 400 for invalid targetFacultyId', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Invalid Faculty', quantity: 5 },
+      });
+      createdComponentIds.push(item.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/requests',
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: {
+          items: [{ componentId: item.id, quantity: 1 }],
+          targetFacultyId: studentId,
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
     });
   });
 

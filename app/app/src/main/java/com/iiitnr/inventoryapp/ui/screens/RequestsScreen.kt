@@ -57,9 +57,7 @@ private fun extractErrorMessage(raw: String?): String? {
 
 @Composable
 fun RequestsScreen(
-    tokenManager: TokenManager,
-    onNavigateBack: () -> Unit,
-    onNavigateToComponents: () -> Unit
+    tokenManager: TokenManager, onNavigateBack: () -> Unit, onNavigateToComponents: () -> Unit
 ) {
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -78,9 +76,8 @@ fun RequestsScreen(
                     if (response.isSuccessful && response.body() != null) {
                         requests = response.body()!!.requests
                     } else {
-                        errorMessage =
-                            extractErrorMessage(response.errorBody()?.string())
-                                ?: "Failed to load requests"
+                        errorMessage = extractErrorMessage(response.errorBody()?.string())
+                            ?: "Failed to load requests"
                     }
                 } else {
                     errorMessage = "No authentication token"
@@ -103,9 +100,8 @@ fun RequestsScreen(
                     if (response.isSuccessful) {
                         loadRequests()
                     } else {
-                        errorMessage =
-                            extractErrorMessage(response.errorBody()?.string())
-                                ?: "Failed to delete request"
+                        errorMessage = extractErrorMessage(response.errorBody()?.string())
+                            ?: "Failed to delete request"
                     }
                 } else {
                     errorMessage = "No authentication token"
@@ -131,8 +127,7 @@ fun RequestsScreen(
                         val id = pendingDeleteRequestId
                         pendingDeleteRequestId = null
                         if (id != null) deleteRequest(id)
-                    }
-                ) {
+                    }) {
                     Text("Retract", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -140,20 +135,16 @@ fun RequestsScreen(
                 TextButton(onClick = { pendingDeleteRequestId = null }) {
                     Text("Cancel")
                 }
-            }
-        )
+            })
     }
 
-    Scaffold(
-        topBar = {
-            RequestsTopBar(onNavigateBack = onNavigateBack)
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { onNavigateToComponents() }) {
-                Icon(Icons.Default.Add, contentDescription = "Create Request")
-            }
+    Scaffold(topBar = {
+        RequestsTopBar(onNavigateBack = onNavigateBack)
+    }, floatingActionButton = {
+        FloatingActionButton(onClick = { onNavigateToComponents() }) {
+            Icon(Icons.Default.Add, contentDescription = "Create Request")
         }
-    ) { paddingValues ->
+    }) { paddingValues ->
         RequestsContent(
             isLoading = isLoading,
             errorMessage = errorMessage,
@@ -176,8 +167,7 @@ private fun RequestsTopBar(onNavigateBack: () -> Unit) {
     ) {
         TextButton(onClick = onNavigateBack) {
             Text(
-                "Back",
-                color = MaterialTheme.colorScheme.primary
+                "Back", color = MaterialTheme.colorScheme.primary
             )
         }
         Text(
@@ -213,8 +203,7 @@ private fun RequestsContent(
 @Composable
 private fun LoadingIndicator() {
     Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator()
     }
@@ -230,12 +219,11 @@ private fun ErrorContent(errorMessage: String, onRetry: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = errorMessage,
-            color = MaterialTheme.colorScheme.error
+            text = errorMessage, color = MaterialTheme.colorScheme.error
         )
         Spacer(modifier = Modifier.height(16.dp))
         TextButton(onClick = onRetry) {
-            Text("Retry")
+            Text("Retry", color = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -265,8 +253,7 @@ private fun EmptyRequestsState() {
 
 @Composable
 private fun RequestsList(
-    requests: List<Request>,
-    onDeleteRequest: (String) -> Unit
+    requests: List<Request>, onDeleteRequest: (String) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -281,8 +268,7 @@ private fun RequestsList(
 
 @Composable
 private fun RequestCard(
-    request: Request,
-    onDeleteRequest: (String) -> Unit
+    request: Request, onDeleteRequest: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -301,7 +287,8 @@ private fun RequestCard(
                 Text(
                     text = "Status: ${request.status}",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 if (request.status == "PENDING") {
                     IconButton(onClick = { onDeleteRequest(request.id) }) {
@@ -319,11 +306,20 @@ private fun RequestCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (request.targetFaculty != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Requested from: ${request.targetFaculty.name ?: request.targetFaculty.email}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Components",
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(4.dp))
             request.items.forEach { item ->
@@ -344,12 +340,14 @@ private fun RequestItemRow(item: RequestItem) {
     ) {
         Text(
             text = itemName,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
         )
         Text(
             text = "x${item.quantity}",
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }

@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
 
@@ -35,5 +37,16 @@ if (process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
     console.warn(
       '⚠️  WARNING: TEST_DATABASE_URL does not contain "test" - are you sure this is a test database?',
     );
+  }
+}
+
+if (process.env.TEST_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+
+  const g = globalThis as unknown as { __iiitnr_test_migrated__?: boolean };
+  if (!g.__iiitnr_test_migrated__) {
+    g.__iiitnr_test_migrated__ = true;
+    const { execSync } = await import('node:child_process');
+    execSync('pnpm prisma migrate deploy', { stdio: 'inherit' });
   }
 }

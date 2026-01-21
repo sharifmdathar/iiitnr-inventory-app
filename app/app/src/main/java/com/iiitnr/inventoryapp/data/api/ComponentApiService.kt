@@ -18,8 +18,7 @@ interface ComponentApiService {
 
     @POST("components")
     suspend fun createComponent(
-        @Header("Authorization") token: String,
-        @Body request: ComponentRequest
+        @Header("Authorization") token: String, @Body request: ComponentRequest
     ): Response<ComponentResponse>
 
     @PUT("components/{id}")
@@ -31,7 +30,6 @@ interface ComponentApiService {
 
     @DELETE("components/{id}")
     suspend fun deleteComponent(
-        @Header("Authorization") token: String,
-        @Path("id") id: String
+        @Header("Authorization") token: String, @Path("id") id: String
     ): Response<Unit>
 }

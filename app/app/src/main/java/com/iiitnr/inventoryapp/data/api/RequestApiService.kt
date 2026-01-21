@@ -1,6 +1,7 @@
 package com.iiitnr.inventoryapp.data.api
 
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
+import com.iiitnr.inventoryapp.data.models.FacultyResponse
 import com.iiitnr.inventoryapp.data.models.RequestResponse
 import com.iiitnr.inventoryapp.data.models.RequestsResponse
 import retrofit2.Response
@@ -15,19 +16,21 @@ import retrofit2.http.Query
 interface RequestApiService {
     @POST("requests")
     suspend fun createRequest(
-        @Header("Authorization") token: String,
-        @Body payload: CreateRequestPayload
+        @Header("Authorization") token: String, @Body payload: CreateRequestPayload
     ): Response<RequestResponse>
 
     @GET("requests")
     suspend fun getRequests(
-        @Header("Authorization") token: String,
-        @Query("status") status: String? = null
+        @Header("Authorization") token: String, @Query("status") status: String? = null
     ): Response<RequestsResponse>
 
     @DELETE("requests/{id}")
     suspend fun deleteRequest(
-        @Header("Authorization") token: String,
-        @Path("id") id: String
+        @Header("Authorization") token: String, @Path("id") id: String
     ): Response<Unit>
+
+    @GET("faculty")
+    suspend fun getFaculty(
+        @Header("Authorization") token: String
+    ): Response<FacultyResponse>
 }

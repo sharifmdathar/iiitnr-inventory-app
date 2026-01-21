@@ -1,15 +1,11 @@
 package com.iiitnr.inventoryapp.data.models
 
 data class RegisterRequest(
-    val email: String,
-    val password: String,
-    val name: String? = null,
-    val role: String? = null
+    val email: String, val password: String, val name: String? = null, val role: String? = null
 )
 
 data class LoginRequest(
-    val email: String,
-    val password: String
+    val email: String, val password: String
 )
 
 data class User(
@@ -21,8 +17,7 @@ data class User(
 )
 
 data class AuthResponse(
-    val user: User,
-    val token: String
+    val user: User, val token: String
 )
 
 data class ErrorResponse(

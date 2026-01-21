@@ -11,20 +11,25 @@ data class RequestItem(
 data class Request(
     val id: String,
     val userId: String,
+    val targetFacultyId: String? = null,
     val status: String,
     val createdAt: String,
     val updatedAt: String,
     val items: List<RequestItem> = emptyList(),
-    val user: User? = null
+    val user: User? = null,
+    val targetFaculty: User? = null
 )
 
 data class RequestItemPayload(
-    val componentId: String,
-    val quantity: Int
+    val componentId: String, val quantity: Int
 )
 
 data class CreateRequestPayload(
-    val items: List<RequestItemPayload>
+    val items: List<RequestItemPayload>, val targetFacultyId: String? = null
+)
+
+data class FacultyResponse(
+    val faculty: List<User>
 )
 
 data class RequestResponse(

@@ -15,7 +15,7 @@ enum class ComponentLocation(val label: String) {
     IOT_LAB("IoT Lab"), ROBO_LAB("Robo Lab"), VLSI_LAB("VLSI Lab");
 
     companion object {
-        val labels: List<String> = values().map { it.label }
+        val labels: List<String> = entries.map { it.label }
     }
 }
 
