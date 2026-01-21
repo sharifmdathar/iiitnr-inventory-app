@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -31,6 +32,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +61,8 @@ import androidx.compose.ui.unit.sp
 import com.google.gson.Gson
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Component
+import com.iiitnr.inventoryapp.data.models.ComponentCategory
+import com.iiitnr.inventoryapp.data.models.ComponentLocation
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.RequestItemPayload
@@ -75,8 +83,8 @@ private fun extractErrorMessage(raw: String?): String? {
 @Composable
 fun ComponentsScreen(
     tokenManager: TokenManager,
-    onNavigateBack: () -> Unit,
-    onNavigateToRequests: (() -> Unit)? = null
+    onNavigateToRequests: (() -> Unit)? = null,
+    onNavigateToHome: () -> Unit
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -195,7 +203,10 @@ fun ComponentsScreen(
     }
 
     Scaffold(topBar = {
-        ComponentsTopBar(onNavigateBack = onNavigateBack)
+        ComponentsTopBar(
+            onNavigateToHome = onNavigateToHome,
+            onNavigateToRequests = onNavigateToRequests
+        )
     }, floatingActionButton = {
         when {
             cartQuantities.isNotEmpty() -> {
@@ -213,7 +224,6 @@ fun ComponentsScreen(
         }
     }) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            // Search bar
             SearchBar(
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
@@ -342,7 +352,10 @@ fun ComponentsScreen(
 }
 
 @Composable
-private fun ComponentsTopBar(onNavigateBack: () -> Unit) {
+private fun ComponentsTopBar(
+    onNavigateToHome: () -> Unit,
+    onNavigateToRequests: (() -> Unit)? = null
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -353,10 +366,27 @@ private fun ComponentsTopBar(onNavigateBack: () -> Unit) {
         Text(
             text = "Components",
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
         )
-        TextButton(onClick = onNavigateBack) {
-            Text("Back")
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            onNavigateToRequests?.let {
+                TextButton(onClick = it) {
+                    Text(
+                        "Requests",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            TextButton(onClick = onNavigateToHome) {
+                Text(
+                    "Profile",
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
@@ -406,7 +436,9 @@ private fun SearchBar(
         placeholder = { Text("Search components...") },
         leadingIcon = {
             Icon(
-                imageVector = Icons.Default.Search, contentDescription = "Search"
+                imageVector = Icons.Default.Search,
+                contentDescription = "Search",
+                tint = MaterialTheme.colorScheme.primary
             )
         },
         trailingIcon = {
@@ -550,6 +582,7 @@ private fun ComponentsList(
                 component = component,
                 isReadOnly = isReadOnly,
                 cartQuantity = cartQuantities[component.id] ?: 0,
+                cartQuantities = cartQuantities,
                 onEdit = { onEdit(component) },
                 onDelete = { onDelete(component) },
                 onAddToCart = { onAddToCart(component) },
@@ -563,6 +596,7 @@ fun ComponentCard(
     component: Component,
     isReadOnly: Boolean = false,
     cartQuantity: Int = 0,
+    cartQuantities: Map<String, Int>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onAddToCart: (() -> Unit)? = null,
@@ -570,7 +604,10 @@ fun ComponentCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
     ) {
         Column(
             modifier = Modifier
@@ -586,7 +623,8 @@ fun ComponentCard(
                     Text(
                         text = component.name,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     if (!component.description.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
@@ -597,8 +635,8 @@ fun ComponentCard(
                         )
                     }
                 }
-                if (!isReadOnly) {
-                    Row {
+                Row {
+                    if (!isReadOnly && cartQuantities.isEmpty()) {
                         IconButton(onClick = onEdit) {
                             Icon(
                                 Icons.Default.Edit,
@@ -614,6 +652,41 @@ fun ComponentCard(
                             )
                         }
                     }
+                    if (cartQuantity == 0) {
+                        IconButton(
+                            onClick = { onAddToCart?.invoke() }, enabled = component.quantity > 0
+                        ) {
+                            Icon(
+                                Icons.Default.AddShoppingCart,
+                                contentDescription = "Add to cart",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+
+                        }
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { onUpdateCartQuantity?.invoke(-1) }) {
+                                Icon(
+                                    Icons.Default.Remove, contentDescription = "Decrease quantity"
+                                )
+                            }
+                            Text(
+                                text = cartQuantity.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            IconButton(
+                                onClick = { onUpdateCartQuantity?.invoke(1) },
+                                enabled = cartQuantity < component.quantity
+                            ) {
+                                Icon(
+                                    Icons.Default.Add, contentDescription = "Increase quantity"
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -624,63 +697,10 @@ fun ComponentCard(
             ) {
                 InfoChip("Quantity", component.quantity.toString())
                 if (!component.category.isNullOrBlank()) {
-                    InfoChip("Category", component.category)
+                    InfoChip("Category", component.category.replace('_', ' '))
                 }
                 if (!component.location.isNullOrBlank()) {
-                    InfoChip("Location", component.location)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            if (cartQuantity == 0) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = { onAddToCart?.invoke() }, enabled = component.quantity > 0
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add to cart",
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.size(4.dp))
-                        Text("Add to Cart")
-                    }
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "In Cart: $cartQuantity",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = { onUpdateCartQuantity?.invoke(-1) }) {
-                            Icon(
-                                Icons.Default.Remove, contentDescription = "Decrease quantity"
-                            )
-                        }
-                        Text(
-                            text = cartQuantity.toString(),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        IconButton(
-                            onClick = { onUpdateCartQuantity?.invoke(1) },
-                            enabled = cartQuantity < component.quantity
-                        ) {
-                            Icon(
-                                Icons.Default.Add, contentDescription = "Increase quantity"
-                            )
-                        }
-                    }
+                    InfoChip("Location", component.location.replace('_', ' '))
                 }
             }
         }
@@ -699,7 +719,8 @@ fun InfoChip(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -712,7 +733,7 @@ fun ComponentDialog(
     var description by remember { mutableStateOf(component?.description ?: "") }
     var quantity by remember { mutableStateOf(component?.quantity?.toString() ?: "0") }
     var category by remember { mutableStateOf(component?.category ?: "") }
-    var location by remember { mutableStateOf(component?.location ?: "") }
+    var location by remember { mutableStateOf(component?.location?.replace('_', ' ') ?: "") }
     var isLoading by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -769,6 +790,12 @@ private fun ComponentDialogFields(
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        val categoryOptions = ComponentCategory.labels
+        val locationOptions = ComponentLocation.labels
+
+        var isCategoryExpanded by remember { mutableStateOf(false) }
+        var isLocationExpanded by remember { mutableStateOf(false) }
+
         OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
@@ -794,21 +821,109 @@ private fun ComponentDialogFields(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
 
-        OutlinedTextField(
+        CategoryDropdownField(
             value = category,
-            onValueChange = onCategoryChange,
-            label = { Text("Category") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            options = categoryOptions,
+            expanded = isCategoryExpanded,
+            onExpandedChange = { isCategoryExpanded = it },
+            onSelect = onCategoryChange
         )
 
-        OutlinedTextField(
+        LocationDropdownField(
             value = location,
-            onValueChange = onLocationChange,
-            label = { Text("Location") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            options = locationOptions,
+            expanded = isLocationExpanded,
+            onExpandedChange = { isLocationExpanded = it },
+            onSelect = onLocationChange
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CategoryDropdownField(
+    value: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onSelect: (String) -> Unit
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            label = { Text("Category") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                    enabled = true
+                ),
+            readOnly = true,
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onSelect(option)
+                        onExpandedChange(false)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocationDropdownField(
+    value: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onSelect: (String) -> Unit
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            label = { Text("Location") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                    enabled = true
+                ),
+            readOnly = true,
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onSelect(option)
+                        onExpandedChange(false)
+                    }
+                )
+            }
+        }
     }
 }
 

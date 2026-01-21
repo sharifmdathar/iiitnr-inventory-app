@@ -57,11 +57,10 @@ fun AuthNavigation(tokenManager: TokenManager) {
     LaunchedEffect(Unit) {
         scope.launch {
             val token = tokenManager.token.first()
-            startDestination = if (token != null) "home" else "login"
+            startDestination = if (token != null) "components" else "login"
         }
     }
 
-    // Don't render NavHost until we know the start destination
     startDestination?.let { destination ->
         NavHost(
             navController = navController,
@@ -71,7 +70,7 @@ fun AuthNavigation(tokenManager: TokenManager) {
                 LoginScreen(
                     tokenManager = tokenManager,
                     onLoginSuccess = {
-                        navController.navigate("home") {
+                        navController.navigate("components") {
                             popUpTo("login") { inclusive = true }
                         }
                     },
@@ -84,7 +83,7 @@ fun AuthNavigation(tokenManager: TokenManager) {
                 RegisterScreen(
                     tokenManager = tokenManager,
                     onRegisterSuccess = {
-                        navController.navigate("home") {
+                        navController.navigate("components") {
                             popUpTo("login") { inclusive = true }
                         }
                     },
@@ -101,8 +100,8 @@ fun AuthNavigation(tokenManager: TokenManager) {
                             popUpTo("home") { inclusive = true }
                         }
                     },
-                    onNavigateToComponents = {
-                        navController.navigate("components")
+                    onNavigateBack = {
+                        navController.popBackStack()
                     },
                     onNavigateToRequests = {
                         navController.navigate("requests")
@@ -112,13 +111,11 @@ fun AuthNavigation(tokenManager: TokenManager) {
             composable("components") {
                 ComponentsScreen(
                     tokenManager = tokenManager,
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    },
                     onNavigateToRequests = {
-                        navController.navigate("requests") {
-                            popUpTo("components") { inclusive = true }
-                        }
+                        navController.navigate("requests")
+                    },
+                    onNavigateToHome = {
+                        navController.navigate("home")
                     }
                 )
             }

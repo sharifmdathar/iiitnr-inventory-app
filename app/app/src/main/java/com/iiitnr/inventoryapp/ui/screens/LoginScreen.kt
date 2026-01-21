@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +25,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +49,44 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val passwordFocusRequester = remember { FocusRequester() }
+
+    fun performLogin() {
+        if (email.isBlank() || password.isBlank()) {
+            errorMessage = "Please fill in all fields"
+            return
+        }
+        isLoading = true
+        errorMessage = null
+        keyboardController?.hide()
+        scope.launch {
+            try {
+                val response = ApiClient.authApiService.login(
+                    LoginRequest(email.trim(), password)
+                )
+                if (response.isSuccessful && response.body() != null) {
+                    val authResponse = response.body()!!
+                    tokenManager.saveToken(authResponse.token)
+                    onLoginSuccess()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    errorMessage = try {
+                        val gson = Gson()
+                        val errorResponse =
+                            gson.fromJson(errorBody, ErrorResponse::class.java)
+                        errorResponse.error
+                    } catch (_: Exception) {
+                        "Login failed"
+                    }
+                }
+            } catch (e: Exception) {
+                errorMessage = "Network error: ${e.message}"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -66,7 +110,17 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
             singleLine = true,
-            enabled = !isLoading
+            enabled = !isLoading,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(
+                onNext = {
+                    if (password.isNotBlank()) {
+                        performLogin()
+                    } else {
+                        passwordFocusRequester.requestFocus()
+                    }
+                }
+            )
         )
 
         OutlinedTextField(
@@ -75,10 +129,15 @@ fun LoginScreen(
             label = { Text("Password") },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp),
+                .padding(bottom = 24.dp)
+                .focusRequester(passwordFocusRequester),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
-            enabled = !isLoading
+            enabled = !isLoading,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = { performLogin() }
+            )
         )
 
         errorMessage?.let {
@@ -90,42 +149,11 @@ fun LoginScreen(
         }
 
         Button(
-            onClick = {
-                if (email.isBlank() || password.isBlank()) {
-                    errorMessage = "Please fill in all fields"
-                    return@Button
-                }
-                isLoading = true
-                errorMessage = null
-                scope.launch {
-                    try {
-                        val response = ApiClient.authApiService.login(
-                            LoginRequest(email.trim(), password)
-                        )
-                        if (response.isSuccessful && response.body() != null) {
-                            val authResponse = response.body()!!
-                            tokenManager.saveToken(authResponse.token)
-                            onLoginSuccess()
-                        } else {
-                            val errorBody = response.errorBody()?.string()
-                            errorMessage = try {
-                                val gson = Gson()
-                                val errorResponse =
-                                    gson.fromJson(errorBody, ErrorResponse::class.java)
-                                errorResponse.error
-                            } catch (_: Exception) {
-                                "Login failed"
-                            }
-                        }
-                    } catch (e: Exception) {
-                        errorMessage = "Network error: ${e.message}"
-                    } finally {
-                        isLoading = false
-                    }
-                }
-            }, modifier = Modifier
+            onClick = { performLogin() },
+            modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp), enabled = !isLoading
+                .height(56.dp),
+            enabled = !isLoading
         ) {
             if (isLoading) {
                 CircularProgressIndicator(

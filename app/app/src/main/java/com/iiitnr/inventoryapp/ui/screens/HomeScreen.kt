@@ -1,6 +1,7 @@
 package com.iiitnr.inventoryapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,7 +37,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     tokenManager: TokenManager,
     onLogout: () -> Unit,
-    onNavigateToComponents: () -> Unit = {},
+    onNavigateBack: () -> Unit,
     onNavigateToRequests: () -> Unit = {}
 ) {
     var userData by remember { mutableStateOf<com.iiitnr.inventoryapp.data.models.User?>(null) }
@@ -80,30 +81,34 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.End
+                .padding(bottom = 24.dp)
         ) {
+            TextButton(
+                onClick = onNavigateBack, modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Text("Back")
+            }
+            Text(
+                text = "Profile",
+                style = MaterialTheme.typography.headlineLarge,
+                fontSize = 32.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.Center)
+            )
             TextButton(
                 onClick = {
                     scope.launch {
                         tokenManager.clearToken()
                         onLogout()
                     }
-                }
+                }, modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 Text("Logout")
             }
         }
-
-        Text(
-            text = "Home",
-            style = MaterialTheme.typography.headlineLarge,
-            fontSize = 32.sp,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
 
         when {
             isLoading -> {
@@ -140,19 +145,9 @@ fun HomeScreen(
                     }
                 }
 
-                val userRole = userData!!.role.uppercase()
-                val isAdminOrTA = userRole == "TA" || userRole == "ADMIN"
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
-                    onClick = onNavigateToComponents,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (isAdminOrTA) "Manage Components" else "View Components")
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onNavigateToRequests,
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = onNavigateToRequests, modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("My Requests")
                 }

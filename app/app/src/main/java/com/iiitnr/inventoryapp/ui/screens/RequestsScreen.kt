@@ -119,17 +119,21 @@ private fun RequestsTopBar(onNavigateBack: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        TextButton(onClick = onNavigateBack) {
+            Text(
+                "Back",
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
         Text(
             text = "My Requests",
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
         )
-        TextButton(onClick = onNavigateBack) {
-            Text("Back")
-        }
     }
 }
 

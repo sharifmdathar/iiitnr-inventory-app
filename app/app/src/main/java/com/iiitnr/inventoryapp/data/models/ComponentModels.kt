@@ -1,5 +1,24 @@
 package com.iiitnr.inventoryapp.data.models
 
+enum class ComponentCategory(val label: String) {
+    SENSORS("Sensors"), ACTUATORS("Actuators"), MICROCONTROLLERS("Microcontrollers"), MICROPROCESSORS(
+        "Microprocessors"
+    ),
+    OTHERS("Others");
+
+    companion object {
+        val labels: List<String> = entries.map { it.label }
+    }
+}
+
+enum class ComponentLocation(val label: String) {
+    IOT_LAB("IoT Lab"), ROBO_LAB("Robo Lab"), VLSI_LAB("VLSI Lab");
+
+    companion object {
+        val labels: List<String> = values().map { it.label }
+    }
+}
+
 data class Component(
     val id: String,
     val name: String,

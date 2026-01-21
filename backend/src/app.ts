@@ -3,7 +3,12 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import { compare, hash } from 'bcryptjs';
-import { UserRole } from '@prisma/client';
+import {
+  UserRole,
+  RequestStatus,
+  ComponentCategory,
+  Location as PrismaLocation,
+} from '@prisma/client';
 import { prisma, pool } from './lib/prisma.js';
 
 export async function buildApp() {
@@ -189,8 +194,19 @@ export async function buildApp() {
 
   const isAdminOrTA = (role?: UserRole) => role === UserRole.ADMIN || role === UserRole.TA;
 
-  const requestStatusValues = ['PENDING', 'APPROVED', 'REJECTED', 'FULFILLED'] as const;
-  type RequestStatusValue = (typeof requestStatusValues)[number];
+  const requestStatusValues = Object.values(RequestStatus);
+  type RequestStatusValue = RequestStatus;
+
+  const categoryValues = Object.values(ComponentCategory);
+  type CategoryValue = ComponentCategory;
+
+  const locationEnumValues = Object.values(PrismaLocation);
+  const locationValues = locationEnumValues.map((v) => v.replace(/_/g, ' '));
+  type LocationValue = string;
+
+  const toLocationEnum = (label: string): string => label.replace(/\s+/g, '_');
+  const fromLocationEnum = (value: string | null): string | null =>
+    value ? value.replace(/_/g, ' ') : value;
 
   app.get(
     '/components',
@@ -268,14 +284,29 @@ export async function buildApp() {
         return reply.code(400).send({ error: 'quantity must be a non-negative number' });
       }
 
+      if (category && !categoryValues.includes(category as CategoryValue)) {
+        return reply.code(400).send({
+          error:
+            'invalid category. Must be one of ' +
+            categoryValues.join(', ') +
+            ' (use Others if none apply)',
+        });
+      }
+
+      if (location && !locationValues.includes(location as LocationValue)) {
+        return reply
+          .code(400)
+          .send({ error: 'invalid location. Must be one of ' + locationValues.join(', ') });
+      }
+
       try {
         const component = await prisma.component.create({
           data: {
             name,
             description: description || null,
             quantity: quantity ?? 0,
-            category: category || null,
-            location: location || null,
+            category: (category as CategoryValue | undefined) ?? null,
+            location: location ? (toLocationEnum(location) as any) : null,
           },
         });
 
@@ -317,6 +348,25 @@ export async function buildApp() {
         return reply.code(400).send({ error: 'quantity must be a non-negative number' });
       }
 
+      if (category !== undefined && category !== null && category !== '') {
+        if (!categoryValues.includes(category as CategoryValue)) {
+          return reply.code(400).send({
+            error:
+              'invalid category. Must be one of ' +
+              categoryValues.join(', ') +
+              ' (use Others if none apply)',
+          });
+        }
+      }
+
+      if (location !== undefined && location !== null && location !== '') {
+        if (!locationValues.includes(location as LocationValue)) {
+          return reply
+            .code(400)
+            .send({ error: 'invalid location. Must be one of IoT Lab, Robo Lab, VLSI Lab' });
+        }
+      }
+
       try {
         const existingComponent = await prisma.component.findUnique({
           where: { id },
@@ -332,8 +382,12 @@ export async function buildApp() {
             ...(name !== undefined && { name }),
             ...(description !== undefined && { description: description || null }),
             ...(quantity !== undefined && { quantity }),
-            ...(category !== undefined && { category: category || null }),
-            ...(location !== undefined && { location: location || null }),
+            ...(category !== undefined && {
+              category: (category as CategoryValue | undefined) ?? null,
+            }),
+            ...(location !== undefined && {
+              location: location ? (toLocationEnum(location) as any) : null,
+            }),
           },
         });
 

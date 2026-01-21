@@ -13,6 +13,20 @@ enum UserRole {
   TA
 }
 
+enum ComponentCategory {
+  Sensors
+  Actuators
+  Microcontrollers
+  Microprocessors
+  Others
+}
+
+enum Location {
+  IoT_Lab
+  Robo_Lab
+  VLSI_Lab
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -25,14 +39,14 @@ model User {
 }
 
 model Component {
-  id          String   @id @default(uuid())
+  id          String            @id @default(uuid())
   name        String
   description String?
-  quantity    Int      @default(0)
-  category    String?
-  location    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  quantity    Int               @default(0)
+  category    ComponentCategory?
+  location    Location?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   requestItems RequestItem[]
 }
 
