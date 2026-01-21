@@ -11,7 +11,7 @@
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "typecheck": "tsc --noEmit",
     "format": "prettier -w .",
-    "test": "node --test --import tsx/esm tests/**/*.test.ts",
+    "test": "node --test --test-concurrency=1 --import tsx/esm tests/**/*.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "seed": "tsx prisma/seed.ts"

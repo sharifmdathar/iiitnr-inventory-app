@@ -14,11 +14,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -47,7 +50,7 @@ private fun extractErrorMessage(raw: String?): String? {
     return try {
         val map = Gson().fromJson(raw, Map::class.java)
         map["error"]?.toString()
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 }
@@ -61,6 +64,7 @@ fun RequestsScreen(
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun loadRequests() {
@@ -89,8 +93,55 @@ fun RequestsScreen(
         }
     }
 
+    fun deleteRequest(requestId: String) {
+        scope.launch {
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val response =
+                        ApiClient.requestApiService.deleteRequest("Bearer $token", requestId)
+                    if (response.isSuccessful) {
+                        loadRequests()
+                    } else {
+                        errorMessage =
+                            extractErrorMessage(response.errorBody()?.string())
+                                ?: "Failed to delete request"
+                    }
+                } else {
+                    errorMessage = "No authentication token"
+                }
+            } catch (e: Exception) {
+                errorMessage = "Error: ${e.message}"
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         loadRequests()
+    }
+
+    if (pendingDeleteRequestId != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteRequestId = null },
+            title = { Text("Retract request?") },
+            text = { Text("This will delete the request permanently") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val id = pendingDeleteRequestId
+                        pendingDeleteRequestId = null
+                        if (id != null) deleteRequest(id)
+                    }
+                ) {
+                    Text("Retract", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteRequestId = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -108,6 +159,7 @@ fun RequestsScreen(
             errorMessage = errorMessage,
             requests = requests,
             onRetry = { loadRequests() },
+            onDeleteRequest = { requestId -> pendingDeleteRequestId = requestId },
             modifier = Modifier.padding(paddingValues)
         )
     }
@@ -143,6 +195,7 @@ private fun RequestsContent(
     errorMessage: String?,
     requests: List<Request>,
     onRetry: () -> Unit,
+    onDeleteRequest: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -152,7 +205,7 @@ private fun RequestsContent(
             isLoading -> LoadingIndicator()
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
             requests.isEmpty() -> EmptyRequestsState()
-            else -> RequestsList(requests)
+            else -> RequestsList(requests, onDeleteRequest)
         }
     }
 }
@@ -211,20 +264,26 @@ private fun EmptyRequestsState() {
 }
 
 @Composable
-private fun RequestsList(requests: List<Request>) {
+private fun RequestsList(
+    requests: List<Request>,
+    onDeleteRequest: (String) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(requests) { request ->
-            RequestCard(request = request)
+            RequestCard(request = request, onDeleteRequest = onDeleteRequest)
         }
     }
 }
 
 @Composable
-private fun RequestCard(request: Request) {
+private fun RequestCard(
+    request: Request,
+    onDeleteRequest: (String) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -234,11 +293,26 @@ private fun RequestCard(request: Request) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(
-                text = "Status: ${request.status}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Status: ${request.status}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                if (request.status == "PENDING") {
+                    IconButton(onClick = { onDeleteRequest(request.id) }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Retract request",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Created: ${request.createdAt}",

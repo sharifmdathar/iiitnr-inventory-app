@@ -305,7 +305,7 @@ export async function buildApp() {
             name,
             description: description || null,
             quantity: quantity ?? 0,
-            category: (category as CategoryValue | undefined) ?? null,
+            category: category ? (category as CategoryValue) : null,
             location: location ? (toLocationEnum(location) as any) : null,
           },
         });
@@ -383,7 +383,7 @@ export async function buildApp() {
             ...(description !== undefined && { description: description || null }),
             ...(quantity !== undefined && { quantity }),
             ...(category !== undefined && {
-              category: (category as CategoryValue | undefined) ?? null,
+              category: category ? (category as CategoryValue) : null,
             }),
             ...(location !== undefined && {
               location: location ? (toLocationEnum(location) as any) : null,
@@ -571,6 +571,58 @@ export async function buildApp() {
       } catch (err) {
         app.log.error(err);
         return reply.code(500).send({ error: 'failed to fetch requests' });
+      }
+    },
+  );
+
+  app.delete(
+    '/requests/:id',
+    {
+      preHandler: requireAuth,
+    },
+    async (request, reply) => {
+      const params = request.params as { id?: string };
+      const id = params?.id;
+
+      if (!id) {
+        return reply.code(400).send({ error: 'request id is required' });
+      }
+
+      const user = request.user as { sub?: string; role?: UserRole };
+      const currentUserId = user?.sub;
+      if (!currentUserId) {
+        return reply.code(401).send({ error: 'invalid token' });
+      }
+
+      try {
+        const existingRequest = await (prisma as any).request.findUnique({
+          where: { id },
+        });
+
+        if (!existingRequest) {
+          return reply.code(404).send({ error: 'request not found' });
+        }
+
+        const isOwner = existingRequest.userId === currentUserId;
+        const isPrivileged = isAdminOrTA(user?.role);
+
+        if (!isOwner && !isPrivileged) {
+          return reply.code(403).send({ error: 'forbidden: cannot delete this request' });
+        }
+
+        if (existingRequest.status !== RequestStatus.PENDING) {
+          return reply
+            .code(400)
+            .send({ error: 'request can only be deleted when status is PENDING' });
+        }
+
+        await (prisma as any).requestItem.deleteMany({ where: { requestId: id } });
+        await (prisma as any).request.delete({ where: { id } });
+
+        return reply.code(204).send();
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to delete request' });
       }
     },
   );

@@ -4,7 +4,7 @@ import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildApp } from '../src/app.js';
 import { prisma } from '../src/lib/prisma.js';
-import { UserRole } from '@prisma/client';
+import { UserRole, ComponentCategory, Location } from '@prisma/client';
 
 let app: Awaited<ReturnType<typeof buildApp>>;
 let adminToken: string;
@@ -18,6 +18,10 @@ let facultyUserId: string;
 
 before(async () => {
   app = await buildApp();
+
+  await (prisma as any).requestItem.deleteMany({});
+  await (prisma as any).request.deleteMany({});
+  await prisma.component.deleteMany({});
 
   // Create test users with different roles
   const adminEmail = `admin_${Date.now()}@example.com`;
@@ -153,8 +157,8 @@ describe('Component CRUD API', () => {
           name: 'Resistor 10k',
           description: '10k ohm resistor',
           quantity: 50,
-          category: 'Electronics',
-          location: 'Lab A',
+          category: ComponentCategory.Sensors,
+          location: Location.IoT_Lab,
         },
       });
 
@@ -163,8 +167,8 @@ describe('Component CRUD API', () => {
           name: 'Arduino Uno',
           description: 'Arduino microcontroller',
           quantity: 10,
-          category: 'Microcontrollers',
-          location: 'Lab B',
+          category: ComponentCategory.Microcontrollers,
+          location: Location.Robo_Lab,
         },
       });
 
@@ -244,8 +248,8 @@ describe('Component CRUD API', () => {
           name: 'Test Component',
           description: 'Test description',
           quantity: 5,
-          category: 'Test Category',
-          location: 'Test Location',
+          category: ComponentCategory.Actuators,
+          location: Location.VLSI_Lab,
         },
       });
 
@@ -263,8 +267,8 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.name, 'Test Component');
       assert.equal(body.component.description, 'Test description');
       assert.equal(body.component.quantity, 5);
-      assert.equal(body.component.category, 'Test Category');
-      assert.equal(body.component.location, 'Test Location');
+      assert.equal(body.component.category, ComponentCategory.Actuators);
+      assert.equal(body.component.location, Location.VLSI_Lab);
 
       await prisma.component.deleteMany({});
     });
@@ -346,8 +350,8 @@ describe('Component CRUD API', () => {
           name: 'New Component',
           description: 'Component description',
           quantity: 25,
-          category: 'Electronics',
-          location: 'Storage Room',
+          category: ComponentCategory.Sensors,
+          location: 'IoT Lab',
         },
       });
 
@@ -357,8 +361,8 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.name, 'New Component');
       assert.equal(body.component.description, 'Component description');
       assert.equal(body.component.quantity, 25);
-      assert.equal(body.component.category, 'Electronics');
-      assert.equal(body.component.location, 'Storage Room');
+      assert.equal(body.component.category, ComponentCategory.Sensors);
+      assert.equal(body.component.location, Location.IoT_Lab);
       assert.ok(body.component.createdAt);
       assert.ok(body.component.updatedAt);
 
@@ -467,8 +471,8 @@ describe('Component CRUD API', () => {
           name: 'Original Name',
           description: 'Original description',
           quantity: 10,
-          category: 'Original Category',
-          location: 'Original Location',
+          category: ComponentCategory.Sensors,
+          location: Location.IoT_Lab,
         },
       });
 
@@ -490,8 +494,8 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.name, 'Updated Name');
       assert.equal(body.component.description, 'Original description'); // unchanged
       assert.equal(body.component.quantity, 20);
-      assert.equal(body.component.category, 'Original Category'); // unchanged
-      assert.equal(body.component.location, 'Original Location'); // unchanged
+      assert.equal(body.component.category, ComponentCategory.Sensors); // unchanged
+      assert.equal(body.component.location, Location.IoT_Lab); // unchanged
 
       await prisma.component.deleteMany({});
     });
@@ -502,8 +506,8 @@ describe('Component CRUD API', () => {
           name: 'Original Name',
           description: 'Original description',
           quantity: 10,
-          category: 'Original Category',
-          location: 'Original Location',
+          category: ComponentCategory.Sensors,
+          location: Location.IoT_Lab,
         },
       });
 
@@ -517,8 +521,8 @@ describe('Component CRUD API', () => {
           name: 'Fully Updated Name',
           description: 'Fully updated description',
           quantity: 30,
-          category: 'Updated Category',
-          location: 'Updated Location',
+          category: ComponentCategory.Actuators,
+          location: 'Robo Lab',
         },
       });
 
@@ -527,8 +531,8 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.name, 'Fully Updated Name');
       assert.equal(body.component.description, 'Fully updated description');
       assert.equal(body.component.quantity, 30);
-      assert.equal(body.component.category, 'Updated Category');
-      assert.equal(body.component.location, 'Updated Location');
+      assert.equal(body.component.category, ComponentCategory.Actuators);
+      assert.equal(body.component.location, Location.Robo_Lab);
 
       await prisma.component.deleteMany({});
     });
@@ -538,8 +542,8 @@ describe('Component CRUD API', () => {
         data: {
           name: 'Test Component',
           description: 'Has description',
-          category: 'Has category',
-          location: 'Has location',
+          category: ComponentCategory.Microcontrollers,
+          location: Location.VLSI_Lab,
           quantity: 10,
         },
       });
@@ -667,8 +671,8 @@ describe('Component CRUD API', () => {
           name: 'Workflow Component',
           description: 'Testing full workflow',
           quantity: 15,
-          category: 'Test',
-          location: 'Lab',
+          category: ComponentCategory.Sensors,
+          location: 'VLSI Lab',
         },
       });
 

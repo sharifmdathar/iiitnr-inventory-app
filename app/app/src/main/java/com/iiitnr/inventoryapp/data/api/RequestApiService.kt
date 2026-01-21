@@ -5,9 +5,11 @@ import com.iiitnr.inventoryapp.data.models.RequestResponse
 import com.iiitnr.inventoryapp.data.models.RequestsResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface RequestApiService {
@@ -22,4 +24,10 @@ interface RequestApiService {
         @Header("Authorization") token: String,
         @Query("status") status: String? = null
     ): Response<RequestsResponse>
+
+    @DELETE("requests/{id}")
+    suspend fun deleteRequest(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): Response<Unit>
 }

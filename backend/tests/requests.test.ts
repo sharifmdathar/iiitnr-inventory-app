@@ -74,6 +74,8 @@ describe('Request API', () => {
   });
 
   afterEach(async () => {
+    await (prisma as any).requestItem.deleteMany({});
+    await (prisma as any).request.deleteMany({});
     if (createdComponentIds.length > 0) {
       await prisma.component.deleteMany({ where: { id: { in: createdComponentIds } } });
     }
@@ -168,6 +170,106 @@ describe('Request API', () => {
       assert.equal(body.request.userId, studentId);
       assert.equal(body.request.status, 'PENDING');
       assert.equal(body.request.items.length, 2);
+    });
+  });
+
+  describe('DELETE /requests/:id - Retract request', () => {
+    test('student can delete own pending request', async () => {
+      const component = await prisma.component.create({
+        data: { name: 'To Delete', quantity: 5 },
+      });
+      createdComponentIds.push(component.id);
+
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/requests',
+        headers: {
+          authorization: `Bearer ${studentToken}`,
+        },
+        payload: {
+          items: [{ componentId: component.id, quantity: 1 }],
+        },
+      });
+
+      assert.equal(createResponse.statusCode, 201);
+      const createdId = createResponse.json().request.id;
+
+      const deleteResponse = await app.inject({
+        method: 'DELETE',
+        url: `/requests/${createdId}`,
+        headers: {
+          authorization: `Bearer ${studentToken}`,
+        },
+      });
+
+      assert.equal(deleteResponse.statusCode, 204);
+      const exists = await (prisma as any).request.findUnique({ where: { id: createdId } });
+      assert.equal(exists, null);
+    });
+
+    test('student cannot delete someone else request', async () => {
+      const component = await prisma.component.create({
+        data: { name: 'Other User Component', quantity: 5 },
+      });
+      createdComponentIds.push(component.id);
+
+      const otherUser = await prisma.user.create({
+        data: {
+          email: `other_${Date.now()}@example.com`,
+          passwordHash: 'hash',
+          name: 'Other User',
+          role: UserRole.STUDENT,
+        },
+      });
+      createdOtherUserIds.push(otherUser.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: otherUser.id,
+          items: {
+            create: [{ componentId: component.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const deleteResponse = await app.inject({
+        method: 'DELETE',
+        url: `/requests/${request.id}`,
+        headers: {
+          authorization: `Bearer ${studentToken}`,
+        },
+      });
+
+      assert.equal(deleteResponse.statusCode, 403);
+    });
+
+    test('cannot delete non-pending request', async () => {
+      const component = await prisma.component.create({
+        data: { name: 'Approved Component', quantity: 5 },
+      });
+      createdComponentIds.push(component.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          status: requestStatus.APPROVED,
+          items: {
+            create: [{ componentId: component.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const deleteResponse = await app.inject({
+        method: 'DELETE',
+        url: `/requests/${request.id}`,
+        headers: {
+          authorization: `Bearer ${studentToken}`,
+        },
+      });
+
+      assert.equal(deleteResponse.statusCode, 400);
+      const stillExists = await (prisma as any).request.findUnique({ where: { id: request.id } });
+      assert.ok(stillExists);
     });
   });
 
