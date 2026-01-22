@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -41,6 +43,8 @@ import com.google.gson.Gson
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestItem
+import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
+import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.preferences.TokenManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -63,7 +67,9 @@ fun RequestsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
+    var currentUser by remember { mutableStateOf<User?>(null) }
     val scope = rememberCoroutineScope()
+    val isFaculty = currentUser?.role == "FACULTY"
 
     fun loadRequests() {
         scope.launch {
@@ -112,7 +118,46 @@ fun RequestsScreen(
         }
     }
 
+    fun updateRequestStatus(requestId: String, status: String) {
+        scope.launch {
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val response = ApiClient.requestApiService.updateRequestStatus(
+                        "Bearer $token", requestId, UpdateRequestStatusPayload(status = status)
+                    )
+                    if (response.isSuccessful) {
+                        loadRequests()
+                    } else {
+                        errorMessage = extractErrorMessage(response.errorBody()?.string())
+                            ?: "Failed to update request status"
+                    }
+                } else {
+                    errorMessage = "No authentication token"
+                }
+            } catch (e: Exception) {
+                errorMessage = "Error: ${e.message}"
+            }
+        }
+    }
+
+    fun loadUserData() {
+        scope.launch {
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val response = ApiClient.authApiService.getMe("Bearer $token")
+                    if (response.isSuccessful && response.body() != null) {
+                        currentUser = response.body()!!.user
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
+        loadUserData()
         loadRequests()
     }
 
@@ -141,8 +186,10 @@ fun RequestsScreen(
     Scaffold(topBar = {
         RequestsTopBar(onNavigateBack = onNavigateBack)
     }, floatingActionButton = {
-        FloatingActionButton(onClick = { onNavigateToComponents() }) {
-            Icon(Icons.Default.Add, contentDescription = "Create Request")
+        if (!isFaculty) {
+            FloatingActionButton(onClick = { onNavigateToComponents() }) {
+                Icon(Icons.Default.Add, contentDescription = "Create Request")
+            }
         }
     }) { paddingValues ->
         RequestsContent(
@@ -150,9 +197,21 @@ fun RequestsScreen(
             errorMessage = errorMessage,
             requests = requests,
             onRetry = { loadRequests() },
-            onDeleteRequest = { requestId -> pendingDeleteRequestId = requestId },
-            modifier = Modifier.padding(paddingValues)
-        )
+            onDeleteRequest = if (isFaculty) null else { requestId ->
+                pendingDeleteRequestId = requestId
+            },
+            onApproveRequest = if (isFaculty) { requestId ->
+                updateRequestStatus(
+                    requestId, "APPROVED"
+                )
+            } else null,
+            onRejectRequest = if (isFaculty) { requestId ->
+                updateRequestStatus(
+                    requestId, "REJECTED"
+                )
+            } else null,
+            isFaculty = isFaculty,
+            modifier = Modifier.padding(paddingValues))
     }
 }
 
@@ -171,7 +230,7 @@ private fun RequestsTopBar(onNavigateBack: () -> Unit) {
             )
         }
         Text(
-            text = "My Requests",
+            text = "Requests",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -185,7 +244,10 @@ private fun RequestsContent(
     errorMessage: String?,
     requests: List<Request>,
     onRetry: () -> Unit,
-    onDeleteRequest: (String) -> Unit,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+    isFaculty: Boolean,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -194,8 +256,10 @@ private fun RequestsContent(
         when {
             isLoading -> LoadingIndicator()
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
-            requests.isEmpty() -> EmptyRequestsState()
-            else -> RequestsList(requests, onDeleteRequest)
+            requests.isEmpty() -> EmptyRequestsState(isFaculty = isFaculty)
+            else -> RequestsList(
+                requests, onDeleteRequest, onApproveRequest, onRejectRequest, isFaculty
+            )
         }
     }
 }
@@ -229,7 +293,7 @@ private fun ErrorContent(errorMessage: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun EmptyRequestsState() {
+private fun EmptyRequestsState(isFaculty: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -238,22 +302,28 @@ private fun EmptyRequestsState() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "No requests yet",
+            text = if (isFaculty) "No pending requests" else "No requests yet",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Tap the + button to create a request",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (!isFaculty) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Tap the + button to create a request",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
 @Composable
 private fun RequestsList(
-    requests: List<Request>, onDeleteRequest: (String) -> Unit
+    requests: List<Request>,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+    isFaculty: Boolean
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -261,14 +331,24 @@ private fun RequestsList(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(requests) { request ->
-            RequestCard(request = request, onDeleteRequest = onDeleteRequest)
+            RequestCard(
+                request = request,
+                onDeleteRequest = onDeleteRequest,
+                onApproveRequest = onApproveRequest,
+                onRejectRequest = onRejectRequest,
+                isFaculty = isFaculty
+            )
         }
     }
 }
 
 @Composable
 private fun RequestCard(
-    request: Request, onDeleteRequest: (String) -> Unit
+    request: Request,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+    isFaculty: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -291,12 +371,31 @@ private fun RequestCard(
                     color = MaterialTheme.colorScheme.primary
                 )
                 if (request.status == "PENDING") {
-                    IconButton(onClick = { onDeleteRequest(request.id) }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Retract request",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                    if (isFaculty && onApproveRequest != null && onRejectRequest != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(onClick = { onRejectRequest(request.id) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Reject request",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            IconButton(onClick = { onApproveRequest(request.id) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Approve request",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    } else if (!isFaculty && onDeleteRequest != null) {
+                        IconButton(onClick = { onDeleteRequest(request.id) }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Retract request",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
@@ -306,7 +405,14 @@ private fun RequestCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (request.targetFaculty != null) {
+            if (isFaculty && request.user != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Requested by: ${request.user.name ?: request.user.email}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else if (!isFaculty && request.targetFaculty != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Requested from: ${request.targetFaculty.name ?: request.targetFaculty.email}",

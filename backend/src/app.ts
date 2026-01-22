@@ -569,6 +569,7 @@ export async function buildApp() {
 
       const where: {
         userId?: string;
+        targetFacultyId?: string;
         status?: RequestStatusValue;
       } = {};
 
@@ -579,10 +580,10 @@ export async function buildApp() {
         where.status = status as RequestStatusValue;
       }
 
-      if (isAdminOrTA(user?.role)) {
-        if (requestedUserId) {
-          where.userId = requestedUserId;
-        }
+      if (user?.role === UserRole.FACULTY) {
+        where.targetFacultyId = currentUserId;
+      } else if (isAdminOrTA(user?.role) && requestedUserId) {
+        where.userId = requestedUserId;
       } else {
         where.userId = currentUserId;
       }
@@ -616,10 +617,124 @@ export async function buildApp() {
           },
         });
 
+        if (user?.role === UserRole.FACULTY) {
+          requests.sort((a: any, b: any) => {
+            const aIsPending = a.status === RequestStatus.PENDING;
+            const bIsPending = b.status === RequestStatus.PENDING;
+
+            if (aIsPending && !bIsPending) return -1;
+            if (!aIsPending && bIsPending) return 1;
+
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+        }
+
         return reply.send({ requests });
       } catch (err) {
         app.log.error(err);
         return reply.code(500).send({ error: 'failed to fetch requests' });
+      }
+    },
+  );
+
+  app.put(
+    '/requests/:id',
+    {
+      preHandler: requireAuth,
+    },
+    async (request, reply) => {
+      const params = request.params as { id?: string };
+      const id = params?.id;
+      const body = request.body as { status?: string };
+
+      if (!id) {
+        return reply.code(400).send({ error: 'request id is required' });
+      }
+
+      const status = body?.status?.trim();
+      if (!status) {
+        return reply.code(400).send({ error: 'status is required' });
+      }
+
+      if (!requestStatusValues.includes(status as RequestStatusValue)) {
+        return reply.code(400).send({ error: 'invalid status' });
+      }
+
+      const newStatus = status as RequestStatusValue;
+
+      if (newStatus !== RequestStatus.APPROVED && newStatus !== RequestStatus.REJECTED) {
+        return reply.code(400).send({ error: 'status can only be set to APPROVED or REJECTED' });
+      }
+
+      const user = request.user as { sub?: string; role?: UserRole };
+      const currentUserId = user?.sub;
+      if (!currentUserId) {
+        return reply.code(401).send({ error: 'invalid token' });
+      }
+
+      try {
+        const existingRequest = await (prisma as any).request.findUnique({
+          where: { id },
+          select: {
+            status: true,
+            targetFacultyId: true,
+          },
+        });
+
+        if (!existingRequest) {
+          return reply.code(404).send({ error: 'request not found' });
+        }
+
+        if (existingRequest.status !== RequestStatus.PENDING) {
+          return reply
+            .code(400)
+            .send({ error: 'request status can only be updated when status is PENDING' });
+        }
+
+        if (user?.role === UserRole.FACULTY) {
+          if (existingRequest.targetFacultyId !== currentUserId) {
+            return reply
+              .code(403)
+              .send({ error: 'forbidden: can only approve/reject requests targeting you' });
+          }
+        } else if (!isAdminOrTA(user?.role)) {
+          return reply
+            .code(403)
+            .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
+        }
+
+        const updatedRequest = await (prisma as any).request.update({
+          where: { id },
+          data: { status: newStatus },
+          include: {
+            items: {
+              include: {
+                component: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+              },
+            },
+            targetFaculty: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+              },
+            },
+          },
+        });
+
+        return reply.send({ request: updatedRequest });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to update request' });
       }
     },
   );

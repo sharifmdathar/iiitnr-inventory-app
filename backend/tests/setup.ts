@@ -39,14 +39,3 @@ if (process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
     );
   }
 }
-
-if (process.env.TEST_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
-
-  const g = globalThis as unknown as { __iiitnr_test_migrated__?: boolean };
-  if (!g.__iiitnr_test_migrated__) {
-    g.__iiitnr_test_migrated__ = true;
-    const { execSync } = await import('node:child_process');
-    execSync('pnpm prisma migrate deploy', { stdio: 'inherit' });
-  }
-}

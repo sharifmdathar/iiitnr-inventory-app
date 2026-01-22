@@ -4,12 +4,14 @@ import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.FacultyResponse
 import com.iiitnr.inventoryapp.data.models.RequestResponse
 import com.iiitnr.inventoryapp.data.models.RequestsResponse
+import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -23,6 +25,13 @@ interface RequestApiService {
     suspend fun getRequests(
         @Header("Authorization") token: String, @Query("status") status: String? = null
     ): Response<RequestsResponse>
+
+    @PUT("requests/{id}")
+    suspend fun updateRequestStatus(
+        @Header("Authorization") token: String,
+        @Path("id") id: String,
+        @Body payload: UpdateRequestStatusPayload
+    ): Response<RequestResponse>
 
     @DELETE("requests/{id}")
     suspend fun deleteRequest(

@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
     private const val BASE_URL = "https://iiitnr-inventory-backend.onrender.com"
-    // private const val BASE_URL = "http://10.0.2.2:4000"   // For Testing on Emulator
+//    private const val BASE_URL = "http://10.0.2.2:4000"   // For Testing on Emulator
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

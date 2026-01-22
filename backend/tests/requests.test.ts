@@ -10,6 +10,7 @@ import { UserRole } from '@prisma/client';
 let app: Awaited<ReturnType<typeof buildApp>>;
 let adminToken: string;
 let studentToken: string;
+let facultyToken: string;
 let studentId: string;
 let adminUserId: string;
 let facultyId: string;
@@ -65,12 +66,13 @@ before(async () => {
     },
   });
   facultyId = facultyUser.id;
+  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1d' });
 });
 
 after(async () => {
   await (prisma as any).requestItem.deleteMany({});
   await (prisma as any).request.deleteMany({});
-  const userIds = [adminUserId, studentId, ...createdOtherUserIds].filter(Boolean);
+  const userIds = [adminUserId, studentId, facultyId, ...createdOtherUserIds].filter(Boolean);
   if (userIds.length > 0) {
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   }
@@ -111,7 +113,11 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.ok(Array.isArray(body.faculty));
-      assert.ok(body.faculty.some((u: { id: string; role: string }) => u.id === facultyId && u.role === 'FACULTY'));
+      assert.ok(
+        body.faculty.some(
+          (u: { id: string; role: string }) => u.id === facultyId && u.role === 'FACULTY',
+        ),
+      );
     });
   });
 
@@ -435,6 +441,330 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.ok(body.requests.some((req: { id: string }) => req.id === request.id));
+    });
+
+    test('faculty sees all requests targeting them, with pending first', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', quantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const approvedRequest = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'APPROVED',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const pendingRequest = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const rejectedRequest = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'REJECTED',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const otherFaculty = await prisma.user.create({
+        data: {
+          email: `other_faculty_${Date.now()}@example.com`,
+          passwordHash: 'hash',
+          name: 'Other Faculty',
+          role: UserRole.FACULTY,
+        },
+      });
+      createdOtherUserIds.push(otherFaculty.id);
+
+      const otherFacultyRequest = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: otherFaculty.id,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const noFacultyRequest = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/requests',
+        headers: {
+          authorization: `Bearer ${facultyToken}`,
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      // Should see all 3 requests targeting this faculty
+      assert.equal(body.requests.length, 3);
+
+      // First request should be PENDING
+      assert.equal(body.requests[0].status, 'PENDING');
+      assert.equal(body.requests[0].id, pendingRequest.id);
+      assert.equal(body.requests[0].targetFacultyId, facultyId);
+
+      // Verify all requests are targeting this faculty
+      const requestIds = body.requests.map((r: { id: string }) => r.id);
+      assert.ok(requestIds.includes(pendingRequest.id));
+      assert.ok(requestIds.includes(approvedRequest.id));
+      assert.ok(requestIds.includes(rejectedRequest.id));
+
+      // Verify requests not targeting this faculty are not included
+      assert.ok(!requestIds.includes(otherFacultyRequest.id));
+      assert.ok(!requestIds.includes(noFacultyRequest.id));
+    });
+  });
+
+  describe('PUT /requests/:id - Update request status (approve/reject)', () => {
+    test('returns 401 without token', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/requests/some-id',
+        payload: { status: 'APPROVED' },
+      });
+
+      assert.equal(response.statusCode, 401);
+    });
+
+    test('returns 400 when status is missing', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/requests/some-id',
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: {},
+      });
+
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('returns 400 when status is invalid', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/requests/some-id',
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'INVALID' },
+      });
+
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('returns 400 when status is not APPROVED or REJECTED', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/requests/some-id',
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'PENDING' },
+      });
+
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('faculty can approve pending request targeting them', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', quantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'APPROVED' },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'APPROVED');
+      assert.equal(body.request.id, request.id);
+    });
+
+    test('faculty can reject pending request targeting them', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', quantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'REJECTED' },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'REJECTED');
+      assert.equal(body.request.id, request.id);
+    });
+
+    test('faculty cannot approve/reject request not targeting them', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', quantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const otherFaculty = await prisma.user.create({
+        data: {
+          email: `other_faculty_${Date.now()}@example.com`,
+          passwordHash: 'hash',
+          name: 'Other Faculty',
+          role: UserRole.FACULTY,
+        },
+      });
+      createdOtherUserIds.push(otherFaculty.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: otherFaculty.id,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'APPROVED' },
+      });
+
+      assert.equal(response.statusCode, 403);
+    });
+
+    test('cannot update non-pending request', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', quantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'APPROVED',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'REJECTED' },
+      });
+
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('admin can approve/reject any pending request', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', quantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'APPROVED' },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'APPROVED');
+    });
+
+    test('student cannot approve/reject requests', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', quantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await (prisma as any).request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          status: 'PENDING',
+          items: {
+            create: [{ componentId: item.id, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: { status: 'APPROVED' },
+      });
+
+      assert.equal(response.statusCode, 403);
     });
   });
 });

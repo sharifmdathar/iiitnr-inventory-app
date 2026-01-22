@@ -78,4 +78,3 @@ main().catch((e) => {
   console.error('❌ Error creating user:', e);
   process.exit(1);
 });
-

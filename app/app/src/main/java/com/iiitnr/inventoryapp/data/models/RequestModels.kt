@@ -39,3 +39,7 @@ data class RequestResponse(
 data class RequestsResponse(
     val requests: List<Request>
 )
+
+data class UpdateRequestStatusPayload(
+    val status: String
+)
