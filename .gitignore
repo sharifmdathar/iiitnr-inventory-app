@@ -18,12 +18,14 @@ dist/
 build/
 coverage/
 
-# React Native
-mobile/.bundle/
-mobile/android/.gradle/
-mobile/android/app/build/
-mobile/android/build/
-mobile/android/app/debug.keystore
-mobile/ios/Pods/
-mobile/ios/build/
+# Build artifacts
+*.exe
+*.msi
+*.apk
+*.aab
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
 

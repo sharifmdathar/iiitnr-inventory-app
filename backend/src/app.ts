@@ -43,7 +43,7 @@ export async function buildApp() {
   });
 
   app.get('/', async () => {
-    return { message: 'Hello World from Fastify' };
+    return { message: 'IIITNR Inventory App Backend' };
   });
 
   app.get('/health', async () => {
