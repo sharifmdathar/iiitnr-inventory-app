@@ -12,6 +12,9 @@ composeBom = "2026.01.00"
 composeMultiplatform = "1.10.0"
 kotlinxSerialization = "1.10.0"
 ktor = "3.4.0"
+material3 = "1.10.0-alpha05"
+materialIconsExtended = "1.7.3"
+navigationComposeVersion = "2.9.1"
 retrofit = "3.0.0"
 okhttp = "5.3.2"
 gson = "2.13.2"
@@ -24,6 +27,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 components-resources = { module = "org.jetbrains.compose.components:components-resources" }
 components-uitoolingpreview = { module = "org.jetbrains.compose.components:components-uiToolingPreview" }
 foundation = { module = "org.jetbrains.compose.foundation:foundation" }
+jetbrains-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "material3" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -38,7 +42,9 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
+material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 material3 = { module = "org.jetbrains.compose.material3:material3" }
+navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationComposeVersion" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }

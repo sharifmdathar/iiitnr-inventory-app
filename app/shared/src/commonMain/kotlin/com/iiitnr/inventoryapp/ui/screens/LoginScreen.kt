@@ -82,7 +82,7 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Login",
+            text = "IIITNR Inventory App",
             style = MaterialTheme.typography.headlineLarge,
             fontSize = 32.sp,
             modifier = Modifier.padding(bottom = 32.dp)

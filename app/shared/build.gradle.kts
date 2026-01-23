@@ -26,7 +26,8 @@ kotlin {
                 implementation("org.jetbrains.compose.ui:ui:$composeVersion")
                 implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
 
-                implementation("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+                implementation(libs.jetbrains.material3)
+                implementation(libs.material.icons.extended)
 
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)
@@ -37,7 +38,7 @@ kotlin {
 
                 implementation(libs.kotlinx.coroutines.core)
 
-                implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.1")
+                implementation(libs.navigation.compose)
             }
         }
 

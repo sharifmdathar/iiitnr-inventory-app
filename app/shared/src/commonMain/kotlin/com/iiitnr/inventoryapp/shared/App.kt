@@ -15,7 +15,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
+import com.iiitnr.inventoryapp.ui.screens.HomeScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
+import com.iiitnr.inventoryapp.ui.screens.RegisterScreen
+import com.iiitnr.inventoryapp.ui.screens.RequestsScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -55,20 +59,59 @@ fun App(tokenManager: TokenManager) {
                         )
                     }
                     composable("register") {
-                        // TODO: Add RegisterScreen
-                        androidx.compose.material3.Text("Register Screen - Coming Soon")
+                        RegisterScreen(
+                            tokenManager = tokenManager,
+                            onRegisterSuccess = {
+                                navController.navigate("components") {
+                                    popUpTo("register") { inclusive = true }
+                                }
+                            },
+                            onNavigateToLogin = {
+                                navController.navigate("login") {
+                                    popUpTo("register") { inclusive = true }
+                                }
+                            }
+                        )
                     }
                     composable("components") {
-                        // TODO: Add ComponentsScreen
-                        androidx.compose.material3.Text("Components Screen - Coming Soon")
+                        ComponentsScreen(
+                            tokenManager = tokenManager,
+                            onNavigateToRequests = {
+                                navController.navigate("requests")
+                            },
+                            onNavigateToHome = {
+                                navController.navigate("home")
+                            }
+                        )
                     }
                     composable("home") {
-                        // TODO: Add HomeScreen
-                        androidx.compose.material3.Text("Home Screen - Coming Soon")
+                        HomeScreen(
+                            tokenManager = tokenManager,
+                            onLogout = {
+                                navController.navigate("login") {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToRequests = {
+                                navController.navigate("requests")
+                            }
+                        )
                     }
                     composable("requests") {
-                        // TODO: Add RequestsScreen
-                        androidx.compose.material3.Text("Requests Screen - Coming Soon")
+                        RequestsScreen(
+                            tokenManager = tokenManager,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToComponents = {
+                                navController.navigate("components") {
+                                    popUpTo("requests") { inclusive = true }
+                                }
+                            }
+                        )
                     }
                 }
             }

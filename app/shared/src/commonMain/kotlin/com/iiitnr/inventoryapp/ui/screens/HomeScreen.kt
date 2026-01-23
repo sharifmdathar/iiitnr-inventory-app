@@ -29,7 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.data.api.ApiClient
-import com.iiitnr.inventoryapp.data.preferences.TokenManager
+import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.data.storage.TokenManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -40,7 +41,7 @@ fun HomeScreen(
     onNavigateBack: () -> Unit,
     onNavigateToRequests: () -> Unit = {}
 ) {
-    var userData by remember { mutableStateOf<com.iiitnr.inventoryapp.data.models.User?>(null) }
+    var userData by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -52,15 +53,17 @@ fun HomeScreen(
                 if (token != null) {
                     try {
                         val response = ApiClient.authApiService.getMe("Bearer $token")
-                        if (response.isSuccessful && response.body() != null) {
-                            userData = response.body()!!.user
-                            isLoading = false
-                        } else {
-                            errorMessage = "Failed to load user data"
-                            isLoading = false
-                        }
+                        userData = response.user
+                        isLoading = false
                     } catch (e: Exception) {
-                        errorMessage = "Network error: ${e.message}"
+                        errorMessage = when {
+                            e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true ->
+                                "Session expired. Please login again."
+                            e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
+                                "Network error. Please check your connection."
+                            else ->
+                                "Failed to load user data: ${e.message ?: "Unknown error"}"
+                        }
                         isLoading = false
                     }
                 } else {
@@ -87,7 +90,8 @@ fun HomeScreen(
                 .padding(bottom = 24.dp)
         ) {
             TextButton(
-                onClick = onNavigateBack, modifier = Modifier.align(Alignment.CenterStart)
+                onClick = onNavigateBack,
+                modifier = Modifier.align(Alignment.CenterStart)
             ) {
                 Text("Back")
             }
@@ -104,7 +108,8 @@ fun HomeScreen(
                         tokenManager.clearToken()
                         onLogout()
                     }
-                }, modifier = Modifier.align(Alignment.CenterEnd)
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 Text("Logout")
             }
@@ -117,7 +122,8 @@ fun HomeScreen(
 
             errorMessage != null -> {
                 Text(
-                    text = errorMessage ?: "", color = MaterialTheme.colorScheme.error
+                    text = errorMessage ?: "",
+                    color = MaterialTheme.colorScheme.error
                 )
             }
 
@@ -147,7 +153,8 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
-                    onClick = onNavigateToRequests, modifier = Modifier.fillMaxWidth()
+                    onClick = onNavigateToRequests,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("My Requests")
                 }
@@ -159,7 +166,8 @@ fun HomeScreen(
 @Composable
 fun InfoRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = "$label:",
