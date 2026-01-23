@@ -3,6 +3,10 @@ node_modules/
 *.log
 *.tsbuildinfo
 
+# IDE
+.idea/
+.vscode/
+
 # Env
 .env
 .env.local
