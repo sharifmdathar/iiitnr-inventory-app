@@ -7,6 +7,25 @@ android {
     namespace = "com.iiitnr.inventoryapp"
     compileSdk = 36
 
+    val hasReleaseSigning = project.hasProperty("RELEASE_KEYSTORE_PATH") ||
+        !(System.getenv("RELEASE_KEYSTORE_PATH") ?: "").isBlank()
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(
+                    (project.findProperty("RELEASE_KEYSTORE_PATH") as String?)
+                        ?: System.getenv("RELEASE_KEYSTORE_PATH")!!
+                )
+                storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString()
+                    ?: System.getenv("RELEASE_STORE_PASSWORD") ?: ""
+                keyAlias = project.findProperty("RELEASE_KEY_ALIAS")?.toString()
+                    ?: System.getenv("RELEASE_KEY_ALIAS") ?: ""
+                keyPassword = project.findProperty("RELEASE_KEY_PASSWORD")?.toString()
+                    ?: System.getenv("RELEASE_KEY_PASSWORD") ?: storePassword
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "com.iiitnr.inventoryapp"
         minSdk = 24
@@ -24,6 +43,11 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
