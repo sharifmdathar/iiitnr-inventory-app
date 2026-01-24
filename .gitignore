@@ -29,3 +29,5 @@ coverage/
 *.rpm
 *.AppImage
 
+app/android/app-release.jks
+
