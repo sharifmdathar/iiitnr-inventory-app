@@ -1,6 +1,7 @@
 package com.iiitnr.inventoryapp.data.api
 
 import com.iiitnr.inventoryapp.data.models.AuthResponse
+import com.iiitnr.inventoryapp.data.models.ErrorResponse
 import com.iiitnr.inventoryapp.data.models.LoginRequest
 import com.iiitnr.inventoryapp.data.models.MeResponse
 import com.iiitnr.inventoryapp.data.models.RegisterRequest
@@ -10,23 +11,39 @@ import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 
 class AuthApiService(private val client: HttpClient, private val baseUrl: String) {
+
+    private suspend fun parseErrorResponse(response: HttpResponse): String = try {
+        response.body<ErrorResponse>().error
+    } catch (_: Exception) {
+        "Request failed"
+    }
+
     suspend fun register(request: RegisterRequest): AuthResponse {
-        return client.post("$baseUrl/auth/register") {
+        val response = client.post("$baseUrl/auth/register") {
             contentType(ContentType.Application.Json)
             setBody(request)
-        }.body()
+        }
+        return when (response.status.value) {
+            in 200..299 -> response.body()
+            else -> throw Exception("${response.status.value}: ${parseErrorResponse(response)}")
+        }
     }
 
     suspend fun login(request: LoginRequest): AuthResponse {
-        return client.post("$baseUrl/auth/login") {
+        val response = client.post("$baseUrl/auth/login") {
             contentType(ContentType.Application.Json)
             setBody(request)
-        }.body()
+        }
+        return when (response.status.value) {
+            in 200..299 -> response.body()
+            else -> throw Exception("${response.status.value}: ${parseErrorResponse(response)}")
+        }
     }
 
     suspend fun getMe(token: String): MeResponse {

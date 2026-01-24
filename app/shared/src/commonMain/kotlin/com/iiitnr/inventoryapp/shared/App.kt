@@ -1,7 +1,6 @@
 package com.iiitnr.inventoryapp.shared
 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,94 +24,68 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun App(tokenManager: TokenManager) {
-    MaterialTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val navController = rememberNavController()
-            val scope = rememberCoroutineScope()
-            var startDestination by remember { mutableStateOf<String?>(null) }
+    Surface(modifier = Modifier.fillMaxSize()) {
+        val navController = rememberNavController()
+        val scope = rememberCoroutineScope()
+        var startDestination by remember { mutableStateOf<String?>(null) }
 
-            LaunchedEffect(Unit) {
-                scope.launch {
-                    val token = tokenManager.token.first()
-                    startDestination = if (token != null) "components" else "login"
-                }
+        LaunchedEffect(Unit) {
+            scope.launch {
+                val token = tokenManager.token.first()
+                startDestination = if (token != null) "components" else "login"
             }
+        }
 
-            startDestination?.let { destination ->
-                NavHost(
-                    navController = navController,
-                    startDestination = destination
-                ) {
-                    composable("login") {
-                        LoginScreen(
-                            tokenManager = tokenManager,
-                            onLoginSuccess = {
-                                navController.navigate("components") {
-                                    popUpTo("login") { inclusive = true }
-                                }
-                            },
-                            onNavigateToRegister = {
-                                navController.navigate("register")
-                            }
-                        )
-                    }
-                    composable("register") {
-                        RegisterScreen(
-                            tokenManager = tokenManager,
-                            onRegisterSuccess = {
-                                navController.navigate("components") {
-                                    popUpTo("register") { inclusive = true }
-                                }
-                            },
-                            onNavigateToLogin = {
-                                navController.navigate("login") {
-                                    popUpTo("register") { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-                    composable("components") {
-                        ComponentsScreen(
-                            tokenManager = tokenManager,
-                            onNavigateToRequests = {
-                                navController.navigate("requests")
-                            },
-                            onNavigateToHome = {
-                                navController.navigate("home")
-                            }
-                        )
-                    }
-                    composable("home") {
-                        HomeScreen(
-                            tokenManager = tokenManager,
-                            onLogout = {
-                                navController.navigate("login") {
-                                    popUpTo(0) { inclusive = true }
-                                }
-                            },
-                            onNavigateBack = {
-                                navController.popBackStack()
-                            },
-                            onNavigateToRequests = {
-                                navController.navigate("requests")
-                            }
-                        )
-                    }
-                    composable("requests") {
-                        RequestsScreen(
-                            tokenManager = tokenManager,
-                            onNavigateBack = {
-                                navController.popBackStack()
-                            },
-                            onNavigateToComponents = {
-                                navController.navigate("components") {
-                                    popUpTo("requests") { inclusive = true }
-                                }
-                            }
-                        )
-                    }
+        startDestination?.let { destination ->
+            NavHost(
+                navController = navController, startDestination = destination
+            ) {
+                composable("login") {
+                    LoginScreen(tokenManager = tokenManager, onLoginSuccess = {
+                        navController.navigate("components") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }, onNavigateToRegister = {
+                        navController.navigate("register")
+                    })
+                }
+                composable("register") {
+                    RegisterScreen(tokenManager = tokenManager, onRegisterSuccess = {
+                        navController.navigate("components") {
+                            popUpTo("register") { inclusive = true }
+                        }
+                    }, onNavigateToLogin = {
+                        navController.navigate("login") {
+                            popUpTo("register") { inclusive = true }
+                        }
+                    })
+                }
+                composable("components") {
+                    ComponentsScreen(tokenManager = tokenManager, onNavigateToRequests = {
+                        navController.navigate("requests")
+                    }, onNavigateToHome = {
+                        navController.navigate("home")
+                    })
+                }
+                composable("home") {
+                    HomeScreen(tokenManager = tokenManager, onLogout = {
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }, onNavigateBack = {
+                        navController.popBackStack()
+                    }, onNavigateToRequests = {
+                        navController.navigate("requests")
+                    })
+                }
+                composable("requests") {
+                    RequestsScreen(tokenManager = tokenManager, onNavigateBack = {
+                        navController.popBackStack()
+                    }, onNavigateToComponents = {
+                        navController.navigate("components") {
+                            popUpTo("requests") { inclusive = true }
+                        }
+                    })
                 }
             }
         }

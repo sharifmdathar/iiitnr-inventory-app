@@ -33,7 +33,7 @@ compose.desktop {
             }
 
             packageName = "IIITNR Inventory App"
-            packageVersion = "1.0.0"
+            packageVersion = "1.6.0"
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"

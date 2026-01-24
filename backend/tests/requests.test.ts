@@ -147,6 +147,44 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 400);
     });
 
+    test('returns 400 when targetFacultyId is missing', async () => {
+      const component = await prisma.component.create({
+        data: { name: 'Resistor', quantity: 10 },
+      });
+      createdComponentIds.push(component.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/requests',
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: {
+          items: [{ componentId: component.id, quantity: 1 }],
+          projectTitle: 'Test',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('returns 400 when projectTitle is missing', async () => {
+      const component = await prisma.component.create({
+        data: { name: 'Resistor', quantity: 10 },
+      });
+      createdComponentIds.push(component.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/requests',
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: {
+          items: [{ componentId: component.id, quantity: 1 }],
+          targetFacultyId: facultyId,
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+    });
+
     test('returns 400 when quantity is invalid', async () => {
       const component = await prisma.component.create({
         data: { name: 'Resistor', quantity: 10 },
@@ -156,11 +194,11 @@ describe('Request API', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/requests',
-        headers: {
-          authorization: `Bearer ${studentToken}`,
-        },
+        headers: { authorization: `Bearer ${studentToken}` },
         payload: {
           items: [{ componentId: component.id, quantity: 0 }],
+          targetFacultyId: facultyId,
+          projectTitle: 'Test',
         },
       });
 
@@ -171,11 +209,11 @@ describe('Request API', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/requests',
-        headers: {
-          authorization: `Bearer ${studentToken}`,
-        },
+        headers: { authorization: `Bearer ${studentToken}` },
         payload: {
           items: [{ componentId: 'missing-component', quantity: 2 }],
+          targetFacultyId: facultyId,
+          projectTitle: 'Test',
         },
       });
 
@@ -194,14 +232,14 @@ describe('Request API', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/requests',
-        headers: {
-          authorization: `Bearer ${studentToken}`,
-        },
+        headers: { authorization: `Bearer ${studentToken}` },
         payload: {
           items: [
             { componentId: item1.id, quantity: 1 },
             { componentId: item2.id, quantity: 2 },
           ],
+          targetFacultyId: facultyId,
+          projectTitle: 'Multi-Item Project',
         },
       });
 
@@ -210,6 +248,7 @@ describe('Request API', () => {
       assert.equal(body.request.userId, studentId);
       assert.equal(body.request.status, 'PENDING');
       assert.equal(body.request.items.length, 2);
+      assert.equal(body.request.targetFacultyId, facultyId);
     });
 
     test('creates a request with targetFacultyId', async () => {
@@ -225,6 +264,7 @@ describe('Request API', () => {
         payload: {
           items: [{ componentId: item.id, quantity: 1 }],
           targetFacultyId: facultyId,
+          projectTitle: 'Faculty Request',
         },
       });
 
@@ -249,10 +289,33 @@ describe('Request API', () => {
         payload: {
           items: [{ componentId: item.id, quantity: 1 }],
           targetFacultyId: studentId,
+          projectTitle: 'Test',
         },
       });
 
       assert.equal(response.statusCode, 400);
+    });
+
+    test('creates a request with projectTitle', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'With Project', quantity: 5 },
+      });
+      createdComponentIds.push(item.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/requests',
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: {
+          items: [{ componentId: item.id, quantity: 1 }],
+          targetFacultyId: facultyId,
+          projectTitle: 'My IoT Project',
+        },
+      });
+
+      assert.equal(response.statusCode, 201);
+      const body = response.json();
+      assert.equal(body.request.projectTitle, 'My IoT Project');
     });
   });
 
@@ -266,11 +329,11 @@ describe('Request API', () => {
       const createResponse = await app.inject({
         method: 'POST',
         url: '/requests',
-        headers: {
-          authorization: `Bearer ${studentToken}`,
-        },
+        headers: { authorization: `Bearer ${studentToken}` },
         payload: {
           items: [{ componentId: component.id, quantity: 1 }],
+          targetFacultyId: facultyId,
+          projectTitle: 'To Delete',
         },
       });
 
@@ -309,6 +372,8 @@ describe('Request API', () => {
       const request = await (prisma as any).request.create({
         data: {
           userId: otherUser.id,
+          targetFacultyId: facultyId,
+          projectTitle: 'Other User Project',
           items: {
             create: [{ componentId: component.id, quantity: 1 }],
           },
@@ -318,9 +383,7 @@ describe('Request API', () => {
       const deleteResponse = await app.inject({
         method: 'DELETE',
         url: `/requests/${request.id}`,
-        headers: {
-          authorization: `Bearer ${studentToken}`,
-        },
+        headers: { authorization: `Bearer ${studentToken}` },
       });
 
       assert.equal(deleteResponse.statusCode, 403);
@@ -335,6 +398,8 @@ describe('Request API', () => {
       const request = await (prisma as any).request.create({
         data: {
           userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Approved Component',
           status: requestStatus.APPROVED,
           items: {
             create: [{ componentId: component.id, quantity: 1 }],
@@ -345,9 +410,7 @@ describe('Request API', () => {
       const deleteResponse = await app.inject({
         method: 'DELETE',
         url: `/requests/${request.id}`,
-        headers: {
-          authorization: `Bearer ${studentToken}`,
-        },
+        headers: { authorization: `Bearer ${studentToken}` },
       });
 
       assert.equal(deleteResponse.statusCode, 400);
@@ -385,6 +448,8 @@ describe('Request API', () => {
       await (prisma as any).request.create({
         data: {
           userId: otherUser.id,
+          targetFacultyId: facultyId,
+          projectTitle: 'Other User Request',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
           },
@@ -394,6 +459,8 @@ describe('Request API', () => {
       await (prisma as any).request.create({
         data: {
           userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Student Request',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
           },
@@ -423,6 +490,8 @@ describe('Request API', () => {
       const request = await (prisma as any).request.create({
         data: {
           userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Display Project',
           status: requestStatus.APPROVED,
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -433,9 +502,7 @@ describe('Request API', () => {
       const response = await app.inject({
         method: 'GET',
         url: `/requests?userId=${studentId}&status=${requestStatus.APPROVED}`,
-        headers: {
-          authorization: `Bearer ${adminToken}`,
-        },
+        headers: { authorization: `Bearer ${adminToken}` },
       });
 
       assert.equal(response.statusCode, 200);
@@ -453,6 +520,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Approved Request',
           status: 'APPROVED',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -464,6 +532,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Pending Request',
           status: 'PENDING',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -475,6 +544,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Rejected Request',
           status: 'REJECTED',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -496,16 +566,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: otherFaculty.id,
-          status: 'PENDING',
-          items: {
-            create: [{ componentId: item.id, quantity: 1 }],
-          },
-        },
-      });
-
-      const noFacultyRequest = await (prisma as any).request.create({
-        data: {
-          userId: studentId,
+          projectTitle: 'Other Faculty Request',
           status: 'PENDING',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -539,7 +600,6 @@ describe('Request API', () => {
 
       // Verify requests not targeting this faculty are not included
       assert.ok(!requestIds.includes(otherFacultyRequest.id));
-      assert.ok(!requestIds.includes(noFacultyRequest.id));
     });
   });
 
@@ -597,6 +657,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Approve Test',
           status: 'PENDING',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -627,6 +688,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Reject Test',
           status: 'PENDING',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -667,6 +729,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: otherFaculty.id,
+          projectTitle: 'Other Faculty Approve Test',
           status: 'PENDING',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -694,6 +757,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Cannot Update Non-Pending',
           status: 'APPROVED',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -721,6 +785,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Admin Approve Test',
           status: 'PENDING',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],
@@ -750,6 +815,7 @@ describe('Request API', () => {
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
+          projectTitle: 'Student Approve Test',
           status: 'PENDING',
           items: {
             create: [{ componentId: item.id, quantity: 1 }],

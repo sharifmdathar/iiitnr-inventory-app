@@ -59,16 +59,17 @@ enum RequestStatus {
 }
 
 model Request {
-  id        String        @id @default(uuid())
-  userId    String
-  targetFacultyId String?
-  status    RequestStatus @default(PENDING)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id           String        @id @default(uuid())
+  userId       String
+  targetFacultyId String
+  projectTitle String
+  status       RequestStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
-  user      User          @relation(fields: [userId], references: [id])
-  targetFaculty User?     @relation("RequestFaculty", fields: [targetFacultyId], references: [id])
-  items     RequestItem[]
+  user         User          @relation(fields: [userId], references: [id])
+  targetFaculty User         @relation("RequestFaculty", fields: [targetFacultyId], references: [id])
+  items        RequestItem[]
 
   @@index([targetFacultyId])
 }

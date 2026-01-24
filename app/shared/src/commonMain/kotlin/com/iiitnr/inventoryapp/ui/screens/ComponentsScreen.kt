@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Component
-import com.iiitnr.inventoryapp.data.models.ComponentRequest
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.RequestItemPayload
 import com.iiitnr.inventoryapp.data.models.User
@@ -36,9 +35,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ComponentsScreen(
-    tokenManager: TokenManager,
-    onNavigateToRequests: (() -> Unit)? = null,
-    onNavigateToHome: () -> Unit
+    tokenManager: TokenManager, onNavigateToRequests: () -> Unit, onNavigateToHome: () -> Unit
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -55,8 +52,12 @@ fun ComponentsScreen(
 
     var facultyOptions by remember { mutableStateOf<List<User>>(emptyList()) }
     var selectedFacultyId by remember { mutableStateOf<String?>(null) }
+    var projectTitle by remember { mutableStateOf("") }
     var isLoadingFaculty by remember { mutableStateOf(false) }
+    var pendingRequestsCount by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+
+    val isFaculty = userRole?.uppercase() == "FACULTY"
 
     val isReadOnly = userRole?.let { role ->
         val roleUpper = role.uppercase()
@@ -95,12 +96,11 @@ fun ComponentsScreen(
                 }
             } catch (e: Exception) {
                 errorMessage = when {
-                    e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true ->
-                        "Session expired. Please login again."
-                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
-                        "Network error. Please check your connection."
-                    else ->
-                        "Error: ${e.message ?: "Failed to load components"}"
+                    e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
+
+                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+
+                    else -> "Error: ${e.message ?: "Failed to load components"}"
                 }
             } finally {
                 isLoading = false
@@ -133,31 +133,43 @@ fun ComponentsScreen(
                 isSubmittingRequest = false
                 return@launch
             }
+            if (selectedFacultyId == null) {
+                cartError = "Please select a target faculty"
+                isSubmittingRequest = false
+                return@launch
+            }
+            if (projectTitle.isBlank()) {
+                cartError = "Please enter a project title"
+                isSubmittingRequest = false
+                return@launch
+            }
 
             try {
                 val token = tokenManager.token.first()
                 if (token != null) {
                     ApiClient.requestApiService.createRequest(
                         "Bearer $token", CreateRequestPayload(
-                            items = cleanedItems, targetFacultyId = selectedFacultyId
+                            items = cleanedItems,
+                            targetFacultyId = selectedFacultyId!!,
+                            projectTitle = projectTitle.trim()
                         )
                     )
                     showCartDialog = false
                     cartQuantities = emptyMap()
                     cartError = null
                     selectedFacultyId = null
-                    onNavigateToRequests?.invoke()
+                    projectTitle = ""
+                    onNavigateToRequests.invoke()
                 } else {
                     cartError = "No authentication token"
                 }
             } catch (e: Exception) {
                 cartError = when {
-                    e.message?.contains("400") == true || e.message?.contains("Bad Request") == true ->
-                        "Invalid request. Please check your input."
-                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
-                        "Network error. Please check your connection."
-                    else ->
-                        "Error: ${e.message ?: "Failed to create request"}"
+                    e.message?.contains("400") == true || e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
+
+                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+
+                    else -> "Error: ${e.message ?: "Failed to create request"}"
                 }
             } finally {
                 isSubmittingRequest = false
@@ -167,6 +179,17 @@ fun ComponentsScreen(
 
     LaunchedEffect(Unit) {
         loadComponents()
+    }
+
+    LaunchedEffect(userRole) {
+        if (userRole?.uppercase() != "FACULTY") return@LaunchedEffect
+        try {
+            val token = tokenManager.token.first() ?: return@LaunchedEffect
+            val response = ApiClient.requestApiService.getRequests("Bearer $token", "PENDING")
+            pendingRequestsCount = response.requests.size
+        } catch (_: Exception) {
+            pendingRequestsCount = 0
+        }
     }
 
     LaunchedEffect(showCartDialog) {
@@ -192,7 +215,9 @@ fun ComponentsScreen(
 
     Scaffold(topBar = {
         ComponentsTopBar(
-            onNavigateToHome = onNavigateToHome, onNavigateToRequests = onNavigateToRequests
+            onNavigateToHome = onNavigateToHome,
+            onNavigateToRequests = onNavigateToRequests,
+            pendingRequestsCount = if (isFaculty) pendingRequestsCount else null
         )
     }, floatingActionButton = {
         when {
@@ -215,9 +240,7 @@ fun ComponentsScreen(
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
                 placeholder = "Search components...",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
             ComponentsContent(
@@ -294,7 +317,8 @@ fun ComponentsScreen(
                                         loadComponents()
                                     }
                                 } catch (e: Exception) {
-                                    errorMessage = "Error: ${e.message ?: "Failed to delete component"}"
+                                    errorMessage =
+                                        "Error: ${e.message ?: "Failed to delete component"}"
                                 }
                             }
                         }) {
@@ -319,6 +343,8 @@ fun ComponentsScreen(
             selectedFacultyId = selectedFacultyId,
             isLoadingFaculty = isLoadingFaculty,
             onSelectFaculty = { selectedFacultyId = it },
+            projectTitle = projectTitle,
+            onProjectTitleChange = { projectTitle = it },
             onUpdateQuantity = { component, delta ->
                 updateCartQuantity(component, delta)
             },

@@ -15,7 +15,8 @@ data class RequestItem(
 data class Request(
     val id: String,
     val userId: String,
-    val targetFacultyId: String? = null,
+    val targetFacultyId: String,
+    val projectTitle: String,
     val status: String,
     val createdAt: String,
     val updatedAt: String,
@@ -26,14 +27,12 @@ data class Request(
 
 @Serializable
 data class RequestItemPayload(
-    val componentId: String,
-    val quantity: Int
+    val componentId: String, val quantity: Int
 )
 
 @Serializable
 data class CreateRequestPayload(
-    val items: List<RequestItemPayload>,
-    val targetFacultyId: String? = null
+    val items: List<RequestItemPayload>, val targetFacultyId: String, val projectTitle: String
 )
 
 @Serializable

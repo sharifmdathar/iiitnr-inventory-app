@@ -22,7 +22,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "IIITNR Inventory App"
-include(":app")
+include(":android")
 include(":shared")
 include(":desktop")
  

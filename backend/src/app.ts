@@ -19,16 +19,16 @@ export async function buildApp() {
     logger: isTest
       ? false
       : {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            colorizeObjects: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              colorizeObjects: true,
+              translateTime: 'SYS:standard',
+              ignore: 'pid,hostname',
+            },
           },
         },
-      },
   });
 
   await app.register(cors, { origin: true });
@@ -442,6 +442,7 @@ export async function buildApp() {
       const body = request.body as {
         items?: Array<{ componentId?: string; quantity?: number }>;
         targetFacultyId?: string;
+        projectTitle?: string;
       };
 
       const userId = (request.user as { sub?: string })?.sub;
@@ -451,8 +452,16 @@ export async function buildApp() {
 
       const items = body?.items ?? [];
       const targetFacultyId = body?.targetFacultyId?.trim();
+      const projectTitle = body?.projectTitle?.trim();
+
       if (!Array.isArray(items) || items.length === 0) {
         return reply.code(400).send({ error: 'items are required' });
+      }
+      if (!targetFacultyId) {
+        return reply.code(400).send({ error: 'targetFacultyId is required' });
+      }
+      if (!projectTitle) {
+        return reply.code(400).send({ error: 'projectTitle is required' });
       }
 
       const normalizedItems = items.map((item) => ({
@@ -476,14 +485,12 @@ export async function buildApp() {
       }
 
       try {
-        if (targetFacultyId) {
-          const faculty = await prisma.user.findUnique({
-            where: { id: targetFacultyId },
-            select: { id: true, role: true },
-          });
-          if (!faculty || faculty.role !== UserRole.FACULTY) {
-            return reply.code(400).send({ error: 'invalid targetFacultyId' });
-          }
+        const faculty = await prisma.user.findUnique({
+          where: { id: targetFacultyId, role: UserRole.FACULTY },
+          select: { id: true },
+        });
+        if (!faculty) {
+          return reply.code(400).send({ error: 'invalid targetFacultyId' });
         }
 
         const existingComponents = await prisma.component.findMany({
@@ -498,7 +505,8 @@ export async function buildApp() {
         const createdRequest = await (prisma as any).request.create({
           data: {
             userId,
-            ...(targetFacultyId ? { targetFacultyId } : {}),
+            targetFacultyId,
+            projectTitle,
             items: {
               create: normalizedItems.map((item) => ({
                 componentId: item.componentId,

@@ -47,6 +47,8 @@ fun CartDialog(
     selectedFacultyId: String?,
     isLoadingFaculty: Boolean,
     onSelectFaculty: (String?) -> Unit,
+    projectTitle: String,
+    onProjectTitleChange: (String) -> Unit,
     onUpdateQuantity: (Component, Int) -> Unit,
     onRemoveItem: (Component) -> Unit,
     onDismiss: () -> Unit,
@@ -89,6 +91,16 @@ fun CartDialog(
                 onSelect = onSelectFaculty
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = projectTitle,
+                onValueChange = onProjectTitleChange,
+                label = { Text("Project Title") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
             if (cartError != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -100,7 +112,8 @@ fun CartDialog(
         }
     }, confirmButton = {
         TextButton(
-            onClick = onSubmit, enabled = !isSubmitting && cartItems.isNotEmpty()
+            onClick = onSubmit,
+            enabled = !isSubmitting && cartItems.isNotEmpty() && selectedFacultyId != null && projectTitle.isNotBlank()
         ) {
             if (isSubmitting) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -171,14 +184,16 @@ private fun FacultyDropdownField(
         expanded = expanded, onExpandedChange = onExpandedChange
     ) {
         OutlinedTextField(
-            value = facultyOptions.find { it.id == selectedFacultyId }?.name ?: "",
+            value = facultyOptions.find { it.id == selectedFacultyId }
+                ?.let { it.name ?: it.email } ?: "",
             onValueChange = {},
-            label = { Text("Target Faculty (Optional)") },
+            label = { Text("Target Faculty") },
             modifier = Modifier.fillMaxWidth().menuAnchor(
-                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !isLoading
-                ),
+                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !isLoading
+            ),
             readOnly = true,
             singleLine = true,
+            placeholder = { Text("Select faculty...") },
             trailingIcon = {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -188,10 +203,6 @@ private fun FacultyDropdownField(
             })
         DropdownMenu(
             expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
-            DropdownMenuItem(text = { Text("None") }, onClick = {
-                onSelect(null)
-                onExpandedChange(false)
-            })
             facultyOptions.forEach { faculty ->
                 DropdownMenuItem(text = { Text(faculty.name ?: faculty.email) }, onClick = {
                     onSelect(faculty.id)

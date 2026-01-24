@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,9 +21,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
+
+
+private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
+private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
+private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
+
+private val cardBackgroundRejectedDark = Color(0xFF3D2020)
+private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
+private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
+
+private val statusApprovedLight = Color(0xFF2E7D32)
+private val statusApprovedDark = Color(0xFF81C784)
 
 @Composable
 fun RequestCard(
@@ -33,14 +47,27 @@ fun RequestCard(
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isDark = isSystemInDarkTheme()
+    val cardBackground = when (request.status) {
+        "REJECTED" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
+        "APPROVED", "FULFILLED" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
+        else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
+    }
+    val statusSubtitleColor = when (request.status) {
+        "REJECTED" -> MaterialTheme.colorScheme.error
+        "APPROVED", "FULFILLED" -> if (isDark) statusApprovedDark else statusApprovedLight
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = cardBackground, contentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -48,8 +75,8 @@ fun RequestCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Status: ${request.status}",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = request.projectTitle,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -82,7 +109,13 @@ fun RequestCard(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = request.status.lowercase().replaceFirstChar { it.uppercaseChar() },
+                style = MaterialTheme.typography.bodyMedium,
+                color = statusSubtitleColor
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Created: ${request.createdAt}",
                 style = MaterialTheme.typography.bodySmall,
