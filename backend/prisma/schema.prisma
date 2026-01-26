@@ -31,7 +31,8 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String?
-  passwordHash String
+  passwordHash String?
+  googleId   String?  @unique
   role      UserRole @default(STUDENT)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

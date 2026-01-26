@@ -39,6 +39,9 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
 
                 implementation(libs.navigation.compose)
+
+                implementation(libs.coil.compose)
+                implementation(libs.coil.network)
             }
         }
 
@@ -47,6 +50,9 @@ kotlin {
                 implementation(libs.ktor.client.android)
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.datastore.preferences)
+                implementation(libs.androidx.credentials)
+                implementation(libs.androidx.credentials.play.services.auth)
+                implementation(libs.googleid)
             }
         }
 

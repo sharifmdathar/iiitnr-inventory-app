@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -165,6 +166,13 @@ private fun CartItemRow(
                 onClick = { onUpdateQuantity(1) }, enabled = quantity < component.quantity
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Increase")
+            }
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Remove from cart",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }

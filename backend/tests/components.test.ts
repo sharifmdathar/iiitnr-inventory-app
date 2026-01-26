@@ -650,6 +650,32 @@ describe('Component CRUD API', () => {
 
       assert.equal(response.statusCode, 204);
 
+      const deletedComponent = await prisma.component.findUnique({
+        where: { id: component.id },
+      });
+      assert.equal(deletedComponent, null);
+    });
+
+    test('DELETE request with form-urlencoded content-type is accepted', async () => {
+      const component = await prisma.component.create({
+        data: {
+          name: 'Component to Delete with Form',
+          quantity: 5,
+        },
+      });
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/components/${component.id}`,
+        headers: {
+          authorization: `Bearer ${adminToken}`,
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        payload: '',
+      });
+
+      assert.equal(response.statusCode, 204);
+
       // Verify component is deleted
       const deletedComponent = await prisma.component.findUnique({
         where: { id: component.id },
