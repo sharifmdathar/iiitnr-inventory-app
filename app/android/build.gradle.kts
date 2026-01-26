@@ -7,8 +7,9 @@ android {
     namespace = "com.iiitnr.inventoryapp"
     compileSdk = 36
 
-    val hasReleaseSigning = project.hasProperty("RELEASE_KEYSTORE_PATH") ||
-        !(System.getenv("RELEASE_KEYSTORE_PATH") ?: "").isBlank()
+    val hasReleaseSigning =
+        project.hasProperty("RELEASE_KEYSTORE_PATH") || !(System.getenv("RELEASE_KEYSTORE_PATH")
+            ?: "").isBlank()
     if (hasReleaseSigning) {
         signingConfigs {
             create("release") {
@@ -31,8 +32,8 @@ android {
         minSdk = 24
         multiDexEnabled = true
         targetSdk = 36
-        versionCode = 160
-        versionName = "1.6.0"
+        versionCode = 170
+        versionName = "1.7.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,6 +73,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
 
+    implementation(libs.play.services.auth)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

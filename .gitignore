@@ -4,14 +4,14 @@ node_modules/
 *.tsbuildinfo
 
 # IDE
-.idea/
-.vscode/
+*/.idea/
+*/.vscode/
 
 # Env
-.env
-.env.local
-.env.*.local
-.direnv/
+*/.env
+*/.env.local
+*/.env.*.local
+*/.direnv/
 
 # Build outputs
 dist/

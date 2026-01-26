@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import { compare, hash } from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 import {
   UserRole,
   RequestStatus,
@@ -32,6 +33,18 @@ export async function buildApp() {
   });
 
   await app.register(cors, { origin: true });
+
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    async (req: any, body: any) => {
+      if (req.method === 'DELETE' || !body || body.length === 0) {
+        return {};
+      }
+      const querystring = await import('node:querystring');
+      return querystring.parse(body);
+    },
+  );
 
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret || jwtSecret === 'change-me') {
@@ -131,6 +144,10 @@ export async function buildApp() {
       return reply.code(401).send({ error: 'invalid credentials' });
     }
 
+    if (!user.passwordHash) {
+      return reply.code(401).send({ error: 'this account uses Google Sign-In' });
+    }
+
     const matches = await compare(password, user.passwordHash);
     if (!matches) {
       return reply.code(401).send({ error: 'invalid credentials' });
@@ -179,6 +196,138 @@ export async function buildApp() {
       return reply.send({ user });
     },
   );
+
+  app.post('/auth/google', async (request, reply) => {
+    const body = request.body as { idToken?: string };
+    const idToken = body?.idToken;
+
+    if (!idToken) {
+      return reply.code(400).send({ error: 'idToken is required' });
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      return reply.code(500).send({ error: 'Google OAuth not configured' });
+    }
+
+    const client = new OAuth2Client(clientId);
+
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: clientId,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload) {
+        app.log.error('Google token verification returned null payload');
+        return reply.code(401).send({ error: 'invalid Google token' });
+      }
+
+      const googleId = payload.sub;
+      const email = payload.email;
+      const name = payload.name || payload.given_name || null;
+      const emailVerified = payload.email_verified;
+
+      if (!email) {
+        app.log.error('Google Sign-In: No email in token payload');
+        return reply.code(400).send({ error: 'No email found in Google account' });
+      }
+
+      const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN || '@iiitnr.edu.in';
+      if (!email.toLowerCase().endsWith(allowedDomain.toLowerCase())) {
+        app.log.warn(
+          `Google Sign-In: Email domain not allowed - email: ${email}, allowedDomain: ${allowedDomain}`,
+        );
+        return reply.code(403).send({
+          error: `Only ${allowedDomain} email addresses are allowed. Your email (${email}) does not match the required domain.`,
+        });
+      }
+
+      const allowUnverifiedEmail = process.env.ALLOW_UNVERIFIED_EMAIL === 'true';
+
+      if (!emailVerified) {
+        if (!allowUnverifiedEmail) {
+          return reply.code(400).send({
+            error:
+              'Google account email is not verified. Please verify your email address in your Google account settings, or set ALLOW_UNVERIFIED_EMAIL=true in .env for development.',
+          });
+        }
+      }
+
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [{ googleId: googleId }, { email: email }],
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          googleId: true,
+        },
+      });
+
+      if (user) {
+        if (!user.googleId || (name && user.name !== name)) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleId: user.googleId || googleId,
+              name: name || user.name,
+            },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+              googleId: true,
+            },
+          });
+        }
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email,
+            name,
+            googleId,
+            role: UserRole.STUDENT,
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            googleId: true,
+          },
+        });
+      }
+
+      const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '1d' });
+
+      return reply.send({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        token,
+      });
+    } catch (err: any) {
+      app.log.error('Google Sign-In error:', err);
+
+      if (err.message?.includes('audience') || err.code === 'auth/id-token-audience-mismatch') {
+        return reply.code(400).send({
+          error:
+            'Token audience mismatch. The Web application Client ID in the backend must match the serverClientId used in the app.',
+        });
+      }
+
+      const errorMessage = err.message || err.toString() || 'unknown error';
+      return reply.code(400).send({ error: `Invalid Google token: ${errorMessage}` });
+    }
+  });
 
   const requireAuth = async (request: any, reply: any) => {
     await request.jwtVerify();

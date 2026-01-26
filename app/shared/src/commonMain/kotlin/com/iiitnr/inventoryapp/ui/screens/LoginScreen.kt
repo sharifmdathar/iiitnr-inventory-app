@@ -2,18 +2,21 @@ package com.iiitnr.inventoryapp.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,7 +34,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.iiitnr.inventoryapp.data.api.ApiClient
+import com.iiitnr.inventoryapp.data.models.GoogleSignInRequest
 import com.iiitnr.inventoryapp.data.models.LoginRequest
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import kotlinx.coroutines.launch
@@ -39,7 +44,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    tokenManager: TokenManager, onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit
+    tokenManager: TokenManager,
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit,
+    onGoogleSignInClick: ((String?) -> Unit) -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -139,6 +147,81 @@ fun LoginScreen(
                 )
             } else {
                 Text("Login")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        var isGoogleLoading by remember { mutableStateOf(false) }
+        OutlinedButton(
+            onClick = {
+                isGoogleLoading = true
+                onGoogleSignInClick { idToken ->
+                    isGoogleLoading = false
+                    if (idToken != null) {
+                        scope.launch {
+                            try {
+                                val authResponse = ApiClient.authApiService.signInWithGoogle(
+                                    GoogleSignInRequest(idToken)
+                                )
+                                tokenManager.saveToken(authResponse.token)
+                                onLoginSuccess()
+                            } catch (e: Exception) {
+                                val errorMsg = e.message ?: "Unknown error"
+                                errorMessage = when {
+                                    errorMsg.contains("403") -> {
+                                        when {
+                                            errorMsg.contains("email addresses are allowed") -> {
+                                                errorMsg.substringAfter(": ")
+                                                    .takeIf { it.isNotBlank() }
+                                                    ?: "Only @iiitnr.edu.in email addresses are allowed."
+                                            }
+
+                                            else -> "Access denied. Only @iiitnr.edu.in email addresses are allowed."
+                                        }
+                                    }
+
+                                    errorMsg.contains("401") -> "Google Sign-In failed: Unauthorized"
+                                    errorMsg.contains("400") -> {
+                                        when {
+                                            errorMsg.contains("audience") -> "Token verification failed. Check backend configuration."
+                                            errorMsg.contains("email not verified") -> "Google account email is not verified"
+                                            else -> errorMsg.substringAfter(": ")
+                                                .takeIf { it.isNotBlank() }
+                                                ?: "Google Sign-In failed"
+                                        }
+                                    }
+
+                                    else -> errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
+                                        ?: "Google Sign-In failed"
+                                }
+                            }
+                        }
+                    } else {
+                        errorMessage = "Google Sign-In was cancelled"
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            enabled = !isLoading && !isGoogleLoading
+        ) {
+            if (isGoogleLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    AsyncImage(
+                        model = "https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png",
+                        contentDescription = "Google",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sign in with Google")
+                }
             }
         }
 

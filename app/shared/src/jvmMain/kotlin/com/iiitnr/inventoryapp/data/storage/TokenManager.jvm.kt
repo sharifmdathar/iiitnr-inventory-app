@@ -7,20 +7,20 @@ import java.util.prefs.Preferences
 
 class DesktopTokenManager : TokenManager {
     private val prefs = Preferences.userRoot().node("com.iiitnr.inventoryapp")
-    private val TOKEN_KEY = "auth_token"
+    private val _tokenKey = "auth_token"
 
-    private val _token = MutableStateFlow<String?>(prefs.get(TOKEN_KEY, null))
+    private val _token = MutableStateFlow<String?>(prefs.get(_tokenKey, null))
 
     override val token: Flow<String?> = _token.asStateFlow()
 
     override suspend fun saveToken(token: String) {
-        prefs.put(TOKEN_KEY, token)
+        prefs.put(_tokenKey, token)
         prefs.sync()
         _token.value = token
     }
 
     override suspend fun clearToken() {
-        prefs.remove(TOKEN_KEY)
+        prefs.remove(_tokenKey)
         prefs.sync()
         _token.value = null
     }
