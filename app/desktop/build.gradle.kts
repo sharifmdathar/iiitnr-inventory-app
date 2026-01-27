@@ -9,10 +9,11 @@ kotlin {
     jvm()
 
     sourceSets {
-        val jvmMain by getting {
+        getByName("jvmMain") {
             dependencies {
                 implementation(project(":shared"))
                 implementation(compose.desktop.currentOs)
+                implementation(libs.ktor.client.cio)
             }
         }
     }
@@ -33,7 +34,7 @@ compose.desktop {
             }
 
             packageName = "IIITNR Inventory App"
-            packageVersion = "1.6.0"
+            packageVersion = "1.7.1"
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"

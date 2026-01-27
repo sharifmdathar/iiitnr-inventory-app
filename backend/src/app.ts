@@ -205,17 +205,22 @@ export async function buildApp() {
       return reply.code(400).send({ error: 'idToken is required' });
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    if (!clientId) {
+    const primaryClientId = process.env.GOOGLE_CLIENT_ID;
+    const extraClientIds = process.env.GOOGLE_CLIENT_EXTRA_IDS
+      ? process.env.GOOGLE_CLIENT_EXTRA_IDS.split(',').map((id) => id.trim()).filter(Boolean)
+      : [];
+    const allowedClientIds = [primaryClientId, ...extraClientIds].filter(Boolean);
+
+    if (!allowedClientIds.length) {
       return reply.code(500).send({ error: 'Google OAuth not configured' });
     }
 
-    const client = new OAuth2Client(clientId);
+    const client = new OAuth2Client(allowedClientIds[0]);
 
     try {
       const ticket = await client.verifyIdToken({
         idToken,
-        audience: clientId,
+        audience: allowedClientIds as string[],
       });
 
       const payload = ticket.getPayload();

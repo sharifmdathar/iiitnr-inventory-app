@@ -81,6 +81,10 @@ jobs:
 
       - name: Build Desktop EXE
         working-directory: app
+        env:
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+          GOOGLE_DESKTOP_REDIRECT_URI: ${{ secrets.GOOGLE_DESKTOP_REDIRECT_URI }}
         run: .\gradlew.bat :desktop:packageExe -PbuildInstallers=true --parallel --build-cache
 
       - name: Locate and copy EXE
