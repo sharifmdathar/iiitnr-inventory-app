@@ -782,8 +782,10 @@ export async function buildApp() {
 
       if (user?.role === UserRole.FACULTY) {
         where.targetFacultyId = currentUserId;
-      } else if (isAdminOrTA(user?.role) && requestedUserId) {
-        where.userId = requestedUserId;
+      } else if (isAdminOrTA(user?.role)) {
+        if (requestedUserId) {
+          where.userId = requestedUserId;
+        }
       } else {
         where.userId = currentUserId;
       }
@@ -862,8 +864,14 @@ export async function buildApp() {
 
       const newStatus = status as RequestStatusValue;
 
-      if (newStatus !== RequestStatus.APPROVED && newStatus !== RequestStatus.REJECTED) {
-        return reply.code(400).send({ error: 'status can only be set to APPROVED or REJECTED' });
+      if (
+        newStatus !== RequestStatus.APPROVED &&
+        newStatus !== RequestStatus.REJECTED &&
+        newStatus !== RequestStatus.FULFILLED
+      ) {
+        return reply
+          .code(400)
+          .send({ error: 'status can only be set to APPROVED, REJECTED, or FULFILLED' });
       }
 
       const user = request.user as { sub?: string; role?: UserRole };
@@ -875,9 +883,12 @@ export async function buildApp() {
       try {
         const existingRequest = await (prisma as any).request.findUnique({
           where: { id },
-          select: {
-            status: true,
-            targetFacultyId: true,
+          include: {
+            items: {
+              include: {
+                component: true,
+              },
+            },
           },
         });
 
@@ -885,22 +896,62 @@ export async function buildApp() {
           return reply.code(404).send({ error: 'request not found' });
         }
 
-        if (existingRequest.status !== RequestStatus.PENDING) {
-          return reply
-            .code(400)
-            .send({ error: 'request status can only be updated when status is PENDING' });
-        }
+        if (existingRequest.status === RequestStatus.PENDING) {
+          if (newStatus === RequestStatus.FULFILLED) {
+            return reply
+              .code(400)
+              .send({ error: 'request must be APPROVED before it can be FULFILLED' });
+          }
 
-        if (user?.role === UserRole.FACULTY) {
-          if (existingRequest.targetFacultyId !== currentUserId) {
+          if (user?.role === UserRole.FACULTY) {
+            if (existingRequest.targetFacultyId !== currentUserId) {
+              return reply
+                .code(403)
+                .send({ error: 'forbidden: can only approve/reject requests targeting you' });
+            }
+          } else if (!isAdminOrTA(user?.role)) {
             return reply
               .code(403)
-              .send({ error: 'forbidden: can only approve/reject requests targeting you' });
+              .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
           }
-        } else if (!isAdminOrTA(user?.role)) {
+        }
+
+        else if (existingRequest.status === RequestStatus.APPROVED) {
+          if (newStatus !== RequestStatus.FULFILLED) {
+            return reply
+              .code(400)
+              .send({ error: 'approved request can only be set to FULFILLED' });
+          }
+
+          if (!isAdminOrTA(user?.role)) {
+            return reply
+              .code(403)
+              .send({ error: 'forbidden: only admin or TA can fulfill requests' });
+          }
+
+          for (const item of existingRequest.items) {
+            const component = item.component;
+            if (component.availableQuantity < item.quantity) {
+              return reply.code(400).send({
+                error: `insufficient quantity for component "${component.name}": available ${component.availableQuantity}, requested ${item.quantity}`,
+              });
+            }
+          }
+
+          for (const item of existingRequest.items) {
+            await (prisma as any).component.update({
+              where: { id: item.componentId },
+              data: {
+                availableQuantity: {
+                  decrement: item.quantity,
+                },
+              },
+            });
+          }
+        } else {
           return reply
-            .code(403)
-            .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
+            .code(400)
+            .send({ error: 'request status can only be updated when status is PENDING or APPROVED' });
         }
 
         const updatedRequest = await (prisma as any).request.update({

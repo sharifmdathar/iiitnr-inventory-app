@@ -1,8 +1,12 @@
 package com.iiitnr.inventoryapp.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -19,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Component
+import com.iiitnr.inventoryapp.data.models.ComponentCategory
+import com.iiitnr.inventoryapp.data.models.ComponentLocation
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.RequestItemPayload
 import com.iiitnr.inventoryapp.data.models.User
@@ -45,6 +51,8 @@ fun ComponentsScreen(
     var showDeleteDialog by remember { mutableStateOf<Component?>(null) }
     var userRole by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var categoryFilter by remember { mutableStateOf<String?>(null) }
+    var locationFilter by remember { mutableStateOf<String?>(null) }
     var cartQuantities by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var showCartDialog by remember { mutableStateOf(false) }
     var cartError by remember { mutableStateOf<String?>(null) }
@@ -64,16 +72,24 @@ fun ComponentsScreen(
         roleUpper != "TA" && roleUpper != "ADMIN"
     } ?: true
 
-    val filteredComponents = if (searchQuery.isBlank()) {
-        components
-    } else {
-        val query = searchQuery.lowercase().trim()
-        components.filter { component ->
-            component.name.lowercase().contains(query) || component.description?.lowercase()
-                ?.contains(query) == true || component.category?.lowercase()
-                ?.contains(query) == true || component.location?.lowercase()
-                ?.contains(query) == true || component.availableQuantity.toString().contains(query)
-        }
+    val filteredComponents = components.filter { component ->
+        val query = searchQuery.trim().lowercase()
+        val matchesSearch = query.isBlank() || listOfNotNull(
+            component.name,
+            component.description,
+            component.category,
+            component.location
+        ).any { it.contains(query, ignoreCase = true) }
+
+        val matchesCategory = categoryFilter?.let { filter ->
+            component.category?.replace("_", " ")?.equals(filter, ignoreCase = true) ?: false
+        } ?: true
+
+        val matchesLocation = locationFilter?.let { filter ->
+            component.location?.replace("_", " ")?.equals(filter, ignoreCase = true) ?: false
+        } ?: true
+
+        matchesSearch && matchesCategory && matchesLocation
     }
 
     fun loadComponents() {
@@ -242,6 +258,63 @@ fun ComponentsScreen(
                 placeholder = "Search components...",
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             )
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                val categoryOptions = listOf("All") + ComponentCategory.labels
+                items(categoryOptions) { option ->
+                    val isSelected =
+                        (categoryFilter == null && option == "All") || categoryFilter.equals(
+                            option, ignoreCase = true
+                        )
+                    TextButton(
+                        onClick = {
+                            categoryFilter = if (option == "All") null else option
+                        },
+                    ) {
+                        Text(
+                            text = option,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
+            }
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.Center
+
+            ) {
+                val locationOptions = listOf("All") + ComponentLocation.labels
+                items(locationOptions) { option ->
+                    val isSelected =
+                        (locationFilter == null && option == "All") || locationFilter.equals(
+                            option, ignoreCase = true
+                        )
+                    TextButton(
+                        onClick = {
+                            locationFilter = if (option == "All") null else option
+                        },
+                    ) {
+                        Text(
+                            text = option,
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
+            }
 
             ComponentsContent(
                 isLoading = isLoading,

@@ -18,6 +18,7 @@ fun RequestsContent(
     onDeleteRequest: ((String) -> Unit)? = null,
     onApproveRequest: ((String) -> Unit)? = null,
     onRejectRequest: ((String) -> Unit)? = null,
+    onFulfillRequest: ((String) -> Unit)? = null,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -34,6 +35,7 @@ fun RequestsContent(
                 onDeleteRequest = onDeleteRequest,
                 onApproveRequest = onApproveRequest,
                 onRejectRequest = onRejectRequest,
+                onFulfillRequest = onFulfillRequest,
                 isFaculty = isFaculty
             )
         }

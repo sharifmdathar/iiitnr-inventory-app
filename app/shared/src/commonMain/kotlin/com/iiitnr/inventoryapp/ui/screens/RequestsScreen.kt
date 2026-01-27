@@ -1,6 +1,12 @@
 package com.iiitnr.inventoryapp.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
@@ -18,11 +24,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
 import kotlinx.coroutines.flow.first
@@ -30,17 +38,36 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun RequestsScreen(
-    tokenManager: TokenManager,
-    onNavigateBack: () -> Unit,
-    onNavigateToComponents: () -> Unit
+    tokenManager: TokenManager, onNavigateBack: () -> Unit, onNavigateToComponents: () -> Unit
 ) {
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
     var currentUser by remember { mutableStateOf<User?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var statusFilter by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val isFaculty = currentUser?.role == "FACULTY"
+    val isAdminOrTA =
+        currentUser?.role?.uppercase() == "ADMIN" || currentUser?.role?.uppercase() == "TA"
+
+    val query = searchQuery.trim()
+    val filteredRequests = requests.filter { request ->
+        val matchesStatus = statusFilter?.let { it == request.status } ?: true
+        val textMatches = listOfNotNull(
+            request.projectTitle,
+            request.user?.name,
+            request.user?.email,
+            request.targetFaculty?.name,
+            request.targetFaculty?.email
+        ).any { it.contains(query, ignoreCase = true) }
+        val itemMatches =
+            request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
+
+        matchesStatus && (query.isBlank() || textMatches || itemMatches)
+    }
+
 
     fun loadRequests() {
         scope.launch {
@@ -56,12 +83,11 @@ fun RequestsScreen(
                 }
             } catch (e: Exception) {
                 errorMessage = when {
-                    e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true ->
-                        "Session expired. Please login again."
-                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
-                        "Network error. Please check your connection."
-                    else ->
-                        "Error: ${e.message ?: "Failed to load requests"}"
+                    e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
+
+                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+
+                    else -> "Error: ${e.message ?: "Failed to load requests"}"
                 }
             } finally {
                 isLoading = false
@@ -152,25 +178,66 @@ fun RequestsScreen(
             }
         }
     }) { paddingValues ->
-        RequestsContent(
-            isLoading = isLoading,
-            errorMessage = errorMessage,
-            requests = requests,
-            onRetry = { loadRequests() },
-            onDeleteRequest = if (isFaculty) null else { requestId ->
-                pendingDeleteRequestId = requestId
-            },
-            onApproveRequest = if (isFaculty) { requestId ->
-                updateRequestStatus(
-                    requestId, "APPROVED"
-                )
-            } else null,
-            onRejectRequest = if (isFaculty) { requestId ->
-                updateRequestStatus(
-                    requestId, "REJECTED"
-                )
-            } else null,
-            isFaculty = isFaculty,
-            modifier = Modifier.padding(paddingValues))
+        Column(modifier = Modifier.padding(paddingValues)) {
+            SearchBar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                placeholder = "Search requests...",
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                val statusOptions = listOf("ALL", "PENDING", "APPROVED", "REJECTED", "FULFILLED")
+                items(statusOptions) { option ->
+                    val isSelected =
+                        (statusFilter == null && option == "ALL") || statusFilter == option
+                    TextButton(
+                        onClick = {
+                            statusFilter = if (option == "ALL") null else option
+                        },
+                    ) {
+                        Text(
+                            text = option.lowercase().replaceFirstChar { it.uppercaseChar() },
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
+            }
+
+            RequestsContent(
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                requests = filteredRequests,
+                onRetry = { loadRequests() },
+                onDeleteRequest = if (isFaculty) null else { requestId ->
+                    pendingDeleteRequestId = requestId
+                },
+                onApproveRequest = if (isFaculty) { requestId ->
+                    updateRequestStatus(
+                        requestId, "APPROVED",
+                    )
+                } else null,
+                onRejectRequest = if (isFaculty) { requestId ->
+                    updateRequestStatus(
+                        requestId, "REJECTED",
+                    )
+                } else null,
+                onFulfillRequest = if (isAdminOrTA) { requestId ->
+                    updateRequestStatus(
+                        requestId, "FULFILLED",
+                    )
+                } else null,
+                isFaculty = isFaculty,
+                modifier = Modifier.padding(),
+            )
+        }
     }
 }

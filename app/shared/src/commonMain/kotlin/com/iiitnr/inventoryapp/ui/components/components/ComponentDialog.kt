@@ -60,19 +60,24 @@ fun ComponentDialog(
                 location = location,
                 onNameChange = { name = it },
                 onDescriptionChange = { description = it },
-                onTotalQuantityChange = { newTotalQuantity ->
-                    if (newTotalQuantity.all { char -> char.isDigit() }) {
-                        totalQuantity = newTotalQuantity
-                        val totalInt = newTotalQuantity.toIntOrNull()
-                        val availableInt = availableQuantity.toIntOrNull()
-                        if (totalInt != null && availableInt != null && availableInt > totalInt) {
-                            availableQuantity = totalInt.toString()
+                onTotalQuantityChange = { input ->
+                    if (input.all(Char::isDigit)) {
+                        totalQuantity = input
+                        val total = input.toIntOrNull()
+                        val available = availableQuantity.toIntOrNull()
+                        if (total != null && available != null && available > total) {
+                            availableQuantity = total.toString()
                         }
                     }
                 },
-                onAvailableQuantityChange = { newAvailable ->
-                    if (newAvailable.all { char -> char.isDigit() }) {
-                        availableQuantity = newAvailable
+                onAvailableQuantityChange = { input ->
+                    if (input.all(Char::isDigit)) {
+                        availableQuantity = input
+                        val total = totalQuantity.toIntOrNull()
+                        val available = input.toIntOrNull()
+                        if (total != null && available != null && available > total) {
+                            totalQuantity = available.toString()
+                        }
                     }
                 },
                 onCategoryChange = { category = it },

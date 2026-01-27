@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -44,6 +45,7 @@ fun RequestCard(
     onDeleteRequest: ((String) -> Unit)? = null,
     onApproveRequest: ((String) -> Unit)? = null,
     onRejectRequest: ((String) -> Unit)? = null,
+    onFulfillRequest: ((String) -> Unit)? = null,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -107,6 +109,14 @@ fun RequestCard(
                             )
                         }
                     }
+                } else if (request.status == "APPROVED" && onFulfillRequest != null) {
+                    IconButton(onClick = { onFulfillRequest(request.id) }) {
+                        Icon(
+                            imageVector = Icons.Default.DoneAll,
+                            contentDescription = "Fulfill request",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(2.dp))
@@ -121,14 +131,15 @@ fun RequestCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (isFaculty && request.user != null) {
+            if (request.user != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Requested by: ${request.user.name ?: request.user.email}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
-            } else if (!isFaculty && request.targetFaculty != null) {
+            }
+            if (request.targetFaculty != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Requested from: ${request.targetFaculty.name ?: request.targetFaculty.email}",
