@@ -44,7 +44,8 @@ model Component {
   id          String            @id @default(uuid())
   name        String
   description String?
-  quantity    Int               @default(0)
+  totalQuantity Int             @default(0)
+  availableQuantity Int         @default(0)
   category    ComponentCategory?
   location    Location?
   createdAt   DateTime          @default(now())

@@ -21,7 +21,10 @@ class GoogleSignInHelper(
             return null
         }
 
-        android.util.Log.d("GoogleSignInHelper", "Starting Google Sign-In with Web Client ID: ${webClientId.take(20)}...")
+        android.util.Log.d(
+            "GoogleSignInHelper",
+            "Starting Google Sign-In with Web Client ID: ${webClientId.take(20)}..."
+        )
 
         val nonce = generateNonce()
 
@@ -41,9 +44,7 @@ class GoogleSignInHelper(
             null
         } catch (e: GetCredentialException) {
             android.util.Log.e(
-                "GoogleSignInHelper", 
-                "GetCredentialException: ${e.type} - ${e.message}", 
-                e
+                "GoogleSignInHelper", "GetCredentialException: ${e.type} - ${e.message}", e
             )
             null
         } catch (e: Exception) {
@@ -59,7 +60,9 @@ class GoogleSignInHelper(
                     try {
                         val googleIdTokenCredential =
                             GoogleIdTokenCredential.createFrom(credential.data)
-                        android.util.Log.d("GoogleSignInHelper", "Successfully obtained Google ID token")
+                        android.util.Log.d(
+                            "GoogleSignInHelper", "Successfully obtained Google ID token"
+                        )
                         googleIdTokenCredential.idToken
                     } catch (e: GoogleIdTokenParsingException) {
                         android.util.Log.e(

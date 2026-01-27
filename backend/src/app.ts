@@ -20,16 +20,16 @@ export async function buildApp() {
     logger: isTest
       ? false
       : {
-          transport: {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              colorizeObjects: true,
-              translateTime: 'SYS:standard',
-              ignore: 'pid,hostname',
-            },
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            colorizeObjects: true,
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname',
           },
         },
+      },
   });
 
   await app.register(cors, { origin: true });
@@ -414,14 +414,16 @@ export async function buildApp() {
       const body = request.body as {
         name?: string;
         description?: string;
-        quantity?: number;
+        totalQuantity?: number;
+        availableQuantity?: number;
         category?: string;
         location?: string;
       };
 
       const name = body?.name?.trim();
       const description = body?.description?.trim();
-      const quantity = body?.quantity;
+      const totalQuantity = body?.totalQuantity;
+      const availableQuantity = body?.availableQuantity;
       const category = body?.category?.trim();
       const location = body?.location?.trim();
 
@@ -429,8 +431,15 @@ export async function buildApp() {
         return reply.code(400).send({ error: 'name is required' });
       }
 
-      if (quantity !== undefined && (typeof quantity !== 'number' || quantity < 0)) {
-        return reply.code(400).send({ error: 'quantity must be a non-negative number' });
+      if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
+        return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
+      }
+
+      if (
+        availableQuantity !== undefined &&
+        (typeof availableQuantity !== 'number' || availableQuantity < 0)
+      ) {
+        return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
       }
 
       if (category && !categoryValues.includes(category as CategoryValue)) {
@@ -453,7 +462,8 @@ export async function buildApp() {
           data: {
             name,
             description: description || null,
-            quantity: quantity ?? 0,
+            totalQuantity: totalQuantity,
+            availableQuantity: availableQuantity ? availableQuantity : totalQuantity,
             category: category ? (category as CategoryValue) : null,
             location: location ? (toLocationEnum(location) as any) : null,
           },
@@ -478,7 +488,8 @@ export async function buildApp() {
       const body = request.body as {
         name?: string;
         description?: string;
-        quantity?: number;
+        availableQuantity?: number;
+        totalQuantity?: number;
         category?: string;
         location?: string;
       };
@@ -489,12 +500,20 @@ export async function buildApp() {
 
       const name = body?.name?.trim();
       const description = body?.description?.trim();
-      const quantity = body?.quantity;
+      const availableQuantity = body?.availableQuantity;
+      const totalQuantity = body?.totalQuantity;
       const category = body?.category?.trim();
       const location = body?.location?.trim();
 
-      if (quantity !== undefined && (typeof quantity !== 'number' || quantity < 0)) {
-        return reply.code(400).send({ error: 'quantity must be a non-negative number' });
+      if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
+        return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
+      }
+
+      if (
+        availableQuantity !== undefined &&
+        (typeof availableQuantity !== 'number' || availableQuantity < 0)
+      ) {
+        return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
       }
 
       if (category !== undefined && category !== null && category !== '') {
@@ -525,12 +544,31 @@ export async function buildApp() {
           return reply.code(404).send({ error: 'component not found' });
         }
 
+        const nextTotalQuantity =
+          totalQuantity !== undefined ? totalQuantity : existingComponent.totalQuantity;
+
+        const nextAvailableQuantity =
+          availableQuantity !== undefined
+            ? availableQuantity
+            : totalQuantity !== undefined
+              ? totalQuantity
+              : existingComponent.availableQuantity;
+
+        if (nextAvailableQuantity > nextTotalQuantity) {
+          return reply
+            .code(400)
+            .send({ error: 'availableQuantity cannot be greater than totalQuantity' });
+        }
+
         const component = await prisma.component.update({
           where: { id },
           data: {
             ...(name !== undefined && { name }),
             ...(description !== undefined && { description: description || null }),
-            ...(quantity !== undefined && { quantity }),
+            ...(totalQuantity !== undefined && { totalQuantity: nextTotalQuantity }),
+            ...((availableQuantity !== undefined || totalQuantity !== undefined) && {
+              availableQuantity: nextAvailableQuantity,
+            }),
             ...(category !== undefined && {
               category: category ? (category as CategoryValue) : null,
             }),

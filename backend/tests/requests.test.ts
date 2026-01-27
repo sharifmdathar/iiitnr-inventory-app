@@ -1,5 +1,3 @@
-import './setup.js';
-
 import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -149,7 +147,7 @@ describe('Request API', () => {
 
     test('returns 400 when targetFacultyId is missing', async () => {
       const component = await prisma.component.create({
-        data: { name: 'Resistor', quantity: 10 },
+        data: { name: 'Resistor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(component.id);
 
@@ -168,7 +166,7 @@ describe('Request API', () => {
 
     test('returns 400 when projectTitle is missing', async () => {
       const component = await prisma.component.create({
-        data: { name: 'Resistor', quantity: 10 },
+        data: { name: 'Resistor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(component.id);
 
@@ -187,7 +185,7 @@ describe('Request API', () => {
 
     test('returns 400 when quantity is invalid', async () => {
       const component = await prisma.component.create({
-        data: { name: 'Resistor', quantity: 10 },
+        data: { name: 'Resistor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(component.id);
 
@@ -222,10 +220,10 @@ describe('Request API', () => {
 
     test('creates a request with multiple items', async () => {
       const item1 = await prisma.component.create({
-        data: { name: 'Arduino', quantity: 5 },
+        data: { name: 'Arduino', totalQuantity: 5, availableQuantity: 5 },
       });
       const item2 = await prisma.component.create({
-        data: { name: 'Breadboard', quantity: 20 },
+        data: { name: 'Breadboard', totalQuantity: 20, availableQuantity: 20 },
       });
       createdComponentIds.push(item1.id, item2.id);
 
@@ -253,7 +251,7 @@ describe('Request API', () => {
 
     test('creates a request with targetFacultyId', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Requested to Faculty', quantity: 5 },
+        data: { name: 'Requested to Faculty', totalQuantity: 5, availableQuantity: 5 },
       });
       createdComponentIds.push(item.id);
 
@@ -278,7 +276,7 @@ describe('Request API', () => {
 
     test('returns 400 for invalid targetFacultyId', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Invalid Faculty', quantity: 5 },
+        data: { name: 'Invalid Faculty', totalQuantity: 5, availableQuantity: 5 },
       });
       createdComponentIds.push(item.id);
 
@@ -298,7 +296,7 @@ describe('Request API', () => {
 
     test('creates a request with projectTitle', async () => {
       const item = await prisma.component.create({
-        data: { name: 'With Project', quantity: 5 },
+        data: { name: 'With Project', totalQuantity: 5, availableQuantity: 5 },
       });
       createdComponentIds.push(item.id);
 
@@ -322,7 +320,7 @@ describe('Request API', () => {
   describe('DELETE /requests/:id - Retract request', () => {
     test('student can delete own pending request', async () => {
       const component = await prisma.component.create({
-        data: { name: 'To Delete', quantity: 5 },
+        data: { name: 'To Delete', totalQuantity: 5, availableQuantity: 5 },
       });
       createdComponentIds.push(component.id);
 
@@ -355,7 +353,7 @@ describe('Request API', () => {
 
     test('student cannot delete someone else request', async () => {
       const component = await prisma.component.create({
-        data: { name: 'Other User Component', quantity: 5 },
+        data: { name: 'Other User Component', totalQuantity: 5, availableQuantity: 5 },
       });
       createdComponentIds.push(component.id);
 
@@ -391,7 +389,7 @@ describe('Request API', () => {
 
     test('cannot delete non-pending request', async () => {
       const component = await prisma.component.create({
-        data: { name: 'Approved Component', quantity: 5 },
+        data: { name: 'Approved Component', totalQuantity: 5, availableQuantity: 5 },
       });
       createdComponentIds.push(component.id);
 
@@ -431,7 +429,7 @@ describe('Request API', () => {
 
     test('student only sees own requests even with userId filter', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -483,7 +481,7 @@ describe('Request API', () => {
 
     test('admin can filter by user and status', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Display', quantity: 10 },
+        data: { name: 'Display', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -512,7 +510,7 @@ describe('Request API', () => {
 
     test('faculty sees all requests targeting them, with pending first', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -649,7 +647,7 @@ describe('Request API', () => {
 
     test('faculty can approve pending request targeting them', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -680,7 +678,7 @@ describe('Request API', () => {
 
     test('faculty can reject pending request targeting them', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -711,7 +709,7 @@ describe('Request API', () => {
 
     test('faculty cannot approve/reject request not targeting them', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -749,7 +747,7 @@ describe('Request API', () => {
 
     test('cannot update non-pending request', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -777,7 +775,7 @@ describe('Request API', () => {
 
     test('admin can approve/reject any pending request', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 
@@ -807,7 +805,7 @@ describe('Request API', () => {
 
     test('student cannot approve/reject requests', async () => {
       const item = await prisma.component.create({
-        data: { name: 'Sensor', quantity: 10 },
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
       createdComponentIds.push(item.id);
 

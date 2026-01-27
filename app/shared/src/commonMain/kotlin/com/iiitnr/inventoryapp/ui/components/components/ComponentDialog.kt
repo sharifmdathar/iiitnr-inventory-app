@@ -2,6 +2,7 @@ package com.iiitnr.inventoryapp.ui.components.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,6 +14,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,8 +23,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentCategory
@@ -35,7 +39,10 @@ fun ComponentDialog(
 ) {
     var name by remember { mutableStateOf(component?.name ?: "") }
     var description by remember { mutableStateOf(component?.description ?: "") }
-    var quantity by remember { mutableStateOf(component?.quantity?.toString() ?: "0") }
+    var totalQuantity by remember { mutableStateOf(component?.totalQuantity?.toString() ?: "0") }
+    var availableQuantity by remember {
+        mutableStateOf(component?.availableQuantity?.toString().orEmpty())
+    }
     var category by remember { mutableStateOf(component?.category ?: "") }
     var location by remember { mutableStateOf(component?.location?.replace('_', ' ') ?: "") }
     var isLoading by remember { mutableStateOf(false) }
@@ -47,12 +54,27 @@ fun ComponentDialog(
             ComponentDialogFields(
                 name = name,
                 description = description,
-                quantity = quantity,
+                totalQuantity = totalQuantity,
+                availableQuantity = availableQuantity,
                 category = category,
                 location = location,
                 onNameChange = { name = it },
                 onDescriptionChange = { description = it },
-                onQuantityChange = { if (it.all { char -> char.isDigit() }) quantity = it },
+                onTotalQuantityChange = { newTotalQuantity ->
+                    if (newTotalQuantity.all { char -> char.isDigit() }) {
+                        totalQuantity = newTotalQuantity
+                        val totalInt = newTotalQuantity.toIntOrNull()
+                        val availableInt = availableQuantity.toIntOrNull()
+                        if (totalInt != null && availableInt != null && availableInt > totalInt) {
+                            availableQuantity = totalInt.toString()
+                        }
+                    }
+                },
+                onAvailableQuantityChange = { newAvailable ->
+                    if (newAvailable.all { char -> char.isDigit() }) {
+                        availableQuantity = newAvailable
+                    }
+                },
                 onCategoryChange = { category = it },
                 onLocationChange = { location = it })
         },
@@ -64,7 +86,9 @@ fun ComponentDialog(
                         ComponentRequest(
                             name = name.trim(),
                             description = description.trim().takeIf { it.isNotBlank() },
-                            quantity = quantity.toIntOrNull() ?: 0,
+                            totalQuantity = totalQuantity.toIntOrNull() ?: 0,
+                            availableQuantity = availableQuantity.toIntOrNull()
+                                ?: totalQuantity.toIntOrNull(),
                             category = category.trim().takeIf { it.isNotBlank() },
                             location = location.trim().takeIf { it.isNotBlank() })
                     )
@@ -89,12 +113,14 @@ fun ComponentDialog(
 private fun ComponentDialogFields(
     name: String,
     description: String,
-    quantity: String,
+    totalQuantity: String,
+    availableQuantity: String,
     category: String,
     location: String,
     onNameChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
-    onQuantityChange: (String) -> Unit,
+    onTotalQuantityChange: (String) -> Unit,
+    onAvailableQuantityChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
     onLocationChange: (String) -> Unit
 ) {
@@ -123,14 +149,36 @@ private fun ComponentDialogFields(
             maxLines = 3
         )
 
-        OutlinedTextField(
-            value = quantity,
-            onValueChange = onQuantityChange,
-            label = { Text("Quantity") },
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = availableQuantity,
+                onValueChange = onAvailableQuantityChange,
+                label = { Text("Available") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            Text(
+                text = "/",
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(0.5f)
+            )
+
+            OutlinedTextField(
+                value = totalQuantity,
+                onValueChange = onTotalQuantityChange,
+                label = { Text("Total") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+
+        }
 
         CategoryDropdownField(
             value = category,
@@ -167,8 +215,8 @@ private fun CategoryDropdownField(
             onValueChange = {},
             label = { Text("Category") },
             modifier = Modifier.fillMaxWidth().menuAnchor(
-                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
-                ),
+                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
+            ),
             readOnly = true,
             singleLine = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })
@@ -201,8 +249,8 @@ private fun LocationDropdownField(
             onValueChange = {},
             label = { Text("Location") },
             modifier = Modifier.fillMaxWidth().menuAnchor(
-                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
-                ),
+                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
+            ),
             readOnly = true,
             singleLine = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })

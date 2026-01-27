@@ -145,7 +145,7 @@ private fun CartItemRow(
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = "Available: ${component.quantity}",
+                text = "Available: ${component.availableQuantity}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -163,7 +163,7 @@ private fun CartItemRow(
                 fontWeight = FontWeight.Bold
             )
             IconButton(
-                onClick = { onUpdateQuantity(1) }, enabled = quantity < component.quantity
+                onClick = { onUpdateQuantity(1) }, enabled = quantity < component.availableQuantity
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Increase")
             }

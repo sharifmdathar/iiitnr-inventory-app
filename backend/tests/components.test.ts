@@ -156,7 +156,8 @@ describe('Component CRUD API', () => {
         data: {
           name: 'Resistor 10k',
           description: '10k ohm resistor',
-          quantity: 50,
+          totalQuantity: 50,
+          availableQuantity: 50,
           category: ComponentCategory.Sensors,
           location: Location.IoT_Lab,
         },
@@ -166,7 +167,8 @@ describe('Component CRUD API', () => {
         data: {
           name: 'Arduino Uno',
           description: 'Arduino microcontroller',
-          quantity: 10,
+          totalQuantity: 10,
+          availableQuantity: 10,
           category: ComponentCategory.Microcontrollers,
           location: Location.Robo_Lab,
         },
@@ -209,7 +211,8 @@ describe('Component CRUD API', () => {
         data: {
           name: 'Student View Component',
           description: 'Visible to all roles',
-          quantity: 3,
+          totalQuantity: 3,
+          availableQuantity: 3,
         },
       });
 
@@ -247,7 +250,8 @@ describe('Component CRUD API', () => {
         data: {
           name: 'Test Component',
           description: 'Test description',
-          quantity: 5,
+          totalQuantity: 5,
+          availableQuantity: 5,
           category: ComponentCategory.Actuators,
           location: Location.VLSI_Lab,
         },
@@ -266,7 +270,8 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.id, component.id);
       assert.equal(body.component.name, 'Test Component');
       assert.equal(body.component.description, 'Test description');
-      assert.equal(body.component.quantity, 5);
+      assert.equal(body.component.totalQuantity, 5);
+      assert.equal(body.component.availableQuantity, 5);
       assert.equal(body.component.category, ComponentCategory.Actuators);
       assert.equal(body.component.location, Location.VLSI_Lab);
 
@@ -281,7 +286,7 @@ describe('Component CRUD API', () => {
         url: '/components',
         payload: {
           name: 'Test Component',
-          quantity: 10,
+          totalQuantity: 10,
         },
       });
 
@@ -330,13 +335,13 @@ describe('Component CRUD API', () => {
         },
         payload: {
           name: 'Test Component',
-          quantity: -1,
+          totalQuantity: -1,
         },
       });
 
       assert.equal(response.statusCode, 400);
       const body = response.json();
-      assert.ok(body.error.includes('quantity'));
+      assert.ok(body.error.includes('totalQuantity'));
     });
 
     test('creates component with all fields (TA)', async () => {
@@ -349,7 +354,7 @@ describe('Component CRUD API', () => {
         payload: {
           name: 'New Component',
           description: 'Component description',
-          quantity: 25,
+          totalQuantity: 25,
           category: ComponentCategory.Sensors,
           location: 'IoT Lab',
         },
@@ -360,7 +365,8 @@ describe('Component CRUD API', () => {
       assert.ok(body.component.id);
       assert.equal(body.component.name, 'New Component');
       assert.equal(body.component.description, 'Component description');
-      assert.equal(body.component.quantity, 25);
+      assert.equal(body.component.totalQuantity, 25);
+      assert.equal(body.component.availableQuantity, 25);
       assert.equal(body.component.category, ComponentCategory.Sensors);
       assert.equal(body.component.location, Location.IoT_Lab);
       assert.ok(body.component.createdAt);
@@ -385,7 +391,8 @@ describe('Component CRUD API', () => {
       const body = response.json();
       assert.ok(body.component.id);
       assert.equal(body.component.name, 'Minimal Component');
-      assert.equal(body.component.quantity, 0); // default value
+      assert.equal(body.component.totalQuantity, 0);
+      assert.equal(body.component.availableQuantity, 0);
       assert.equal(body.component.description, null);
       assert.equal(body.component.category, null);
       assert.equal(body.component.location, null);
@@ -443,7 +450,8 @@ describe('Component CRUD API', () => {
       const component = await prisma.component.create({
         data: {
           name: 'Test Component',
-          quantity: 10,
+          totalQuantity: 10,
+          availableQuantity: 10,
         },
       });
 
@@ -454,13 +462,13 @@ describe('Component CRUD API', () => {
           authorization: `Bearer ${adminToken}`,
         },
         payload: {
-          quantity: -5,
+          totalQuantity: -5,
         },
       });
 
       assert.equal(response.statusCode, 400);
       const body = response.json();
-      assert.ok(body.error.includes('quantity'));
+      assert.ok(body.error.includes('totalQuantity'));
 
       await prisma.component.deleteMany({});
     });
@@ -470,7 +478,8 @@ describe('Component CRUD API', () => {
         data: {
           name: 'Original Name',
           description: 'Original description',
-          quantity: 10,
+          totalQuantity: 10,
+          availableQuantity: 10,
           category: ComponentCategory.Sensors,
           location: Location.IoT_Lab,
         },
@@ -484,7 +493,7 @@ describe('Component CRUD API', () => {
         },
         payload: {
           name: 'Updated Name',
-          quantity: 20,
+          totalQuantity: 20,
         },
       });
 
@@ -493,7 +502,8 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.id, component.id);
       assert.equal(body.component.name, 'Updated Name');
       assert.equal(body.component.description, 'Original description'); // unchanged
-      assert.equal(body.component.quantity, 20);
+      assert.equal(body.component.totalQuantity, 20);
+      assert.equal(body.component.availableQuantity, 20);
       assert.equal(body.component.category, ComponentCategory.Sensors); // unchanged
       assert.equal(body.component.location, Location.IoT_Lab); // unchanged
 
@@ -505,7 +515,8 @@ describe('Component CRUD API', () => {
         data: {
           name: 'Original Name',
           description: 'Original description',
-          quantity: 10,
+          totalQuantity: 10,
+          availableQuantity: 10,
           category: ComponentCategory.Sensors,
           location: Location.IoT_Lab,
         },
@@ -520,7 +531,7 @@ describe('Component CRUD API', () => {
         payload: {
           name: 'Fully Updated Name',
           description: 'Fully updated description',
-          quantity: 30,
+          totalQuantity: 30,
           category: ComponentCategory.Actuators,
           location: 'Robo Lab',
         },
@@ -530,7 +541,8 @@ describe('Component CRUD API', () => {
       const body = response.json();
       assert.equal(body.component.name, 'Fully Updated Name');
       assert.equal(body.component.description, 'Fully updated description');
-      assert.equal(body.component.quantity, 30);
+      assert.equal(body.component.totalQuantity, 30);
+      assert.equal(body.component.availableQuantity, 30);
       assert.equal(body.component.category, ComponentCategory.Actuators);
       assert.equal(body.component.location, Location.Robo_Lab);
 
@@ -544,7 +556,8 @@ describe('Component CRUD API', () => {
           description: 'Has description',
           category: ComponentCategory.Microcontrollers,
           location: Location.VLSI_Lab,
-          quantity: 10,
+          totalQuantity: 10,
+          availableQuantity: 10,
         },
       });
 
@@ -611,7 +624,8 @@ describe('Component CRUD API', () => {
       const component = await prisma.component.create({
         data: {
           name: 'Component to Delete',
-          quantity: 5,
+          totalQuantity: 5,
+          availableQuantity: 5,
         },
       });
 
@@ -636,7 +650,8 @@ describe('Component CRUD API', () => {
       const component = await prisma.component.create({
         data: {
           name: 'Component to Delete',
-          quantity: 5,
+          totalQuantity: 5,
+          availableQuantity: 5,
         },
       });
 
@@ -660,7 +675,8 @@ describe('Component CRUD API', () => {
       const component = await prisma.component.create({
         data: {
           name: 'Component to Delete with Form',
-          quantity: 5,
+          totalQuantity: 5,
+          availableQuantity: 5,
         },
       });
 
@@ -726,12 +742,13 @@ describe('Component CRUD API', () => {
           authorization: `Bearer ${adminToken}`,
         },
         payload: {
-          quantity: 25,
+          totalQuantity: 25,
         },
       });
 
       assert.equal(updateResponse.statusCode, 200);
-      assert.equal(updateResponse.json().component.quantity, 25);
+      assert.equal(updateResponse.json().component.totalQuantity, 25);
+      assert.equal(updateResponse.json().component.availableQuantity, 25);
 
       // Delete
       const deleteResponse = await app.inject({

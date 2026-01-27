@@ -9,10 +9,16 @@ import com.iiitnr.inventoryapp.ui.theme.AppTheme
 fun main() = application {
     val tokenManager = createTokenManager()
     Window(
-        onCloseRequest = ::exitApplication, title = "IIITNR Inventory App"
+        onCloseRequest = ::exitApplication,
+        title = "IIITNR Inventory App"
     ) {
         AppTheme {
-            App(tokenManager = tokenManager)
+            App(
+                tokenManager = tokenManager,
+                onGoogleSignInClick = { callback ->
+                    callback(null)
+                }
+            )
         }
     }
 }

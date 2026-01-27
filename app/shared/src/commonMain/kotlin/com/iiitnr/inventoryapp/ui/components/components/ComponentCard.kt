@@ -89,7 +89,8 @@ fun ComponentCard(
                     }
                     if (cartQuantity == 0) {
                         IconButton(
-                            onClick = { onAddToCart?.invoke() }, enabled = component.quantity > 0
+                            onClick = { onAddToCart?.invoke() },
+                            enabled = component.availableQuantity > 0
                         ) {
                             Icon(
                                 Icons.Default.AddShoppingCart,
@@ -113,7 +114,7 @@ fun ComponentCard(
                             )
                             IconButton(
                                 onClick = { onUpdateCartQuantity?.invoke(1) },
-                                enabled = cartQuantity < component.quantity
+                                enabled = cartQuantity < component.availableQuantity
                             ) {
                                 Icon(
                                     Icons.Default.Add, contentDescription = "Increase quantity"
@@ -129,7 +130,10 @@ fun ComponentCard(
             Row(
                 modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                InfoChip("Quantity", component.quantity.toString())
+                InfoChip(
+                    label = "Quantity",
+                    value = "${component.availableQuantity}/${component.totalQuantity}"
+                )
                 if (!component.category.isNullOrBlank()) {
                     InfoChip("Category", component.category.replace('_', ' '))
                 }

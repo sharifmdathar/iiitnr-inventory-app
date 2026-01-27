@@ -72,7 +72,7 @@ fun ComponentsScreen(
             component.name.lowercase().contains(query) || component.description?.lowercase()
                 ?.contains(query) == true || component.category?.lowercase()
                 ?.contains(query) == true || component.location?.lowercase()
-                ?.contains(query) == true || component.quantity.toString().contains(query)
+                ?.contains(query) == true || component.availableQuantity.toString().contains(query)
         }
     }
 
@@ -110,7 +110,7 @@ fun ComponentsScreen(
 
     fun updateCartQuantity(component: Component, delta: Int) {
         val current = cartQuantities[component.id] ?: 0
-        val maxAllowed = component.quantity
+        val maxAllowed = component.availableQuantity
         val next = (current + delta).coerceIn(0, maxAllowed)
         cartQuantities = if (next == 0) {
             cartQuantities - component.id

@@ -29,7 +29,8 @@ data class Component(
     val id: String,
     val name: String,
     val description: String? = null,
-    val quantity: Int,
+    val totalQuantity: Int,
+    val availableQuantity: Int,
     val category: String? = null,
     val location: String? = null,
     val createdAt: String,
@@ -40,7 +41,8 @@ data class Component(
 data class ComponentRequest(
     val name: String,
     val description: String? = null,
-    val quantity: Int = 0,
+    val totalQuantity: Int = 0,
+    val availableQuantity: Int? = null,
     val category: String? = null,
     val location: String? = null
 )
