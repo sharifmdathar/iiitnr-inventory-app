@@ -35,7 +35,9 @@ import com.iiitnr.inventoryapp.data.models.ComponentRequest
 
 @Composable
 fun ComponentDialog(
-    component: Component?, onDismiss: () -> Unit, onSave: (ComponentRequest) -> Unit
+    component: Component?,
+    onDismiss: () -> Unit,
+    onSave: (ComponentRequest) -> Unit,
 ) {
     var name by remember { mutableStateOf(component?.name ?: "") }
     var description by remember { mutableStateOf(component?.description ?: "") }
@@ -81,7 +83,8 @@ fun ComponentDialog(
                     }
                 },
                 onCategoryChange = { category = it },
-                onLocationChange = { location = it })
+                onLocationChange = { location = it },
+            )
         },
         confirmButton = {
             TextButton(
@@ -95,10 +98,12 @@ fun ComponentDialog(
                             availableQuantity = availableQuantity.toIntOrNull()
                                 ?: totalQuantity.toIntOrNull(),
                             category = category.trim().takeIf { it.isNotBlank() },
-                            location = location.trim().takeIf { it.isNotBlank() })
+                            location = location.trim().takeIf { it.isNotBlank() },
+                        ),
                     )
                     isLoading = false
-                }, enabled = !isLoading && name.isNotBlank()
+                },
+                enabled = !isLoading && name.isNotBlank(),
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -111,7 +116,8 @@ fun ComponentDialog(
             TextButton(onClick = onDismiss, enabled = !isLoading) {
                 Text("Cancel")
             }
-        })
+        },
+    )
 }
 
 @Composable
@@ -127,10 +133,10 @@ private fun ComponentDialogFields(
     onTotalQuantityChange: (String) -> Unit,
     onAvailableQuantityChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
-    onLocationChange: (String) -> Unit
+    onLocationChange: (String) -> Unit,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         val categoryOptions = ComponentCategory.labels
         val locationOptions = ComponentLocation.labels
@@ -143,7 +149,7 @@ private fun ComponentDialogFields(
             onValueChange = onNameChange,
             label = { Text("Name *") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
         )
 
         OutlinedTextField(
@@ -151,13 +157,13 @@ private fun ComponentDialogFields(
             onValueChange = onDescriptionChange,
             label = { Text("Description") },
             modifier = Modifier.fillMaxWidth(),
-            maxLines = 3
+            maxLines = 3,
         )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
                 value = availableQuantity,
@@ -165,13 +171,13 @@ private fun ComponentDialogFields(
                 label = { Text("Available") },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
             Text(
                 text = "/",
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(0.5f)
+                modifier = Modifier.weight(0.5f),
             )
 
             OutlinedTextField(
@@ -180,9 +186,8 @@ private fun ComponentDialogFields(
                 label = { Text("Total") },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
-
         }
 
         CategoryDropdownField(
@@ -190,7 +195,7 @@ private fun ComponentDialogFields(
             options = categoryOptions,
             expanded = isCategoryExpanded,
             onExpandedChange = { isCategoryExpanded = it },
-            onSelect = onCategoryChange
+            onSelect = onCategoryChange,
         )
 
         LocationDropdownField(
@@ -198,7 +203,7 @@ private fun ComponentDialogFields(
             options = locationOptions,
             expanded = isLocationExpanded,
             onExpandedChange = { isLocationExpanded = it },
-            onSelect = onLocationChange
+            onSelect = onLocationChange,
         )
     }
 }
@@ -210,23 +215,28 @@ private fun CategoryDropdownField(
     options: List<String>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
 ) {
     ExposedDropdownMenuBox(
-        expanded = expanded, onExpandedChange = onExpandedChange
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
     ) {
         OutlinedTextField(
             value = value,
             onValueChange = {},
             label = { Text("Category") },
             modifier = Modifier.fillMaxWidth().menuAnchor(
-                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
+                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                enabled = true,
             ),
             readOnly = true,
             singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+        )
         DropdownMenu(
-            expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+        ) {
             options.forEach { option ->
                 DropdownMenuItem(text = { Text(option) }, onClick = {
                     onSelect(option)
@@ -244,23 +254,28 @@ private fun LocationDropdownField(
     options: List<String>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
 ) {
     ExposedDropdownMenuBox(
-        expanded = expanded, onExpandedChange = onExpandedChange
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
     ) {
         OutlinedTextField(
             value = value,
             onValueChange = {},
             label = { Text("Location") },
             modifier = Modifier.fillMaxWidth().menuAnchor(
-                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true
+                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                enabled = true,
             ),
             readOnly = true,
             singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) })
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+        )
         DropdownMenu(
-            expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+        ) {
             options.forEach { option ->
                 DropdownMenuItem(text = { Text(option) }, onClick = {
                     onSelect(option)

@@ -47,7 +47,7 @@ fun LoginScreen(
     tokenManager: TokenManager,
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    onGoogleSignInClick: ((String?) -> Unit) -> Unit = {}
+    onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -87,18 +87,21 @@ fun LoginScreen(
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = "IIITNR Inventory App",
             style = MaterialTheme.typography.headlineLarge,
             fontSize = 32.sp,
-            modifier = Modifier.padding(bottom = 32.dp)
+            modifier = Modifier.padding(bottom = 32.dp),
         )
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it; errorMessage = null },
+            onValueChange = {
+                email = it
+                errorMessage = null
+            },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             singleLine = true,
@@ -111,12 +114,16 @@ fun LoginScreen(
                     } else {
                         passwordFocusRequester.requestFocus()
                     }
-                })
+                },
+            ),
         )
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it; errorMessage = null },
+            onValueChange = {
+                password = it
+                errorMessage = null
+            },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
                 .focusRequester(passwordFocusRequester),
@@ -125,25 +132,27 @@ fun LoginScreen(
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(
-                onDone = { performLogin() })
+                onDone = { performLogin() },
+            ),
         )
 
         errorMessage?.let {
             Text(
                 text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
         }
 
         Button(
             onClick = { performLogin() },
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            enabled = !isLoading
+            enabled = !isLoading,
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
                 Text("Login")
@@ -162,7 +171,7 @@ fun LoginScreen(
                         scope.launch {
                             try {
                                 val authResponse = ApiClient.authApiService.signInWithGoogle(
-                                    GoogleSignInRequest(idToken)
+                                    GoogleSignInRequest(idToken),
                                 )
                                 tokenManager.saveToken(authResponse.token)
                                 onLoginSuccess()
@@ -203,21 +212,21 @@ fun LoginScreen(
                 }
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            enabled = !isLoading && !isGoogleLoading
+            enabled = !isLoading && !isGoogleLoading,
         ) {
             if (isGoogleLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
                 )
             } else {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.Center,
                 ) {
                     AsyncImage(
                         model = "https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png",
                         contentDescription = "Google",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Sign in with Google")

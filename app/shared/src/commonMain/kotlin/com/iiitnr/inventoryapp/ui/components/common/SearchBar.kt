@@ -19,7 +19,7 @@ fun SearchBar(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     placeholder: String = "Search...",
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
         value = searchQuery,
@@ -30,7 +30,7 @@ fun SearchBar(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Search",
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
             )
         },
         trailingIcon = {
@@ -38,12 +38,12 @@ fun SearchBar(
                 IconButton(onClick = { onSearchQueryChange("") }) {
                     Icon(
                         imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear search"
+                        contentDescription = "Clear search",
                     )
                 }
             }
         },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
     )
 }

@@ -31,7 +31,7 @@ fun main() = application {
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "IIITNR Inventory App"
+        title = "IIITNR Inventory App",
     ) {
         AppTheme {
             App(
@@ -41,7 +41,7 @@ fun main() = application {
                         val idToken = googleHelper.signIn()
                         callback(idToken)
                     }
-                }
+                },
             )
         }
     }

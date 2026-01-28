@@ -20,7 +20,7 @@ fun RequestsContent(
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
     isFaculty: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when {
@@ -28,7 +28,7 @@ fun RequestsContent(
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
             requests.isEmpty() -> EmptyState(
                 message = if (isFaculty) "No pending requests" else "No requests yet",
-                subtitle = if (!isFaculty) "Tap the + button to create a request" else null
+                subtitle = if (!isFaculty) "Tap the + button to create a request" else null,
             )
             else -> RequestsList(
                 requests = requests,
@@ -36,7 +36,7 @@ fun RequestsContent(
                 onApproveRequest = onApproveRequest,
                 onRejectRequest = onRejectRequest,
                 onFulfillRequest = onFulfillRequest,
-                isFaculty = isFaculty
+                isFaculty = isFaculty,
             )
         }
     }

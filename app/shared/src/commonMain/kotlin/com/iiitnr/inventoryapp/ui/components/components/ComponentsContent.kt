@@ -23,7 +23,7 @@ fun ComponentsContent(
     onDelete: (Component) -> Unit,
     onAddToCart: (Component) -> Unit,
     onUpdateCartQuantity: (Component, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when {
@@ -31,10 +31,10 @@ fun ComponentsContent(
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
             components.isEmpty() && allComponents.isEmpty() -> EmptyState(
                 message = "No components found",
-                subtitle = if (!isReadOnly) "Tap the + button to add a component" else null
+                subtitle = if (!isReadOnly) "Tap the + button to add a component" else null,
             )
             components.isEmpty() && searchQuery.isNotBlank() -> EmptyState(
-                message = "No components match your search"
+                message = "No components match your search",
             )
             else -> ComponentsList(
                 components = components,
@@ -43,7 +43,7 @@ fun ComponentsContent(
                 onEdit = onEdit,
                 onDelete = onDelete,
                 onAddToCart = onAddToCart,
-                onUpdateCartQuantity = onUpdateCartQuantity
+                onUpdateCartQuantity = onUpdateCartQuantity,
             )
         }
     }

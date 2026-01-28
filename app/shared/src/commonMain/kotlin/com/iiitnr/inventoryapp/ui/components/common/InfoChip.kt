@@ -12,20 +12,20 @@ import androidx.compose.ui.unit.sp
 fun InfoChip(
     label: String,
     value: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 10.sp
+            fontSize = 10.sp,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }

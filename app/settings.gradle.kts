@@ -25,4 +25,3 @@ rootProject.name = "IIITNR Inventory App"
 include(":android")
 include(":shared")
 include(":desktop")
- 

@@ -24,7 +24,7 @@ fun ComponentsList(
     onDelete: (Component) -> Unit,
     onAddToCart: (Component) -> Unit,
     onUpdateCartQuantity: (Component, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val state = rememberLazyListState()
     Box(modifier = modifier) {
@@ -32,7 +32,7 @@ fun ComponentsList(
             state = state,
             modifier = Modifier.padding(end = 12.dp),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(components) { component ->
                 ComponentCard(
@@ -43,13 +43,13 @@ fun ComponentsList(
                     onEdit = { onEdit(component) },
                     onDelete = { onDelete(component) },
                     onAddToCart = { onAddToCart(component) },
-                    onUpdateCartQuantity = { delta -> onUpdateCartQuantity(component, delta) }
+                    onUpdateCartQuantity = { delta -> onUpdateCartQuantity(component, delta) },
                 )
             }
         }
         VerticalScrollbarOrEmpty(
             state = state,
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
         )
     }
 }

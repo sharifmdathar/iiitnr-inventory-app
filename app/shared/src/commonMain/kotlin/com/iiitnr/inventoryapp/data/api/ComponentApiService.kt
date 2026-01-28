@@ -35,7 +35,9 @@ class ComponentApiService(private val client: HttpClient, private val baseUrl: S
     }
 
     suspend fun updateComponent(
-        token: String, id: String, request: ComponentRequest
+        token: String,
+        id: String,
+        request: ComponentRequest,
     ): ComponentResponse {
         return client.put("$baseUrl/components/$id") {
             headers {

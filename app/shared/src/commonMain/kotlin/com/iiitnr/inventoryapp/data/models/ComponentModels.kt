@@ -7,7 +7,8 @@ enum class ComponentCategory(val label: String) {
     ACTUATORS("Actuators"),
     MICROCONTROLLERS("Microcontrollers"),
     MICROPROCESSORS("Microprocessors"),
-    OTHERS("Others");
+    OTHERS("Others"),
+    ;
 
     companion object {
         val labels: List<String> = entries.map { it.label }
@@ -17,7 +18,8 @@ enum class ComponentCategory(val label: String) {
 enum class ComponentLocation(val label: String) {
     IOT_LAB("IoT Lab"),
     ROBO_LAB("Robo Lab"),
-    VLSI_LAB("VLSI Lab");
+    VLSI_LAB("VLSI Lab"),
+    ;
 
     companion object {
         val labels: List<String> = entries.map { it.label }
@@ -34,7 +36,7 @@ data class Component(
     val category: String? = null,
     val location: String? = null,
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
 )
 
 @Serializable
@@ -44,15 +46,15 @@ data class ComponentRequest(
     val totalQuantity: Int = 0,
     val availableQuantity: Int? = null,
     val category: String? = null,
-    val location: String? = null
+    val location: String? = null,
 )
 
 @Serializable
 data class ComponentsResponse(
-    val components: List<Component>
+    val components: List<Component>,
 )
 
 @Serializable
 data class ComponentResponse(
-    val component: Component
+    val component: Component,
 )

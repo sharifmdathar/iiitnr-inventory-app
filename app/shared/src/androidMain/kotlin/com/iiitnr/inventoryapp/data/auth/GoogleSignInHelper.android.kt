@@ -11,7 +11,8 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 
 class GoogleSignInHelper(
-    private val context: Context, private val webClientId: String
+    private val context: Context,
+    private val webClientId: String,
 ) {
     private val credentialManager = CredentialManager.create(context)
 
@@ -23,13 +24,13 @@ class GoogleSignInHelper(
 
         android.util.Log.d(
             "GoogleSignInHelper",
-            "Starting Google Sign-In with Web Client ID: ${webClientId.take(20)}..."
+            "Starting Google Sign-In with Web Client ID: ${webClientId.take(20)}...",
         )
 
         val nonce = generateNonce()
 
         val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(
-            serverClientId = webClientId
+            serverClientId = webClientId,
         ).setNonce(nonce).build()
 
         val request =
@@ -37,14 +38,17 @@ class GoogleSignInHelper(
 
         return try {
             val result = credentialManager.getCredential(
-                request = request, context = context
+                request = request,
+                context = context,
             )
             handleSignInResult(result)
         } catch (_: NoCredentialException) {
             null
         } catch (e: GetCredentialException) {
             android.util.Log.e(
-                "GoogleSignInHelper", "GetCredentialException: ${e.type} - ${e.message}", e
+                "GoogleSignInHelper",
+                "GetCredentialException: ${e.type} - ${e.message}",
+                e,
             )
             null
         } catch (e: Exception) {
@@ -61,18 +65,22 @@ class GoogleSignInHelper(
                         val googleIdTokenCredential =
                             GoogleIdTokenCredential.createFrom(credential.data)
                         android.util.Log.d(
-                            "GoogleSignInHelper", "Successfully obtained Google ID token"
+                            "GoogleSignInHelper",
+                            "Successfully obtained Google ID token",
                         )
                         googleIdTokenCredential.idToken
                     } catch (e: GoogleIdTokenParsingException) {
                         android.util.Log.e(
-                            "GoogleSignInHelper", "Received an invalid google id token response", e
+                            "GoogleSignInHelper",
+                            "Received an invalid google id token response",
+                            e,
                         )
                         null
                     }
                 } else {
                     android.util.Log.e(
-                        "GoogleSignInHelper", "Unexpected type of credential: ${credential.type}"
+                        "GoogleSignInHelper",
+                        "Unexpected type of credential: ${credential.type}",
                     )
                     null
                 }
@@ -81,7 +89,7 @@ class GoogleSignInHelper(
             else -> {
                 android.util.Log.e(
                     "GoogleSignInHelper",
-                    "Unexpected type of credential: ${credential::class.simpleName}"
+                    "Unexpected type of credential: ${credential::class.simpleName}",
                 )
                 null
             }

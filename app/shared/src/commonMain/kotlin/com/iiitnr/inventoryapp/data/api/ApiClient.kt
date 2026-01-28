@@ -17,11 +17,13 @@ object ApiClient {
 
     val client: HttpClient = createHttpClient {
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-                encodeDefaults = false
-            })
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                    encodeDefaults = false
+                },
+            )
         }
         install(Logging) {
             level = LogLevel.BODY

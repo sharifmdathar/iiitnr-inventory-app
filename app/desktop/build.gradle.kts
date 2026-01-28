@@ -29,7 +29,7 @@ compose.desktop {
             if (buildInstallers) {
                 targetFormats(
                     org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
-                    org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe
+                    org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe,
                 )
             }
 

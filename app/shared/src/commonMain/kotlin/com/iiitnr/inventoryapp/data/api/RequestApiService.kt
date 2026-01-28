@@ -41,7 +41,9 @@ class RequestApiService(private val client: HttpClient, private val baseUrl: Str
     }
 
     suspend fun updateRequestStatus(
-        token: String, id: String, payload: UpdateRequestStatusPayload
+        token: String,
+        id: String,
+        payload: UpdateRequestStatusPayload,
     ): RequestResponse {
         return client.put("$baseUrl/requests/$id") {
             headers {

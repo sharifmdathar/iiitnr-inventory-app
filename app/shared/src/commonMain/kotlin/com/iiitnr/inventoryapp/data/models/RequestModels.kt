@@ -8,7 +8,7 @@ data class RequestItem(
     val requestId: String? = null,
     val componentId: String? = null,
     val quantity: Int,
-    val component: Component? = null
+    val component: Component? = null,
 )
 
 @Serializable
@@ -22,35 +22,38 @@ data class Request(
     val updatedAt: String,
     val items: List<RequestItem> = emptyList(),
     val user: User? = null,
-    val targetFaculty: User? = null
+    val targetFaculty: User? = null,
 )
 
 @Serializable
 data class RequestItemPayload(
-    val componentId: String, val quantity: Int
+    val componentId: String,
+    val quantity: Int,
 )
 
 @Serializable
 data class CreateRequestPayload(
-    val items: List<RequestItemPayload>, val targetFacultyId: String, val projectTitle: String
+    val items: List<RequestItemPayload>,
+    val targetFacultyId: String,
+    val projectTitle: String,
 )
 
 @Serializable
 data class FacultyResponse(
-    val faculty: List<User>
+    val faculty: List<User>,
 )
 
 @Serializable
 data class RequestResponse(
-    val request: Request
+    val request: Request,
 )
 
 @Serializable
 data class RequestsResponse(
-    val requests: List<Request>
+    val requests: List<Request>,
 )
 
 @Serializable
 data class UpdateRequestStatusPayload(
-    val status: String
+    val status: String,
 )
