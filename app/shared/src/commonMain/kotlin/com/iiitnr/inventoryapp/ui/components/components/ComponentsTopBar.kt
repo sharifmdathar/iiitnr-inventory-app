@@ -25,27 +25,28 @@ fun ComponentsTopBar(
     onNavigateToHome: () -> Unit,
     onNavigateToRequests: () -> Unit,
     pendingRequestsCount: Int? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier.fillMaxWidth().padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "Components",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = onNavigateToRequests) {
                 Box {
                     Text(
-                        text = "Requests", color = MaterialTheme.colorScheme.primary
+                        text = "Requests",
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     if (pendingRequestsCount != null && pendingRequestsCount > 0) {
                         val count =
@@ -55,16 +56,16 @@ fun ComponentsTopBar(
                                 .offset(x = 4.dp, y = (-4).dp)
                                 .size(if (pendingRequestsCount >= 10) 16.dp else 14.dp)
                                 .background(MaterialTheme.colorScheme.error, CircleShape),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = count,
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    lineHeight = 12.sp
+                                    lineHeight = 12.sp,
                                 ),
                                 color = MaterialTheme.colorScheme.onError,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     }
@@ -72,7 +73,8 @@ fun ComponentsTopBar(
             }
             TextButton(onClick = onNavigateToHome) {
                 Text(
-                    "Profile", color = MaterialTheme.colorScheme.primary
+                    "Profile",
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }

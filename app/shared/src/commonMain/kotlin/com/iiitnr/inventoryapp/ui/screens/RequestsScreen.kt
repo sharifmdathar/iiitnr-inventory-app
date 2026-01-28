@@ -38,7 +38,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun RequestsScreen(
-    tokenManager: TokenManager, onNavigateBack: () -> Unit, onNavigateToComponents: () -> Unit
+    tokenManager: TokenManager,
+    onNavigateBack: () -> Unit,
+    onNavigateToComponents: () -> Unit,
 ) {
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -60,14 +62,13 @@ fun RequestsScreen(
             request.user?.name,
             request.user?.email,
             request.targetFaculty?.name,
-            request.targetFaculty?.email
+            request.targetFaculty?.email,
         ).any { it.contains(query, ignoreCase = true) }
         val itemMatches =
             request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
 
         matchesStatus && (query.isBlank() || textMatches || itemMatches)
     }
-
 
     fun loadRequests() {
         scope.launch {
@@ -117,7 +118,9 @@ fun RequestsScreen(
                 val token = tokenManager.token.first()
                 if (token != null) {
                     ApiClient.requestApiService.updateRequestStatus(
-                        "Bearer $token", requestId, UpdateRequestStatusPayload(status = status)
+                        "Bearer $token",
+                        requestId,
+                        UpdateRequestStatusPayload(status = status),
                     )
                     loadRequests()
                 } else {
@@ -158,7 +161,8 @@ fun RequestsScreen(
                         val id = pendingDeleteRequestId
                         pendingDeleteRequestId = null
                         if (id != null) deleteRequest(id)
-                    }) {
+                    },
+                ) {
                     Text("Retract", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -166,7 +170,8 @@ fun RequestsScreen(
                 TextButton(onClick = { pendingDeleteRequestId = null }) {
                     Text("Cancel")
                 }
-            })
+            },
+        )
     }
 
     Scaffold(topBar = {
@@ -189,7 +194,7 @@ fun RequestsScreen(
             LazyRow(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 val statusOptions = listOf("ALL", "PENDING", "APPROVED", "REJECTED", "FULFILLED")
                 items(statusOptions) { option ->
@@ -217,24 +222,43 @@ fun RequestsScreen(
                 errorMessage = errorMessage,
                 requests = filteredRequests,
                 onRetry = { loadRequests() },
-                onDeleteRequest = if (isFaculty) null else { requestId ->
-                    pendingDeleteRequestId = requestId
+                onDeleteRequest = if (isFaculty) {
+                    null
+                } else {
+                    { requestId ->
+                        pendingDeleteRequestId = requestId
+                    }
                 },
-                onApproveRequest = if (isFaculty) { requestId ->
-                    updateRequestStatus(
-                        requestId, "APPROVED",
-                    )
-                } else null,
-                onRejectRequest = if (isFaculty) { requestId ->
-                    updateRequestStatus(
-                        requestId, "REJECTED",
-                    )
-                } else null,
-                onFulfillRequest = if (isAdminOrTA) { requestId ->
-                    updateRequestStatus(
-                        requestId, "FULFILLED",
-                    )
-                } else null,
+                onApproveRequest = if (isFaculty) {
+                    { requestId ->
+                        updateRequestStatus(
+                            requestId,
+                            "APPROVED",
+                        )
+                    }
+                } else {
+                    null
+                },
+                onRejectRequest = if (isFaculty) {
+                    { requestId ->
+                        updateRequestStatus(
+                            requestId,
+                            "REJECTED",
+                        )
+                    }
+                } else {
+                    null
+                },
+                onFulfillRequest = if (isAdminOrTA) {
+                    { requestId ->
+                        updateRequestStatus(
+                            requestId,
+                            "FULFILLED",
+                        )
+                    }
+                } else {
+                    null
+                },
                 isFaculty = isFaculty,
                 modifier = Modifier.padding(),
             )

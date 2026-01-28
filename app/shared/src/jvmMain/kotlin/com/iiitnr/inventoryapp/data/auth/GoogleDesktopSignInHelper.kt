@@ -18,7 +18,7 @@ class GoogleDesktopSignInHelper(
     private val clientSecret: String?,
     private val redirectUri: String,
     private val scopes: List<String> = listOf("openid", "email", "profile"),
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
 ) {
     private val json =
         kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
@@ -43,13 +43,15 @@ class GoogleDesktopSignInHelper(
     private suspend fun exchangeCodeForToken(code: String): String? {
         return try {
             val response: HttpResponse = httpClient.submitForm(
-                url = "https://oauth2.googleapis.com/token", formParameters = Parameters.build {
+                url = "https://oauth2.googleapis.com/token",
+                formParameters = Parameters.build {
                     append("client_id", clientId)
                     append("code", code)
                     append("redirect_uri", redirectUri)
                     append("grant_type", "authorization_code")
                     clientSecret?.let { append("client_secret", it) }
-                })
+                },
+            )
 
             if (response.status.value !in 200..299) {
                 return null
@@ -68,7 +70,7 @@ class GoogleDesktopSignInHelper(
             "redirect_uri=${URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)}",
             "scope=${URLEncoder.encode(scopes.joinToString(" "), StandardCharsets.UTF_8)}",
             "access_type=offline",
-            "prompt=consent"
+            "prompt=consent",
         ).joinToString("&", prefix = "?")
 
         return "https://accounts.google.com/o/oauth2/v2/auth$encodedParams"
@@ -117,6 +119,6 @@ class GoogleDesktopSignInHelper(
         val id_token: String? = null,
         val expires_in: Long? = null,
         val token_type: String? = null,
-        val refresh_token: String? = null
+        val refresh_token: String? = null,
     )
 }

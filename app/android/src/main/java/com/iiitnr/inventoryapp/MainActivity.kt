@@ -30,14 +30,16 @@ class MainActivity : ComponentActivity() {
             IIITNRInventoryAppTheme {
                 val tokenManager = createTokenManager(this@MainActivity)
                 App(
-                    tokenManager = tokenManager, onGoogleSignInClick = { callback ->
+                    tokenManager = tokenManager,
+                    onGoogleSignInClick = { callback ->
                         onGoogleSignInResult = callback
                         coroutineScope.launch {
                             val idToken = googleSignInHelper.signIn()
                             onGoogleSignInResult?.invoke(idToken)
                             onGoogleSignInResult = null
                         }
-                    })
+                    },
+                )
             }
         }
     }

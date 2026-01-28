@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 fun RegisterScreen(
     tokenManager: TokenManager,
     onRegisterSuccess: () -> Unit,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -50,54 +50,63 @@ fun RegisterScreen(
             .fillMaxSize()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = "Register",
             style = MaterialTheme.typography.headlineLarge,
             fontSize = 32.sp,
-            modifier = Modifier.padding(bottom = 32.dp)
+            modifier = Modifier.padding(bottom = 32.dp),
         )
 
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it; errorMessage = null },
+            onValueChange = {
+                name = it
+                errorMessage = null
+            },
             label = { Text("Name (Optional)") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
             singleLine = true,
-            enabled = !isLoading
+            enabled = !isLoading,
         )
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it; errorMessage = null },
+            onValueChange = {
+                email = it
+                errorMessage = null
+            },
             label = { Text("Email") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
             singleLine = true,
-            enabled = !isLoading
+            enabled = !isLoading,
         )
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it; errorMessage = null },
+            onValueChange = {
+                password = it
+                errorMessage = null
+            },
             label = { Text("Password") },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
-            enabled = !isLoading
+            enabled = !isLoading,
         )
 
         errorMessage?.let {
             Text(
                 text = it,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 16.dp),
             )
         }
 
@@ -119,8 +128,8 @@ fun RegisterScreen(
                             RegisterRequest(
                                 email = email.trim(),
                                 password = password,
-                                name = name.takeIf { it.isNotBlank() }
-                            )
+                                name = name.takeIf { it.isNotBlank() },
+                            ),
                         )
                         tokenManager.saveToken(response.token)
                         onRegisterSuccess()
@@ -142,12 +151,12 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            enabled = !isLoading
+            enabled = !isLoading,
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
                 Text("Register")

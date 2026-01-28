@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 @Composable
 fun AddComponentFAB(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     FloatingActionButton(onClick = onClick, modifier = modifier) {
         Icon(Icons.Default.Add, contentDescription = "Add Component")

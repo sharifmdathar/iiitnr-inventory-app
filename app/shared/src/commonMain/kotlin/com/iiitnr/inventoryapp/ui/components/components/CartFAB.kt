@@ -22,13 +22,13 @@ import androidx.compose.ui.unit.sp
 fun CartFAB(
     itemCount: Int,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     FloatingActionButton(onClick = onClick, modifier = modifier) {
         Box {
             Icon(
                 Icons.Default.ShoppingCart,
-                contentDescription = "View Cart"
+                contentDescription = "View Cart",
             )
             Box(
                 modifier = Modifier
@@ -36,16 +36,16 @@ fun CartFAB(
                     .offset(x = 4.dp, y = (-4).dp)
                     .background(
                         color = MaterialTheme.colorScheme.error,
-                        shape = CircleShape
+                        shape = CircleShape,
                     )
                     .size(18.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = if (itemCount > 99) "99+" else itemCount.toString(),
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.onError,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }

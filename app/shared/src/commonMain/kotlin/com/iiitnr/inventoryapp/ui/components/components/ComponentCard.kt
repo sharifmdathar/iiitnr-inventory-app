@@ -37,36 +37,36 @@ fun ComponentCard(
     onDelete: () -> Unit,
     onAddToCart: (() -> Unit)? = null,
     onUpdateCartQuantity: ((Int) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        )
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.Top,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = component.name,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     if (!component.description.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = component.description,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -76,48 +76,51 @@ fun ComponentCard(
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = "Edit",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
                             )
                         }
                         IconButton(onClick = onDelete) {
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.error
+                                tint = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
                     if (cartQuantity == 0) {
                         IconButton(
                             onClick = { onAddToCart?.invoke() },
-                            enabled = component.availableQuantity > 0
+                            enabled = component.availableQuantity > 0,
                         ) {
                             Icon(
                                 Icons.Default.AddShoppingCart,
                                 contentDescription = "Add to cart",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
                             )
                         }
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
-                                onClick = { onUpdateCartQuantity?.invoke(-1) }) {
+                                onClick = { onUpdateCartQuantity?.invoke(-1) },
+                            ) {
                                 Icon(
-                                    Icons.Default.Remove, contentDescription = "Decrease quantity"
+                                    Icons.Default.Remove,
+                                    contentDescription = "Decrease quantity",
                                 )
                             }
                             Text(
                                 text = cartQuantity.toString(),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
                             )
                             IconButton(
                                 onClick = { onUpdateCartQuantity?.invoke(1) },
-                                enabled = cartQuantity < component.availableQuantity
+                                enabled = cartQuantity < component.availableQuantity,
                             ) {
                                 Icon(
-                                    Icons.Default.Add, contentDescription = "Increase quantity"
+                                    Icons.Default.Add,
+                                    contentDescription = "Increase quantity",
                                 )
                             }
                         }
@@ -128,11 +131,12 @@ fun ComponentCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 InfoChip(
                     label = "Quantity",
-                    value = "${component.availableQuantity}/${component.totalQuantity}"
+                    value = "${component.availableQuantity}/${component.totalQuantity}",
                 )
                 if (!component.category.isNullOrBlank()) {
                     InfoChip("Category", component.category.replace('_', ' '))

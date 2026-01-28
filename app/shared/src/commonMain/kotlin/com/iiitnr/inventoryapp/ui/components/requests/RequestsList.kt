@@ -23,7 +23,7 @@ fun RequestsList(
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
     isFaculty: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val state = rememberLazyListState()
     Box(modifier = modifier) {
@@ -31,7 +31,7 @@ fun RequestsList(
             state = state,
             modifier = Modifier.padding(end = 12.dp),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(requests) { request ->
                 RequestCard(
@@ -40,12 +40,13 @@ fun RequestsList(
                     onApproveRequest = onApproveRequest,
                     onRejectRequest = onRejectRequest,
                     onFulfillRequest = onFulfillRequest,
-                    isFaculty = isFaculty
+                    isFaculty = isFaculty,
                 )
             }
         }
         VerticalScrollbarOrEmpty(
-            state = state, modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
+            state = state,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
         )
     }
 }

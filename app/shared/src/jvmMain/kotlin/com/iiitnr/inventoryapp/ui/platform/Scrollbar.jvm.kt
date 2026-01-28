@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 @Composable
 actual fun VerticalScrollbarOrEmpty(state: LazyListState, modifier: Modifier) {
     VerticalScrollbar(
-        modifier = modifier.fillMaxHeight(), adapter = rememberScrollbarAdapter(scrollState = state)
+        modifier = modifier.fillMaxHeight(),
+        adapter = rememberScrollbarAdapter(scrollState = state),
     )
 }

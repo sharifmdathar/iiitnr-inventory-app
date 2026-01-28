@@ -41,7 +41,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ComponentsScreen(
-    tokenManager: TokenManager, onNavigateToRequests: () -> Unit, onNavigateToHome: () -> Unit
+    tokenManager: TokenManager,
+    onNavigateToRequests: () -> Unit,
+    onNavigateToHome: () -> Unit,
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -78,7 +80,7 @@ fun ComponentsScreen(
             component.name,
             component.description,
             component.category,
-            component.location
+            component.location,
         ).any { it.contains(query, ignoreCase = true) }
 
         val matchesCategory = categoryFilter?.let { filter ->
@@ -164,11 +166,12 @@ fun ComponentsScreen(
                 val token = tokenManager.token.first()
                 if (token != null) {
                     ApiClient.requestApiService.createRequest(
-                        "Bearer $token", CreateRequestPayload(
+                        "Bearer $token",
+                        CreateRequestPayload(
                             items = cleanedItems,
                             targetFacultyId = selectedFacultyId!!,
-                            projectTitle = projectTitle.trim()
-                        )
+                            projectTitle = projectTitle.trim(),
+                        ),
                     )
                     showCartDialog = false
                     cartQuantities = emptyMap()
@@ -233,13 +236,15 @@ fun ComponentsScreen(
         ComponentsTopBar(
             onNavigateToHome = onNavigateToHome,
             onNavigateToRequests = onNavigateToRequests,
-            pendingRequestsCount = if (isFaculty) pendingRequestsCount else null
+            pendingRequestsCount = if (isFaculty) pendingRequestsCount else null,
         )
     }, floatingActionButton = {
         when {
             cartQuantities.isNotEmpty() -> {
                 CartFAB(
-                    itemCount = cartQuantities.values.sum(), onClick = { showCartDialog = true })
+                    itemCount = cartQuantities.values.sum(),
+                    onClick = { showCartDialog = true },
+                )
             }
 
             !isReadOnly -> {
@@ -247,7 +252,8 @@ fun ComponentsScreen(
                     onClick = {
                         editingComponent = null
                         showDialog = true
-                    })
+                    },
+                )
             }
         }
     }) { paddingValues ->
@@ -256,19 +262,19 @@ fun ComponentsScreen(
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
                 placeholder = "Search components...",
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             )
 
             LazyRow(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
             ) {
                 val categoryOptions = listOf("All") + ComponentCategory.labels
                 items(categoryOptions) { option ->
                     val isSelected =
                         (categoryFilter == null && option == "All") || categoryFilter.equals(
-                            option, ignoreCase = true
+                            option, ignoreCase = true,
                         )
                     TextButton(
                         onClick = {
@@ -290,14 +296,14 @@ fun ComponentsScreen(
             LazyRow(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
 
             ) {
                 val locationOptions = listOf("All") + ComponentLocation.labels
                 items(locationOptions) { option ->
                     val isSelected =
                         (locationFilter == null && option == "All") || locationFilter.equals(
-                            option, ignoreCase = true
+                            option, ignoreCase = true,
                         )
                     TextButton(
                         onClick = {
@@ -337,7 +343,8 @@ fun ComponentsScreen(
                 },
                 onUpdateCartQuantity = { component, delta ->
                     updateCartQuantity(component, delta)
-                })
+                },
+            )
         }
     }
 
@@ -352,11 +359,14 @@ fun ComponentsScreen(
                         if (token != null) {
                             if (editingComponent != null) {
                                 ApiClient.componentApiService.updateComponent(
-                                    "Bearer $token", editingComponent!!.id, request
+                                    "Bearer $token",
+                                    editingComponent!!.id,
+                                    request,
                                 )
                             } else {
                                 ApiClient.componentApiService.createComponent(
-                                    "Bearer $token", request
+                                    "Bearer $token",
+                                    request,
                                 )
                             }
                             showDialog = false
@@ -367,7 +377,8 @@ fun ComponentsScreen(
                         errorMessage = "Error: ${e.message ?: "Failed to save component"}"
                     }
                 }
-            })
+            },
+        )
     }
 
     if (!isReadOnly) {
@@ -384,7 +395,8 @@ fun ComponentsScreen(
                                     val token = tokenManager.token.first()
                                     if (token != null) {
                                         ApiClient.componentApiService.deleteComponent(
-                                            "Bearer $token", component.id
+                                            "Bearer $token",
+                                            component.id,
                                         )
                                         showDeleteDialog = null
                                         loadComponents()
@@ -394,7 +406,8 @@ fun ComponentsScreen(
                                         "Error: ${e.message ?: "Failed to delete component"}"
                                 }
                             }
-                        }) {
+                        },
+                    ) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
                 },
@@ -402,7 +415,8 @@ fun ComponentsScreen(
                     TextButton(onClick = { showDeleteDialog = null }) {
                         Text("Cancel")
                     }
-                })
+                },
+            )
         }
     }
 
@@ -428,6 +442,7 @@ fun ComponentsScreen(
                 showCartDialog = false
                 cartError = null
             },
-            onSubmit = { submitRequest() })
+            onSubmit = { submitRequest() },
+        )
     }
 }

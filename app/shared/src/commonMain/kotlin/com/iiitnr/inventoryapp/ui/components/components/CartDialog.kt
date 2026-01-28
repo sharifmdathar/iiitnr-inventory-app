@@ -53,7 +53,7 @@ fun CartDialog(
     onUpdateQuantity: (Component, Int) -> Unit,
     onRemoveItem: (Component) -> Unit,
     onDismiss: () -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: () -> Unit,
 ) {
     var isFacultyExpanded by remember { mutableStateOf(false) }
     val cartItems = cartQuantities.mapNotNull { (componentId, quantity) ->
@@ -62,13 +62,13 @@ fun CartDialog(
 
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Shopping Cart") }, text = {
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
         ) {
             if (cartItems.isEmpty()) {
                 Text(
                     "Cart is empty",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 cartItems.forEach { (component, quantity) ->
@@ -76,7 +76,8 @@ fun CartDialog(
                         component = component,
                         quantity = quantity,
                         onUpdateQuantity = { delta -> onUpdateQuantity(component, delta) },
-                        onRemove = { onRemoveItem(component) })
+                        onRemove = { onRemoveItem(component) },
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
@@ -89,7 +90,7 @@ fun CartDialog(
                 isLoading = isLoadingFaculty,
                 expanded = isFacultyExpanded,
                 onExpandedChange = { isFacultyExpanded = it },
-                onSelect = onSelectFaculty
+                onSelect = onSelectFaculty,
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -99,7 +100,7 @@ fun CartDialog(
                 onValueChange = onProjectTitleChange,
                 label = { Text("Project Title") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
             )
 
             if (cartError != null) {
@@ -107,14 +108,14 @@ fun CartDialog(
                 Text(
                     text = cartError,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
     }, confirmButton = {
         TextButton(
             onClick = onSubmit,
-            enabled = !isSubmitting && cartItems.isNotEmpty() && selectedFacultyId != null && projectTitle.isNotBlank()
+            enabled = !isSubmitting && cartItems.isNotEmpty() && selectedFacultyId != null && projectTitle.isNotBlank(),
         ) {
             if (isSubmitting) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -131,28 +132,31 @@ fun CartDialog(
 
 @Composable
 private fun CartItemRow(
-    component: Component, quantity: Int, onUpdateQuantity: (Int) -> Unit, onRemove: () -> Unit
+    component: Component,
+    quantity: Int,
+    onUpdateQuantity: (Int) -> Unit,
+    onRemove: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = component.name,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 text = "Available: ${component.availableQuantity}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
         ) {
             IconButton(onClick = { onUpdateQuantity(-1) }) {
                 Icon(Icons.Default.Remove, contentDescription = "Decrease")
@@ -160,10 +164,11 @@ private fun CartItemRow(
             Text(
                 text = quantity.toString(),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             )
             IconButton(
-                onClick = { onUpdateQuantity(1) }, enabled = quantity < component.availableQuantity
+                onClick = { onUpdateQuantity(1) },
+                enabled = quantity < component.availableQuantity,
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Increase")
             }
@@ -171,7 +176,7 @@ private fun CartItemRow(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Remove from cart",
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.error,
                 )
             }
         }
@@ -186,10 +191,11 @@ private fun FacultyDropdownField(
     isLoading: Boolean,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onSelect: (String?) -> Unit
+    onSelect: (String?) -> Unit,
 ) {
     ExposedDropdownMenuBox(
-        expanded = expanded, onExpandedChange = onExpandedChange
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
     ) {
         OutlinedTextField(
             value = facultyOptions.find { it.id == selectedFacultyId }
@@ -197,7 +203,8 @@ private fun FacultyDropdownField(
             onValueChange = {},
             label = { Text("Target Faculty") },
             modifier = Modifier.fillMaxWidth().menuAnchor(
-                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !isLoading
+                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                enabled = !isLoading,
             ),
             readOnly = true,
             singleLine = true,
@@ -208,9 +215,12 @@ private fun FacultyDropdownField(
                 } else {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 }
-            })
+            },
+        )
         DropdownMenu(
-            expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+        ) {
             facultyOptions.forEach { faculty ->
                 DropdownMenuItem(text = { Text(faculty.name ?: faculty.email) }, onClick = {
                     onSelect(faculty.id)

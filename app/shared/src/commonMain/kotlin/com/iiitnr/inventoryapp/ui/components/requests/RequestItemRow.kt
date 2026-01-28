@@ -15,25 +15,25 @@ import com.iiitnr.inventoryapp.data.models.RequestItem
 @Composable
 fun RequestItemRow(
     item: RequestItem,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val itemName = item.component?.name ?: item.componentId ?: "Unknown Component"
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
             text = itemName,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
         )
         Text(
             text = "x${item.quantity}",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }

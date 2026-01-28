@@ -24,7 +24,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun App(
-    tokenManager: TokenManager, onGoogleSignInClick: ((String?) -> Unit) -> Unit = {}
+    tokenManager: TokenManager,
+    onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         val navController = rememberNavController()
@@ -40,17 +41,21 @@ fun App(
 
         startDestination?.let { destination ->
             NavHost(
-                navController = navController, startDestination = destination
+                navController = navController,
+                startDestination = destination,
             ) {
                 composable("login") {
                     LoginScreen(
-                        tokenManager = tokenManager, onLoginSuccess = {
-                        navController.navigate("components") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                    }, onNavigateToRegister = {
-                        navController.navigate("register")
-                        }, onGoogleSignInClick = onGoogleSignInClick
+                        tokenManager = tokenManager,
+                        onLoginSuccess = {
+                            navController.navigate("components") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        },
+                        onNavigateToRegister = {
+                            navController.navigate("register")
+                        },
+                        onGoogleSignInClick = onGoogleSignInClick,
                     )
                 }
                 composable("register") {

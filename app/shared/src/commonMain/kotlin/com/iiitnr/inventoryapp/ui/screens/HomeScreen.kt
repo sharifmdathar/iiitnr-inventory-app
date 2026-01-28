@@ -39,7 +39,7 @@ fun HomeScreen(
     tokenManager: TokenManager,
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToRequests: () -> Unit = {}
+    onNavigateToRequests: () -> Unit = {},
 ) {
     var userData by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -82,16 +82,16 @@ fun HomeScreen(
             .fillMaxSize()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp)
+                .padding(bottom = 24.dp),
         ) {
             TextButton(
                 onClick = onNavigateBack,
-                modifier = Modifier.align(Alignment.CenterStart)
+                modifier = Modifier.align(Alignment.CenterStart),
             ) {
                 Text("Back")
             }
@@ -100,7 +100,7 @@ fun HomeScreen(
                 style = MaterialTheme.typography.headlineLarge,
                 fontSize = 32.sp,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier.align(Alignment.Center),
             )
             TextButton(
                 onClick = {
@@ -109,7 +109,7 @@ fun HomeScreen(
                         onLogout()
                     }
                 },
-                modifier = Modifier.align(Alignment.CenterEnd)
+                modifier = Modifier.align(Alignment.CenterEnd),
             ) {
                 Text("Logout")
             }
@@ -123,23 +123,23 @@ fun HomeScreen(
             errorMessage != null -> {
                 Text(
                     text = errorMessage ?: "",
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
                 )
             }
 
             userData != null -> {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(
                             text = "User Information",
                             style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = 8.dp),
                         )
 
                         HorizontalDivider()
@@ -154,7 +154,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = onNavigateToRequests,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("My Requests")
                 }
@@ -167,19 +167,19 @@ fun HomeScreen(
 fun InfoRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
             text = "$label:",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 16.dp)
+                .padding(start = 16.dp),
         )
     }
 }

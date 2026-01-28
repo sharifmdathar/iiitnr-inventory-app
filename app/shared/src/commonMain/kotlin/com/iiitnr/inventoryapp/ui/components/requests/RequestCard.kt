@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
 
-
 private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
 private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
 private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
@@ -47,7 +46,7 @@ fun RequestCard(
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
     isFaculty: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
     val cardBackground = when (request.status) {
@@ -65,22 +64,23 @@ fun RequestCard(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
-            containerColor = cardBackground, contentColor = MaterialTheme.colorScheme.onSurface
-        )
+            containerColor = cardBackground,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = request.projectTitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 if (request.status == "PENDING") {
                     if (isFaculty && onApproveRequest != null && onRejectRequest != null) {
@@ -89,14 +89,14 @@ fun RequestCard(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Reject request",
-                                    tint = MaterialTheme.colorScheme.error
+                                    tint = MaterialTheme.colorScheme.error,
                                 )
                             }
                             IconButton(onClick = { onApproveRequest(request.id) }) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = "Approve request",
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
                         }
@@ -105,7 +105,7 @@ fun RequestCard(
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Retract request",
-                                tint = MaterialTheme.colorScheme.error
+                                tint = MaterialTheme.colorScheme.error,
                             )
                         }
                     }
@@ -114,7 +114,7 @@ fun RequestCard(
                         Icon(
                             imageVector = Icons.Default.DoneAll,
                             contentDescription = "Fulfill request",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
@@ -123,20 +123,20 @@ fun RequestCard(
             Text(
                 text = request.status.lowercase().replaceFirstChar { it.uppercaseChar() },
                 style = MaterialTheme.typography.bodyMedium,
-                color = statusSubtitleColor
+                color = statusSubtitleColor,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Created: ${request.createdAt}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (request.user != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Requested by: ${request.user.name ?: request.user.email}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
             if (request.targetFaculty != null) {
@@ -144,7 +144,7 @@ fun RequestCard(
                 Text(
                     text = "Requested from: ${request.targetFaculty.name ?: request.targetFaculty.email}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
@@ -152,7 +152,7 @@ fun RequestCard(
                 text = "Components",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
             Spacer(modifier = Modifier.height(4.dp))
             request.items.forEach { item ->
