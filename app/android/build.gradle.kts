@@ -12,8 +12,7 @@ android {
     val hasReleaseSigning =
         project.hasProperty("RELEASE_KEYSTORE_PATH") ||
             !(
-                System.getenv("RELEASE_KEYSTORE_PATH")
-                    ?: ""
+                System.getenv("RELEASE_KEYSTORE_PATH").orEmpty()
             ).isBlank()
     if (hasReleaseSigning) {
         signingConfigs {
@@ -24,9 +23,9 @@ android {
                             ?: System.getenv("RELEASE_KEYSTORE_PATH")!!,
                     )
                 storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString()
-                    ?: System.getenv("RELEASE_STORE_PASSWORD") ?: ""
+                    ?: System.getenv("RELEASE_STORE_PASSWORD").orEmpty()
                 keyAlias = project.findProperty("RELEASE_KEY_ALIAS")?.toString()
-                    ?: System.getenv("RELEASE_KEY_ALIAS") ?: ""
+                    ?: System.getenv("RELEASE_KEY_ALIAS").orEmpty()
                 keyPassword = project.findProperty("RELEASE_KEY_PASSWORD")?.toString()
                     ?: System.getenv("RELEASE_KEY_PASSWORD") ?: storePassword
             }

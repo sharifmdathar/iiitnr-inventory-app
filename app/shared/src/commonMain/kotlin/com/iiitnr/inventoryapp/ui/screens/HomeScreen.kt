@@ -127,7 +127,7 @@ fun HomeScreen(
 
             errorMessage != null -> {
                 Text(
-                    text = errorMessage ?: "",
+                    text = errorMessage.orEmpty(),
                     color = MaterialTheme.colorScheme.error,
                 )
             }

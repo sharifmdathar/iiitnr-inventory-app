@@ -75,17 +75,20 @@ fun LoginScreen(
                         e.message?.contains(
                             "401",
                         ) == true ||
-                                e.message?.contains("Unauthorized") == true -> "Invalid email or password"
+                            e.message?.contains("Unauthorized") == true ->
+                            "Invalid email or password"
 
                         e.message?.contains(
                             "400",
                         ) == true ||
-                                e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
+                            e.message?.contains("Bad Request") == true ->
+                            "Invalid request. Please check your input."
 
                         e.message?.contains(
                             "Network",
                         ) == true ||
-                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                            e.message?.contains("timeout") == true ->
+                            "Network error. Please check your connection."
 
                         else -> "Login failed: ${e.message ?: "Please check your credentials"}"
                     }

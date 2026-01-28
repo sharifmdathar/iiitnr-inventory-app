@@ -199,10 +199,7 @@ private fun FacultyDropdownField(
         onExpandedChange = onExpandedChange,
     ) {
         OutlinedTextField(
-            value =
-                facultyOptions
-                    .find { it.id == selectedFacultyId }
-                    ?.let { it.name ?: it.email } ?: "",
+            value = facultyOptions.find { it.id == selectedFacultyId }?.let { it.name ?: it.email }.orEmpty(),
             onValueChange = {},
             label = { Text("Target Faculty") },
             modifier =

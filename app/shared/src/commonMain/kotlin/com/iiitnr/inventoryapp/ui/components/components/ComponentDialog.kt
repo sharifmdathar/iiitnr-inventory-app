@@ -39,14 +39,14 @@ fun ComponentDialog(
     onDismiss: () -> Unit,
     onSave: (ComponentRequest) -> Unit,
 ) {
-    var name by remember { mutableStateOf(component?.name ?: "") }
-    var description by remember { mutableStateOf(component?.description ?: "") }
+    var name by remember { mutableStateOf(component?.name.orEmpty()) }
+    var description by remember { mutableStateOf(component?.description.orEmpty()) }
     var totalQuantity by remember { mutableStateOf(component?.totalQuantity?.toString() ?: "0") }
     var availableQuantity by remember {
         mutableStateOf(component?.availableQuantity?.toString().orEmpty())
     }
-    var category by remember { mutableStateOf(component?.category ?: "") }
-    var location by remember { mutableStateOf(component?.location?.replace('_', ' ') ?: "") }
+    var category by remember { mutableStateOf(component?.category.orEmpty()) }
+    var location by remember { mutableStateOf(component?.location?.replace('_', ' ').orEmpty()) }
     var isLoading by remember { mutableStateOf(false) }
 
     AlertDialog(
