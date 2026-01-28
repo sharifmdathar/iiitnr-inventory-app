@@ -56,13 +56,13 @@ class GoogleDesktopSignInHelper(
                 httpClient.submitForm(
                     url = "https://oauth2.googleapis.com/token",
                     formParameters =
-                        Parameters.build {
-                            append("client_id", clientId)
-                            append("code", code)
-                            append("redirect_uri", redirectUri)
-                            append("grant_type", "authorization_code")
-                            clientSecret?.let { append("client_secret", it) }
-                        },
+                    Parameters.build {
+                        append("client_id", clientId)
+                        append("code", code)
+                        append("redirect_uri", redirectUri)
+                        append("grant_type", "authorization_code")
+                        clientSecret?.let { append("client_secret", it) }
+                    },
                 )
 
             if (response.status.value !in 200..299) {

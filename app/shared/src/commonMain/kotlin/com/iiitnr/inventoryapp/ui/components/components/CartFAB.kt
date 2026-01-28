@@ -32,13 +32,13 @@ fun CartFAB(
             )
             Box(
                 modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 4.dp, y = (-4).dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = CircleShape,
-                        ).size(18.dp),
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.error,
+                        shape = CircleShape,
+                    ).size(18.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

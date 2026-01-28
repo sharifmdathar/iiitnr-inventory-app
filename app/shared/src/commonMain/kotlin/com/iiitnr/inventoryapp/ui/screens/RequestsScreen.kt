@@ -220,11 +220,11 @@ fun RequestsScreen(
                         Text(
                             text = option.lowercase().replaceFirstChar { it.uppercaseChar() },
                             color =
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
                     }
                 }
@@ -236,46 +236,46 @@ fun RequestsScreen(
                 requests = filteredRequests,
                 onRetry = { loadRequests() },
                 onDeleteRequest =
-                    if (isFaculty) {
-                        null
-                    } else {
-                        { requestId ->
-                            pendingDeleteRequestId = requestId
-                        }
-                    },
+                if (isFaculty) {
+                    null
+                } else {
+                    { requestId ->
+                        pendingDeleteRequestId = requestId
+                    }
+                },
                 onApproveRequest =
-                    if (isFaculty) {
-                        { requestId ->
-                            updateRequestStatus(
-                                requestId,
-                                "APPROVED",
-                            )
-                        }
-                    } else {
-                        null
-                    },
+                if (isFaculty) {
+                    { requestId ->
+                        updateRequestStatus(
+                            requestId,
+                            "APPROVED",
+                        )
+                    }
+                } else {
+                    null
+                },
                 onRejectRequest =
-                    if (isFaculty) {
-                        { requestId ->
-                            updateRequestStatus(
-                                requestId,
-                                "REJECTED",
-                            )
-                        }
-                    } else {
-                        null
-                    },
+                if (isFaculty) {
+                    { requestId ->
+                        updateRequestStatus(
+                            requestId,
+                            "REJECTED",
+                        )
+                    }
+                } else {
+                    null
+                },
                 onFulfillRequest =
-                    if (isAdminOrTA) {
-                        { requestId ->
-                            updateRequestStatus(
-                                requestId,
-                                "FULFILLED",
-                            )
-                        }
-                    } else {
-                        null
-                    },
+                if (isAdminOrTA) {
+                    { requestId ->
+                        updateRequestStatus(
+                            requestId,
+                            "FULFILLED",
+                        )
+                    }
+                } else {
+                    null
+                },
                 isFaculty = isFaculty,
                 modifier = Modifier.padding(),
             )

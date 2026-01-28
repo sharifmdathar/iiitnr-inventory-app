@@ -20,9 +20,9 @@ fun RequestsTopBar(
 ) {
     Row(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+        modifier
+            .fillMaxWidth()
+            .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

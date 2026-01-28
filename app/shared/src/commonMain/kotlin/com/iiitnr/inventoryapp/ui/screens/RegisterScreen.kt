@@ -47,9 +47,9 @@ fun RegisterScreen(
 
     Column(
         modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+        Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -68,9 +68,9 @@ fun RegisterScreen(
             },
             label = { Text("Name (Optional)") },
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
             singleLine = true,
             enabled = !isLoading,
         )
@@ -83,9 +83,9 @@ fun RegisterScreen(
             },
             label = { Text("Email") },
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
             singleLine = true,
             enabled = !isLoading,
         )
@@ -98,9 +98,9 @@ fun RegisterScreen(
             },
             label = { Text("Password") },
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             enabled = !isLoading,
@@ -158,9 +158,9 @@ fun RegisterScreen(
                 }
             },
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
+            Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             enabled = !isLoading,
         ) {
             if (isLoading) {

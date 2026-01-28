@@ -75,17 +75,17 @@ fun LoginScreen(
                         e.message?.contains(
                             "401",
                         ) == true ||
-                                e.message?.contains("Unauthorized") == true -> "Invalid email or password"
+                            e.message?.contains("Unauthorized") == true -> "Invalid email or password"
 
                         e.message?.contains(
                             "400",
                         ) == true ||
-                                e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
+                            e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
 
                         e.message?.contains(
                             "Network",
                         ) == true ||
-                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
                         else -> "Login failed: ${e.message ?: "Please check your credentials"}"
                     }
@@ -118,15 +118,15 @@ fun LoginScreen(
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             keyboardActions =
-                KeyboardActions(
-                    onNext = {
-                        if (password.isNotBlank()) {
-                            performLogin()
-                        } else {
-                            passwordFocusRequester.requestFocus()
-                        }
-                    },
-                ),
+            KeyboardActions(
+                onNext = {
+                    if (password.isNotBlank()) {
+                        performLogin()
+                    } else {
+                        passwordFocusRequester.requestFocus()
+                    }
+                },
+            ),
         )
 
         OutlinedTextField(
@@ -137,18 +137,18 @@ fun LoginScreen(
             },
             label = { Text("Password") },
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-                    .focusRequester(passwordFocusRequester),
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+                .focusRequester(passwordFocusRequester),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions =
-                KeyboardActions(
-                    onDone = { performLogin() },
-                ),
+            KeyboardActions(
+                onDone = { performLogin() },
+            ),
         )
 
         errorMessage?.let {

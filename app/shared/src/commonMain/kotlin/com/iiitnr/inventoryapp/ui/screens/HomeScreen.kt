@@ -82,17 +82,17 @@ fun HomeScreen(
 
     Column(
         modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+        Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
         ) {
             TextButton(
                 onClick = onNavigateBack,
@@ -186,9 +186,9 @@ fun InfoRow(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
             modifier =
-                Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp),
+            Modifier
+                .weight(1f)
+                .padding(start = 16.dp),
         )
     }
 }

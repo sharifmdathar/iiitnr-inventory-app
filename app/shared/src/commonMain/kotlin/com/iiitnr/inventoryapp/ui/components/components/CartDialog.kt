@@ -200,16 +200,16 @@ private fun FacultyDropdownField(
     ) {
         OutlinedTextField(
             value =
-                facultyOptions
-                    .find { it.id == selectedFacultyId }
-                    ?.let { it.name ?: it.email } ?: "",
+            facultyOptions
+                .find { it.id == selectedFacultyId }
+                ?.let { it.name ?: it.email } ?: "",
             onValueChange = {},
             label = { Text("Target Faculty") },
             modifier =
-                Modifier.fillMaxWidth().menuAnchor(
-                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                    enabled = !isLoading,
-                ),
+            Modifier.fillMaxWidth().menuAnchor(
+                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                enabled = !isLoading,
+            ),
             readOnly = true,
             singleLine = true,
             placeholder = { Text("Select faculty...") },

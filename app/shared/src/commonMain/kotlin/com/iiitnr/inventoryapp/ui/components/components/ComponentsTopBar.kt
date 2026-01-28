@@ -53,19 +53,19 @@ fun ComponentsTopBar(
                             if (pendingRequestsCount > 99) "99+" else pendingRequestsCount.toString()
                         Box(
                             modifier =
-                                Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 4.dp, y = (-4).dp)
-                                    .size(if (pendingRequestsCount >= 10) 16.dp else 14.dp)
-                                    .background(MaterialTheme.colorScheme.error, CircleShape),
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 4.dp, y = (-4).dp)
+                                .size(if (pendingRequestsCount >= 10) 16.dp else 14.dp)
+                                .background(MaterialTheme.colorScheme.error, CircleShape),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = count,
                                 style =
-                                    MaterialTheme.typography.labelSmall.copy(
-                                        lineHeight = 12.sp,
-                                    ),
+                                MaterialTheme.typography.labelSmall.copy(
+                                    lineHeight = 12.sp,
+                                ),
                                 color = MaterialTheme.colorScheme.onError,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth(),

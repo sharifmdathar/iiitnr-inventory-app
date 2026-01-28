@@ -72,10 +72,10 @@ fun RequestCard(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors =
-            CardDefaults.cardColors(
-                containerColor = cardBackground,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
+        CardDefaults.cardColors(
+            containerColor = cardBackground,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),

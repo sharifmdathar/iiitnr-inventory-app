@@ -14,7 +14,7 @@ android {
             !(
                 System.getenv("RELEASE_KEYSTORE_PATH")
                     ?: ""
-            ).isBlank()
+                ).isBlank()
     if (hasReleaseSigning) {
         signingConfigs {
             create("release") {
