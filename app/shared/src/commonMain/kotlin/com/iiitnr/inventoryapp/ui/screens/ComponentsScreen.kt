@@ -69,30 +69,36 @@ fun ComponentsScreen(
 
     val isFaculty = userRole?.uppercase() == "FACULTY"
 
-    val isReadOnly = userRole?.let { role ->
-        val roleUpper = role.uppercase()
-        roleUpper != "TA" && roleUpper != "ADMIN"
-    } ?: true
-
-    val filteredComponents = components.filter { component ->
-        val query = searchQuery.trim().lowercase()
-        val matchesSearch = query.isBlank() || listOfNotNull(
-            component.name,
-            component.description,
-            component.category,
-            component.location,
-        ).any { it.contains(query, ignoreCase = true) }
-
-        val matchesCategory = categoryFilter?.let { filter ->
-            component.category?.replace("_", " ")?.equals(filter, ignoreCase = true) ?: false
+    val isReadOnly =
+        userRole?.let { role ->
+            val roleUpper = role.uppercase()
+            roleUpper != "TA" && roleUpper != "ADMIN"
         } ?: true
 
-        val matchesLocation = locationFilter?.let { filter ->
-            component.location?.replace("_", " ")?.equals(filter, ignoreCase = true) ?: false
-        } ?: true
+    val filteredComponents =
+        components.filter { component ->
+            val query = searchQuery.trim().lowercase()
+            val matchesSearch =
+                query.isBlank() ||
+                    listOfNotNull(
+                        component.name,
+                        component.description,
+                        component.category,
+                        component.location,
+                    ).any { it.contains(query, ignoreCase = true) }
 
-        matchesSearch && matchesCategory && matchesLocation
-    }
+            val matchesCategory =
+                categoryFilter?.let { filter ->
+                    component.category?.replace("_", " ")?.equals(filter, ignoreCase = true) ?: false
+                } ?: true
+
+            val matchesLocation =
+                locationFilter?.let { filter ->
+                    component.location?.replace("_", " ")?.equals(filter, ignoreCase = true) ?: false
+                } ?: true
+
+            matchesSearch && matchesCategory && matchesLocation
+        }
 
     fun loadComponents() {
         scope.launch {
@@ -113,28 +119,39 @@ fun ComponentsScreen(
                     errorMessage = "No authentication token"
                 }
             } catch (e: Exception) {
-                errorMessage = when {
-                    e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
+                errorMessage =
+                    when {
+                        e.message?.contains(
+                            "401",
+                        ) == true ||
+                            e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
 
-                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                        e.message?.contains(
+                            "Network",
+                        ) == true ||
+                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
-                    else -> "Error: ${e.message ?: "Failed to load components"}"
-                }
+                        else -> "Error: ${e.message ?: "Failed to load components"}"
+                    }
             } finally {
                 isLoading = false
             }
         }
     }
 
-    fun updateCartQuantity(component: Component, delta: Int) {
+    fun updateCartQuantity(
+        component: Component,
+        delta: Int,
+    ) {
         val current = cartQuantities[component.id] ?: 0
         val maxAllowed = component.availableQuantity
         val next = (current + delta).coerceIn(0, maxAllowed)
-        cartQuantities = if (next == 0) {
-            cartQuantities - component.id
-        } else {
-            cartQuantities + (component.id to next)
-        }
+        cartQuantities =
+            if (next == 0) {
+                cartQuantities - component.id
+            } else {
+                cartQuantities + (component.id to next)
+            }
     }
 
     fun submitRequest() {
@@ -183,13 +200,20 @@ fun ComponentsScreen(
                     cartError = "No authentication token"
                 }
             } catch (e: Exception) {
-                cartError = when {
-                    e.message?.contains("400") == true || e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
+                cartError =
+                    when {
+                        e.message?.contains(
+                            "400",
+                        ) == true ||
+                            e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
 
-                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                        e.message?.contains(
+                            "Network",
+                        ) == true ||
+                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
-                    else -> "Error: ${e.message ?: "Failed to create request"}"
-                }
+                        else -> "Error: ${e.message ?: "Failed to create request"}"
+                    }
             } finally {
                 isSubmittingRequest = false
             }
@@ -273,9 +297,11 @@ fun ComponentsScreen(
                 val categoryOptions = listOf("All") + ComponentCategory.labels
                 items(categoryOptions) { option ->
                     val isSelected =
-                        (categoryFilter == null && option == "All") || categoryFilter.equals(
-                            option, ignoreCase = true,
-                        )
+                        (categoryFilter == null && option == "All") ||
+                            categoryFilter.equals(
+                                option,
+                                ignoreCase = true,
+                            )
                     TextButton(
                         onClick = {
                             categoryFilter = if (option == "All") null else option
@@ -283,11 +309,12 @@ fun ComponentsScreen(
                     ) {
                         Text(
                             text = option,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }
@@ -297,14 +324,15 @@ fun ComponentsScreen(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.Center,
-
             ) {
                 val locationOptions = listOf("All") + ComponentLocation.labels
                 items(locationOptions) { option ->
                     val isSelected =
-                        (locationFilter == null && option == "All") || locationFilter.equals(
-                            option, ignoreCase = true,
-                        )
+                        (locationFilter == null && option == "All") ||
+                            locationFilter.equals(
+                                option,
+                                ignoreCase = true,
+                            )
                     TextButton(
                         onClick = {
                             locationFilter = if (option == "All") null else option
@@ -312,11 +340,12 @@ fun ComponentsScreen(
                     ) {
                         Text(
                             text = option,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }

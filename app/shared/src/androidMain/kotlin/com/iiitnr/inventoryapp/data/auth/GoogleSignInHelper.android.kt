@@ -29,18 +29,22 @@ class GoogleSignInHelper(
 
         val nonce = generateNonce()
 
-        val signInWithGoogleOption = GetSignInWithGoogleOption.Builder(
-            serverClientId = webClientId,
-        ).setNonce(nonce).build()
+        val signInWithGoogleOption =
+            GetSignInWithGoogleOption
+                .Builder(
+                    serverClientId = webClientId,
+                ).setNonce(nonce)
+                .build()
 
         val request =
             GetCredentialRequest.Builder().addCredentialOption(signInWithGoogleOption).build()
 
         return try {
-            val result = credentialManager.getCredential(
-                request = request,
-                context = context,
-            )
+            val result =
+                credentialManager.getCredential(
+                    request = request,
+                    context = context,
+                )
             handleSignInResult(result)
         } catch (_: NoCredentialException) {
             null
@@ -57,8 +61,8 @@ class GoogleSignInHelper(
         }
     }
 
-    private fun handleSignInResult(result: androidx.credentials.GetCredentialResponse): String? {
-        return when (val credential = result.credential) {
+    private fun handleSignInResult(result: androidx.credentials.GetCredentialResponse): String? =
+        when (val credential = result.credential) {
             is CustomCredential -> {
                 if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                     try {
@@ -94,7 +98,6 @@ class GoogleSignInHelper(
                 null
             }
         }
-    }
 
     private fun generateNonce(): String {
         val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"

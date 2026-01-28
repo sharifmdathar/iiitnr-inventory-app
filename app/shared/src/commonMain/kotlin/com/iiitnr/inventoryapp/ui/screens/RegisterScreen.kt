@@ -46,9 +46,10 @@ fun RegisterScreen(
     val scope = rememberCoroutineScope()
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -66,9 +67,10 @@ fun RegisterScreen(
                 errorMessage = null
             },
             label = { Text("Name (Optional)") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
             singleLine = true,
             enabled = !isLoading,
         )
@@ -80,9 +82,10 @@ fun RegisterScreen(
                 errorMessage = null
             },
             label = { Text("Email") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
             singleLine = true,
             enabled = !isLoading,
         )
@@ -94,9 +97,10 @@ fun RegisterScreen(
                 errorMessage = null
             },
             label = { Text("Password") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             enabled = !isLoading,
@@ -124,33 +128,39 @@ fun RegisterScreen(
                 errorMessage = null
                 scope.launch {
                     try {
-                        val response = ApiClient.authApiService.register(
-                            RegisterRequest(
-                                email = email.trim(),
-                                password = password,
-                                name = name.takeIf { it.isNotBlank() },
-                            ),
-                        )
+                        val response =
+                            ApiClient.authApiService.register(
+                                RegisterRequest(
+                                    email = email.trim(),
+                                    password = password,
+                                    name = name.takeIf { it.isNotBlank() },
+                                ),
+                            )
                         tokenManager.saveToken(response.token)
                         onRegisterSuccess()
                     } catch (e: Exception) {
-                        errorMessage = when {
-                            e.message?.contains("400") == true || e.message?.contains("Bad Request") == true ->
-                                "Invalid request. Please check your input."
-                            e.message?.contains("409") == true || e.message?.contains("Conflict") == true ->
-                                "Email already exists"
-                            e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
-                                "Network error. Please check your connection."
-                            else ->
-                                "Registration failed: ${e.message ?: "Please try again"}"
-                        }
+                        errorMessage =
+                            when {
+                                e.message?.contains("400") == true || e.message?.contains("Bad Request") == true ->
+                                    "Invalid request. Please check your input."
+
+                                e.message?.contains("409") == true || e.message?.contains("Conflict") == true ->
+                                    "Email already exists"
+
+                                e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
+                                    "Network error. Please check your connection."
+
+                                else ->
+                                    "Registration failed: ${e.message ?: "Please try again"}"
+                            }
                         isLoading = false
                     }
                 }
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
             enabled = !isLoading,
         ) {
             if (isLoading) {

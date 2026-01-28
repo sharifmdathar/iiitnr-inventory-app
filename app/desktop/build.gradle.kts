@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
@@ -15,8 +17,46 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
             }
+            resources.srcDir("src/jvmMain/resources")
         }
     }
+}
+
+tasks.register("populateGoogleConfig") {
+    doLast {
+        val propertiesFile = project.file("src/jvmMain/resources/google-desktop-config.properties")
+        val properties = Properties()
+
+        if (propertiesFile.exists()) {
+            propertiesFile.inputStream().use { stream ->
+                properties.load(stream)
+            }
+        }
+
+        val clientId = System.getenv("GOOGLE_DESKTOP_CLIENT_ID")
+        if (clientId != null && clientId.isNotBlank()) {
+            properties.setProperty("google.desktop.client.id", clientId)
+        }
+
+        val clientSecret = System.getenv("GOOGLE_DESKTOP_CLIENT_SECRET")
+        if (clientSecret != null && clientSecret.isNotBlank()) {
+            properties.setProperty("google.desktop.client.secret", clientSecret)
+        }
+
+        val redirectUri = System.getenv("GOOGLE_DESKTOP_REDIRECT_URI")
+        if (redirectUri != null && redirectUri.isNotBlank()) {
+            properties.setProperty("google.desktop.redirect.uri", redirectUri)
+        }
+
+        propertiesFile.parentFile.mkdirs()
+        propertiesFile.outputStream().use { stream ->
+            properties.store(stream, "Google Desktop OAuth Configuration - Auto-generated from environment variables")
+        }
+    }
+}
+
+tasks.named("jvmProcessResources") {
+    dependsOn("populateGoogleConfig")
 }
 
 compose.desktop {
@@ -38,12 +78,15 @@ compose.desktop {
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"
+            includeAllModules = true
 
             windows {
                 val icon = project.file("icon.ico")
                 if (icon.exists()) {
                     iconFile.set(icon)
                 }
+                menu = true
+                shortcut = true
             }
         }
     }

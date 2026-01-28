@@ -68,4 +68,6 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-desktop = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "14.0.1" }
+detekt = { id = "dev.detekt", version = "2.0.0-alpha.2" }
 

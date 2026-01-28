@@ -5,4 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-expect fun VerticalScrollbarOrEmpty(state: LazyListState, modifier: Modifier = Modifier)
+expect fun VerticalScrollbarOrEmpty(
+    state: LazyListState,
+    modifier: Modifier = Modifier,
+)

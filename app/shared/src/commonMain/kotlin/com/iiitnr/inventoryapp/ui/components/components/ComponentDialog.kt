@@ -95,8 +95,9 @@ fun ComponentDialog(
                             name = name.trim(),
                             description = description.trim().takeIf { it.isNotBlank() },
                             totalQuantity = totalQuantity.toIntOrNull() ?: 0,
-                            availableQuantity = availableQuantity.toIntOrNull()
-                                ?: totalQuantity.toIntOrNull(),
+                            availableQuantity =
+                                availableQuantity.toIntOrNull()
+                                    ?: totalQuantity.toIntOrNull(),
                             category = category.trim().takeIf { it.isNotBlank() },
                             location = location.trim().takeIf { it.isNotBlank() },
                         ),
@@ -225,10 +226,11 @@ private fun CategoryDropdownField(
             value = value,
             onValueChange = {},
             label = { Text("Category") },
-            modifier = Modifier.fillMaxWidth().menuAnchor(
-                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                enabled = true,
-            ),
+            modifier =
+                Modifier.fillMaxWidth().menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                    enabled = true,
+                ),
             readOnly = true,
             singleLine = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -264,10 +266,11 @@ private fun LocationDropdownField(
             value = value,
             onValueChange = {},
             label = { Text("Location") },
-            modifier = Modifier.fillMaxWidth().menuAnchor(
-                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                enabled = true,
-            ),
+            modifier =
+                Modifier.fillMaxWidth().menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                    enabled = true,
+                ),
             readOnly = true,
             singleLine = true,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },

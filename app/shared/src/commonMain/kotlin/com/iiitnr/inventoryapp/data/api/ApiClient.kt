@@ -15,20 +15,21 @@ object ApiClient {
     // For Android Emulator: "http://10.0.2.2:4000"
     // For Desktop: "http://localhost:4000"
 
-    val client: HttpClient = createHttpClient {
-        install(ContentNegotiation) {
-            json(
-                Json {
-                    ignoreUnknownKeys = true
-                    isLenient = true
-                    encodeDefaults = false
-                },
-            )
+    val client: HttpClient =
+        createHttpClient {
+            install(ContentNegotiation) {
+                json(
+                    Json {
+                        ignoreUnknownKeys = true
+                        isLenient = true
+                        encodeDefaults = false
+                    },
+                )
+            }
+            install(Logging) {
+                level = LogLevel.BODY
+            }
         }
-        install(Logging) {
-            level = LogLevel.BODY
-        }
-    }
 
     val authApiService: AuthApiService = AuthApiService(client, BASE_URL)
     val componentApiService: ComponentApiService = ComponentApiService(client, BASE_URL)

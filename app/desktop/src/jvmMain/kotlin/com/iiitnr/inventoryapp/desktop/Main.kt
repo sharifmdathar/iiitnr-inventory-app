@@ -15,10 +15,23 @@ import kotlinx.coroutines.launch
 fun main() = application {
     val tokenManager = createTokenManager()
 
-    val desktopClientId = System.getenv("GOOGLE_DESKTOP_CLIENT_ID") ?: ""
-    val desktopClientSecret = System.getenv("GOOGLE_DESKTOP_CLIENT_SECRET")
-    val redirectUri =
-        System.getenv("GOOGLE_DESKTOP_REDIRECT_URI") ?: "http://127.0.0.1:5173/callback"
+    val properties = try {
+        val classLoader = Thread.currentThread().contextClassLoader
+            ?: ClassLoader.getSystemClassLoader()
+        val stream = classLoader.getResourceAsStream("google-desktop-config.properties")
+        stream?.use { java.util.Properties().apply { load(it) } } ?: java.util.Properties()
+    } catch (_: Exception) {
+        java.util.Properties()
+    }
+
+    val desktopClientId = properties.getProperty("google.desktop.client.id")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("GOOGLE_DESKTOP_CLIENT_ID")
+        ?: ""
+    val desktopClientSecret = properties.getProperty("google.desktop.client.secret")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("GOOGLE_DESKTOP_CLIENT_SECRET")
+    val redirectUri = properties.getProperty("google.desktop.redirect.uri")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("GOOGLE_DESKTOP_REDIRECT_URI")
+        ?: "http://127.0.0.1:5173/callback"
 
     val httpClient = HttpClient(CIO)
     val googleHelper = GoogleDesktopSignInHelper(

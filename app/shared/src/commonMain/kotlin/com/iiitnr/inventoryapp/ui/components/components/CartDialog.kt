@@ -56,9 +56,10 @@ fun CartDialog(
     onSubmit: () -> Unit,
 ) {
     var isFacultyExpanded by remember { mutableStateOf(false) }
-    val cartItems = cartQuantities.mapNotNull { (componentId, quantity) ->
-        components.find { it.id == componentId }?.let { it to quantity }
-    }
+    val cartItems =
+        cartQuantities.mapNotNull { (componentId, quantity) ->
+            components.find { it.id == componentId }?.let { it to quantity }
+        }
 
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Shopping Cart") }, text = {
         Column(
@@ -198,14 +199,17 @@ private fun FacultyDropdownField(
         onExpandedChange = onExpandedChange,
     ) {
         OutlinedTextField(
-            value = facultyOptions.find { it.id == selectedFacultyId }
-                ?.let { it.name ?: it.email } ?: "",
+            value =
+                facultyOptions
+                    .find { it.id == selectedFacultyId }
+                    ?.let { it.name ?: it.email } ?: "",
             onValueChange = {},
             label = { Text("Target Faculty") },
-            modifier = Modifier.fillMaxWidth().menuAnchor(
-                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                enabled = !isLoading,
-            ),
+            modifier =
+                Modifier.fillMaxWidth().menuAnchor(
+                    type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                    enabled = !isLoading,
+                ),
             readOnly = true,
             singleLine = true,
             placeholder = { Text("Select faculty...") },

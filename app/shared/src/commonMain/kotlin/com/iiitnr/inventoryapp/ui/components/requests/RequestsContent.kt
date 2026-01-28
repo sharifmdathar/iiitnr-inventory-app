@@ -26,18 +26,21 @@ fun RequestsContent(
         when {
             isLoading -> LoadingIndicator()
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
-            requests.isEmpty() -> EmptyState(
-                message = if (isFaculty) "No pending requests" else "No requests yet",
-                subtitle = if (!isFaculty) "Tap the + button to create a request" else null,
-            )
-            else -> RequestsList(
-                requests = requests,
-                onDeleteRequest = onDeleteRequest,
-                onApproveRequest = onApproveRequest,
-                onRejectRequest = onRejectRequest,
-                onFulfillRequest = onFulfillRequest,
-                isFaculty = isFaculty,
-            )
+            requests.isEmpty() ->
+                EmptyState(
+                    message = if (isFaculty) "No pending requests" else "No requests yet",
+                    subtitle = if (!isFaculty) "Tap the + button to create a request" else null,
+                )
+
+            else ->
+                RequestsList(
+                    requests = requests,
+                    onDeleteRequest = onDeleteRequest,
+                    onApproveRequest = onApproveRequest,
+                    onRejectRequest = onRejectRequest,
+                    onFulfillRequest = onFulfillRequest,
+                    isFaculty = isFaculty,
+                )
         }
     }
 }

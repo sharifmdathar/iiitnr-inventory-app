@@ -18,43 +18,55 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 
-class RequestApiService(private val client: HttpClient, private val baseUrl: String) {
-    suspend fun createRequest(token: String, payload: CreateRequestPayload): RequestResponse {
-        return client.post("$baseUrl/requests") {
-            headers {
-                append(HttpHeaders.Authorization, token)
-            }
-            contentType(ContentType.Application.Json)
-            setBody(payload)
-        }.body()
-    }
+class RequestApiService(
+    private val client: HttpClient,
+    private val baseUrl: String,
+) {
+    suspend fun createRequest(
+        token: String,
+        payload: CreateRequestPayload,
+    ): RequestResponse =
+        client
+            .post("$baseUrl/requests") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }.body()
 
-    suspend fun getRequests(token: String, status: String? = null): RequestsResponse {
-        return client.get("$baseUrl/requests") {
-            headers {
-                append(HttpHeaders.Authorization, token)
-            }
-            if (status != null) {
-                parameter("status", status)
-            }
-        }.body()
-    }
+    suspend fun getRequests(
+        token: String,
+        status: String? = null,
+    ): RequestsResponse =
+        client
+            .get("$baseUrl/requests") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+                if (status != null) {
+                    parameter("status", status)
+                }
+            }.body()
 
     suspend fun updateRequestStatus(
         token: String,
         id: String,
         payload: UpdateRequestStatusPayload,
-    ): RequestResponse {
-        return client.put("$baseUrl/requests/$id") {
-            headers {
-                append(HttpHeaders.Authorization, token)
-            }
-            contentType(ContentType.Application.Json)
-            setBody(payload)
-        }.body()
-    }
+    ): RequestResponse =
+        client
+            .put("$baseUrl/requests/$id") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+                contentType(ContentType.Application.Json)
+                setBody(payload)
+            }.body()
 
-    suspend fun deleteRequest(token: String, id: String) {
+    suspend fun deleteRequest(
+        token: String,
+        id: String,
+    ) {
         client.delete("$baseUrl/requests/$id") {
             headers {
                 append(HttpHeaders.Authorization, token)
@@ -62,11 +74,11 @@ class RequestApiService(private val client: HttpClient, private val baseUrl: Str
         }
     }
 
-    suspend fun getFaculty(token: String): FacultyResponse {
-        return client.get("$baseUrl/faculty") {
-            headers {
-                append(HttpHeaders.Authorization, token)
-            }
-        }.body()
-    }
+    suspend fun getFaculty(token: String): FacultyResponse =
+        client
+            .get("$baseUrl/faculty") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+            }.body()
 }

@@ -15,40 +15,49 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 
-class ComponentApiService(private val client: HttpClient, private val baseUrl: String) {
-    suspend fun getComponents(token: String): ComponentsResponse {
-        return client.get("$baseUrl/components") {
-            headers {
-                append(HttpHeaders.Authorization, token)
-            }
-        }.body()
-    }
+class ComponentApiService(
+    private val client: HttpClient,
+    private val baseUrl: String,
+) {
+    suspend fun getComponents(token: String): ComponentsResponse =
+        client
+            .get("$baseUrl/components") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+            }.body()
 
-    suspend fun createComponent(token: String, request: ComponentRequest): ComponentResponse {
-        return client.post("$baseUrl/components") {
-            headers {
-                append(HttpHeaders.Authorization, token)
-            }
-            contentType(ContentType.Application.Json)
-            setBody(request)
-        }.body()
-    }
+    suspend fun createComponent(
+        token: String,
+        request: ComponentRequest,
+    ): ComponentResponse =
+        client
+            .post("$baseUrl/components") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body()
 
     suspend fun updateComponent(
         token: String,
         id: String,
         request: ComponentRequest,
-    ): ComponentResponse {
-        return client.put("$baseUrl/components/$id") {
-            headers {
-                append(HttpHeaders.Authorization, token)
-            }
-            contentType(ContentType.Application.Json)
-            setBody(request)
-        }.body()
-    }
+    ): ComponentResponse =
+        client
+            .put("$baseUrl/components/$id") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+                contentType(ContentType.Application.Json)
+                setBody(request)
+            }.body()
 
-    suspend fun deleteComponent(token: String, id: String) {
+    suspend fun deleteComponent(
+        token: String,
+        id: String,
+    ) {
         client.delete("$baseUrl/components/$id") {
             headers {
                 append(HttpHeaders.Authorization, token)

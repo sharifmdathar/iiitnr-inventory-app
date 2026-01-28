@@ -70,15 +70,25 @@ fun LoginScreen(
                 tokenManager.saveToken(authResponse.token)
                 onLoginSuccess()
             } catch (e: Exception) {
-                errorMessage = when {
-                    e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true -> "Invalid email or password"
+                errorMessage =
+                    when {
+                        e.message?.contains(
+                            "401",
+                        ) == true ||
+                                e.message?.contains("Unauthorized") == true -> "Invalid email or password"
 
-                    e.message?.contains("400") == true || e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
+                        e.message?.contains(
+                            "400",
+                        ) == true ||
+                                e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
 
-                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                        e.message?.contains(
+                            "Network",
+                        ) == true ||
+                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
-                    else -> "Login failed: ${e.message ?: "Please check your credentials"}"
-                }
+                        else -> "Login failed: ${e.message ?: "Please check your credentials"}"
+                    }
                 isLoading = false
             }
         }
@@ -107,15 +117,16 @@ fun LoginScreen(
             singleLine = true,
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = {
-                    if (password.isNotBlank()) {
-                        performLogin()
-                    } else {
-                        passwordFocusRequester.requestFocus()
-                    }
-                },
-            ),
+            keyboardActions =
+                KeyboardActions(
+                    onNext = {
+                        if (password.isNotBlank()) {
+                            performLogin()
+                        } else {
+                            passwordFocusRequester.requestFocus()
+                        }
+                    },
+                ),
         )
 
         OutlinedTextField(
@@ -125,15 +136,19 @@ fun LoginScreen(
                 errorMessage = null
             },
             label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
-                .focusRequester(passwordFocusRequester),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp)
+                    .focusRequester(passwordFocusRequester),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             enabled = !isLoading,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(
-                onDone = { performLogin() },
-            ),
+            keyboardActions =
+                KeyboardActions(
+                    onDone = { performLogin() },
+                ),
         )
 
         errorMessage?.let {
@@ -170,40 +185,53 @@ fun LoginScreen(
                     if (idToken != null) {
                         scope.launch {
                             try {
-                                val authResponse = ApiClient.authApiService.signInWithGoogle(
-                                    GoogleSignInRequest(idToken),
-                                )
+                                val authResponse =
+                                    ApiClient.authApiService.signInWithGoogle(
+                                        GoogleSignInRequest(idToken),
+                                    )
                                 tokenManager.saveToken(authResponse.token)
                                 onLoginSuccess()
                             } catch (e: Exception) {
                                 val errorMsg = e.message ?: "Unknown error"
-                                errorMessage = when {
-                                    errorMsg.contains("403") -> {
-                                        when {
-                                            errorMsg.contains("email addresses are allowed") -> {
-                                                errorMsg.substringAfter(": ")
-                                                    .takeIf { it.isNotBlank() }
-                                                    ?: "Only @iiitnr.edu.in email addresses are allowed."
+                                errorMessage =
+                                    when {
+                                        errorMsg.contains("403") -> {
+                                            when {
+                                                errorMsg.contains("email addresses are allowed") -> {
+                                                    errorMsg
+                                                        .substringAfter(": ")
+                                                        .takeIf { it.isNotBlank() }
+                                                        ?: "Only @iiitnr.edu.in email addresses are allowed."
+                                                }
+
+                                                else ->
+                                                    "Access denied. Only @iiitnr.edu.in email addresses are allowed."
                                             }
-
-                                            else -> "Access denied. Only @iiitnr.edu.in email addresses are allowed."
                                         }
-                                    }
 
-                                    errorMsg.contains("401") -> "Google Sign-In failed: Unauthorized"
-                                    errorMsg.contains("400") -> {
-                                        when {
-                                            errorMsg.contains("audience") -> "Token verification failed. Check backend configuration."
-                                            errorMsg.contains("email not verified") -> "Google account email is not verified"
-                                            else -> errorMsg.substringAfter(": ")
-                                                .takeIf { it.isNotBlank() }
+                                        errorMsg.contains("401") -> "Google Sign-In failed: Unauthorized"
+                                        errorMsg.contains("400") -> {
+                                            when {
+                                                errorMsg.contains(
+                                                    "audience",
+                                                ) -> "Token verification failed. Check backend configuration."
+
+                                                errorMsg.contains(
+                                                    "email not verified",
+                                                ) -> "Google account email is not verified"
+
+                                                else ->
+                                                    errorMsg
+                                                        .substringAfter(": ")
+                                                        .takeIf { it.isNotBlank() }
+                                                        ?: "Google Sign-In failed"
+                                            }
+                                        }
+
+                                        else ->
+                                            errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
                                                 ?: "Google Sign-In failed"
-                                        }
                                     }
-
-                                    else -> errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
-                                        ?: "Google Sign-In failed"
-                                }
                             }
                         }
                     } else {

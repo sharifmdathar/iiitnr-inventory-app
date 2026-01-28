@@ -11,14 +11,17 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth_preferences")
 
-class AndroidTokenManager(private val context: Context) : TokenManager {
+class AndroidTokenManager(
+    private val context: Context,
+) : TokenManager {
     companion object {
         private val TOKEN_KEY = stringPreferencesKey("auth_token")
     }
 
-    override val token: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[TOKEN_KEY]
-    }
+    override val token: Flow<String?> =
+        context.dataStore.data.map { preferences ->
+            preferences[TOKEN_KEY]
+        }
 
     override suspend fun saveToken(token: String) {
         context.dataStore.edit { preferences ->
@@ -33,8 +36,7 @@ class AndroidTokenManager(private val context: Context) : TokenManager {
     }
 }
 
-actual fun createTokenManager(): TokenManager {
+actual fun createTokenManager(): TokenManager =
     throw NotImplementedError("TokenManager must be created with Context on Android")
-}
 
 fun createTokenManager(context: Context): TokenManager = AndroidTokenManager(context)

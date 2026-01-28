@@ -30,4 +30,4 @@ coverage/
 *.AppImage
 
 app/android/app-release.jks
-
+app/desktop/src/jvmMain/resources/google-desktop-config.properties

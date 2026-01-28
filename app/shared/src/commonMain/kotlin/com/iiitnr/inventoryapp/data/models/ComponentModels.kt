@@ -2,7 +2,9 @@ package com.iiitnr.inventoryapp.data.models
 
 import kotlinx.serialization.Serializable
 
-enum class ComponentCategory(val label: String) {
+enum class ComponentCategory(
+    val label: String,
+) {
     SENSORS("Sensors"),
     ACTUATORS("Actuators"),
     MICROCONTROLLERS("Microcontrollers"),
@@ -15,7 +17,9 @@ enum class ComponentCategory(val label: String) {
     }
 }
 
-enum class ComponentLocation(val label: String) {
+enum class ComponentLocation(
+    val label: String,
+) {
     IOT_LAB("IoT Lab"),
     ROBO_LAB("Robo Lab"),
     VLSI_LAB("VLSI Lab"),

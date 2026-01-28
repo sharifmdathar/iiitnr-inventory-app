@@ -19,9 +19,10 @@ fun RequestItemRow(
 ) {
     val itemName = item.component?.name ?: item.componentId ?: "Unknown Component"
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(

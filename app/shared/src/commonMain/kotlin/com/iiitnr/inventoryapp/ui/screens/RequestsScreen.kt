@@ -55,20 +55,22 @@ fun RequestsScreen(
         currentUser?.role?.uppercase() == "ADMIN" || currentUser?.role?.uppercase() == "TA"
 
     val query = searchQuery.trim()
-    val filteredRequests = requests.filter { request ->
-        val matchesStatus = statusFilter?.let { it == request.status } ?: true
-        val textMatches = listOfNotNull(
-            request.projectTitle,
-            request.user?.name,
-            request.user?.email,
-            request.targetFaculty?.name,
-            request.targetFaculty?.email,
-        ).any { it.contains(query, ignoreCase = true) }
-        val itemMatches =
-            request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
+    val filteredRequests =
+        requests.filter { request ->
+            val matchesStatus = statusFilter?.let { it == request.status } ?: true
+            val textMatches =
+                listOfNotNull(
+                    request.projectTitle,
+                    request.user?.name,
+                    request.user?.email,
+                    request.targetFaculty?.name,
+                    request.targetFaculty?.email,
+                ).any { it.contains(query, ignoreCase = true) }
+            val itemMatches =
+                request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
 
-        matchesStatus && (query.isBlank() || textMatches || itemMatches)
-    }
+            matchesStatus && (query.isBlank() || textMatches || itemMatches)
+        }
 
     fun loadRequests() {
         scope.launch {
@@ -83,13 +85,20 @@ fun RequestsScreen(
                     errorMessage = "No authentication token"
                 }
             } catch (e: Exception) {
-                errorMessage = when {
-                    e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
+                errorMessage =
+                    when {
+                        e.message?.contains(
+                            "401",
+                        ) == true ||
+                            e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
 
-                    e.message?.contains("Network") == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                        e.message?.contains(
+                            "Network",
+                        ) == true ||
+                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
-                    else -> "Error: ${e.message ?: "Failed to load requests"}"
-                }
+                        else -> "Error: ${e.message ?: "Failed to load requests"}"
+                    }
             } finally {
                 isLoading = false
             }
@@ -112,7 +121,10 @@ fun RequestsScreen(
         }
     }
 
-    fun updateRequestStatus(requestId: String, status: String) {
+    fun updateRequestStatus(
+        requestId: String,
+        status: String,
+    ) {
         scope.launch {
             try {
                 val token = tokenManager.token.first()
@@ -207,11 +219,12 @@ fun RequestsScreen(
                     ) {
                         Text(
                             text = option.lowercase().replaceFirstChar { it.uppercaseChar() },
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            color =
+                                if (isSelected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }
@@ -222,43 +235,47 @@ fun RequestsScreen(
                 errorMessage = errorMessage,
                 requests = filteredRequests,
                 onRetry = { loadRequests() },
-                onDeleteRequest = if (isFaculty) {
-                    null
-                } else {
-                    { requestId ->
-                        pendingDeleteRequestId = requestId
-                    }
-                },
-                onApproveRequest = if (isFaculty) {
-                    { requestId ->
-                        updateRequestStatus(
-                            requestId,
-                            "APPROVED",
-                        )
-                    }
-                } else {
-                    null
-                },
-                onRejectRequest = if (isFaculty) {
-                    { requestId ->
-                        updateRequestStatus(
-                            requestId,
-                            "REJECTED",
-                        )
-                    }
-                } else {
-                    null
-                },
-                onFulfillRequest = if (isAdminOrTA) {
-                    { requestId ->
-                        updateRequestStatus(
-                            requestId,
-                            "FULFILLED",
-                        )
-                    }
-                } else {
-                    null
-                },
+                onDeleteRequest =
+                    if (isFaculty) {
+                        null
+                    } else {
+                        { requestId ->
+                            pendingDeleteRequestId = requestId
+                        }
+                    },
+                onApproveRequest =
+                    if (isFaculty) {
+                        { requestId ->
+                            updateRequestStatus(
+                                requestId,
+                                "APPROVED",
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                onRejectRequest =
+                    if (isFaculty) {
+                        { requestId ->
+                            updateRequestStatus(
+                                requestId,
+                                "REJECTED",
+                            )
+                        }
+                    } else {
+                        null
+                    },
+                onFulfillRequest =
+                    if (isAdminOrTA) {
+                        { requestId ->
+                            updateRequestStatus(
+                                requestId,
+                                "FULFILLED",
+                            )
+                        }
+                    } else {
+                        null
+                    },
                 isFaculty = isFaculty,
                 modifier = Modifier.padding(),
             )

@@ -1,4 +1,4 @@
-name: Release APK and EXE
+name: Release APK and Desktop Installers
 
 on:
   release:
@@ -79,24 +79,35 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5.0.0
 
-      - name: Build Desktop EXE
+      - name: Build Desktop installers (EXE + MSI)
         working-directory: app
         env:
           GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
           GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
           GOOGLE_DESKTOP_REDIRECT_URI: ${{ secrets.GOOGLE_DESKTOP_REDIRECT_URI }}
-        run: .\gradlew.bat :desktop:packageExe -PbuildInstallers=true --parallel --build-cache
+        run: |
+          .\gradlew.bat :desktop:packageExe -PbuildInstallers=true --parallel --build-cache
+          .\gradlew.bat :desktop:packageMsi -PbuildInstallers=true --parallel --build-cache
 
-      - name: Locate and copy EXE
+      - name: Locate and copy EXE + MSI
         run: |
           $exe = Get-ChildItem -Path app\desktop\build\compose -Recurse -Filter "*.exe" -ErrorAction Stop | Select-Object -First 1
+          $msi = Get-ChildItem -Path app\desktop\build\compose -Recurse -Filter "*.msi" -ErrorAction Stop | Select-Object -First 1
           Copy-Item $exe.FullName -Destination "${{ github.workspace }}\IIITNR-Inventory-App.exe"
+          Copy-Item $msi.FullName -Destination "${{ github.workspace }}\IIITNR-Inventory-App.msi"
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v6.0.0
         with:
           name: desktop-release-exe
           path: IIITNR-Inventory-App.exe
+          retention-days: 1
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: desktop-release-msi
+          path: IIITNR-Inventory-App.msi
           retention-days: 1
 
   upload-release:
@@ -125,6 +136,7 @@ jobs:
           files: |
             artifacts/android-release-apk/android-release.apk
             artifacts/desktop-release-exe/IIITNR-Inventory-App.exe
+            artifacts/desktop-release-msi/IIITNR-Inventory-App.msi
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

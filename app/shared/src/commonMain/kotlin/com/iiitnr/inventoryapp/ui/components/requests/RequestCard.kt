@@ -29,14 +29,18 @@ import com.iiitnr.inventoryapp.data.models.Request
 
 private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
 private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
+private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
 private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
 
 private val cardBackgroundRejectedDark = Color(0xFF3D2020)
 private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
+private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
 private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
 
 private val statusApprovedLight = Color(0xFF2E7D32)
 private val statusApprovedDark = Color(0xFF81C784)
+private val statusFulfilledLight = Color(0xFF1976D2)
+private val statusFulfilledDark = Color(0xFF64B5F6)
 
 @Composable
 fun RequestCard(
@@ -49,24 +53,29 @@ fun RequestCard(
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
-    val cardBackground = when (request.status) {
-        "REJECTED" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
-        "APPROVED", "FULFILLED" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
-        else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
-    }
-    val statusSubtitleColor = when (request.status) {
-        "REJECTED" -> MaterialTheme.colorScheme.error
-        "APPROVED", "FULFILLED" -> if (isDark) statusApprovedDark else statusApprovedLight
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val cardBackground =
+        when (request.status) {
+            "REJECTED" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
+            "APPROVED" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
+            "FULFILLED" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
+            else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
+        }
+    val statusSubtitleColor =
+        when (request.status) {
+            "REJECTED" -> MaterialTheme.colorScheme.error
+            "APPROVED" -> if (isDark) statusApprovedDark else statusApprovedLight
+            "FULFILLED" -> if (isDark) statusFulfilledDark else statusFulfilledLight
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
 
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = cardBackground,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = cardBackground,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),

@@ -29,22 +29,27 @@ fun ComponentsContent(
         when {
             isLoading -> LoadingIndicator()
             errorMessage != null -> ErrorContent(errorMessage, onRetry)
-            components.isEmpty() && allComponents.isEmpty() -> EmptyState(
-                message = "No components found",
-                subtitle = if (!isReadOnly) "Tap the + button to add a component" else null,
-            )
-            components.isEmpty() && searchQuery.isNotBlank() -> EmptyState(
-                message = "No components match your search",
-            )
-            else -> ComponentsList(
-                components = components,
-                isReadOnly = isReadOnly,
-                cartQuantities = cartQuantities,
-                onEdit = onEdit,
-                onDelete = onDelete,
-                onAddToCart = onAddToCart,
-                onUpdateCartQuantity = onUpdateCartQuantity,
-            )
+            components.isEmpty() && allComponents.isEmpty() ->
+                EmptyState(
+                    message = "No components found",
+                    subtitle = if (!isReadOnly) "Tap the + button to add a component" else null,
+                )
+
+            components.isEmpty() && searchQuery.isNotBlank() ->
+                EmptyState(
+                    message = "No components match your search",
+                )
+
+            else ->
+                ComponentsList(
+                    components = components,
+                    isReadOnly = isReadOnly,
+                    cartQuantities = cartQuantities,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    onAddToCart = onAddToCart,
+                    onUpdateCartQuantity = onUpdateCartQuantity,
+                )
         }
     }
 }

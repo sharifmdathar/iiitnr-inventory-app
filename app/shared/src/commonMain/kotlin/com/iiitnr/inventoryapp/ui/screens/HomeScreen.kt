@@ -56,14 +56,17 @@ fun HomeScreen(
                         userData = response.user
                         isLoading = false
                     } catch (e: Exception) {
-                        errorMessage = when {
-                            e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true ->
-                                "Session expired. Please login again."
-                            e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
-                                "Network error. Please check your connection."
-                            else ->
-                                "Failed to load user data: ${e.message ?: "Unknown error"}"
-                        }
+                        errorMessage =
+                            when {
+                                e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true ->
+                                    "Session expired. Please login again."
+
+                                e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
+                                    "Network error. Please check your connection."
+
+                                else ->
+                                    "Failed to load user data: ${e.message ?: "Unknown error"}"
+                            }
                         isLoading = false
                     }
                 } else {
@@ -78,16 +81,18 @@ fun HomeScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
         ) {
             TextButton(
                 onClick = onNavigateBack,
@@ -164,7 +169,10 @@ fun HomeScreen(
 }
 
 @Composable
-fun InfoRow(label: String, value: String) {
+fun InfoRow(
+    label: String,
+    value: String,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -177,9 +185,10 @@ fun InfoRow(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 16.dp),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp),
         )
     }
 }

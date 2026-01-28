@@ -23,35 +23,47 @@ class GoogleDesktopSignInHelper(
     private val json =
         kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
-    suspend fun signIn(): String? = run {
-        if (clientId.isBlank() || redirectUri.isBlank()) {
-            return@run null
-        }
-
-        val (server, codeDeferred) = startLocalServerForCode()
-
-        try {
-            buildAuthUrl().also { openInBrowser(it) }
-            codeDeferred.await()?.let { code ->
-                exchangeCodeForToken(code)
+    suspend fun signIn(): String? =
+        run {
+            if (clientId.isBlank() || redirectUri.isBlank()) {
+                return@run null
             }
-        } finally {
-            server.stop(0)
+
+            val (server, codeDeferred) =
+                try {
+                    startLocalServerForCode()
+                } catch (e: Throwable) {
+                    println("Failed to start local OAuth callback server: ${e.message}")
+                    return@run null
+                }
+
+            try {
+                buildAuthUrl().also { openInBrowser(it) }
+                codeDeferred.await()?.let { code ->
+                    exchangeCodeForToken(code)
+                }
+            } finally {
+                try {
+                    server.stop(0)
+                } catch (_: Throwable) {
+                }
+            }
         }
-    }
 
     private suspend fun exchangeCodeForToken(code: String): String? {
         return try {
-            val response: HttpResponse = httpClient.submitForm(
-                url = "https://oauth2.googleapis.com/token",
-                formParameters = Parameters.build {
-                    append("client_id", clientId)
-                    append("code", code)
-                    append("redirect_uri", redirectUri)
-                    append("grant_type", "authorization_code")
-                    clientSecret?.let { append("client_secret", it) }
-                },
-            )
+            val response: HttpResponse =
+                httpClient.submitForm(
+                    url = "https://oauth2.googleapis.com/token",
+                    formParameters =
+                        Parameters.build {
+                            append("client_id", clientId)
+                            append("code", code)
+                            append("redirect_uri", redirectUri)
+                            append("grant_type", "authorization_code")
+                            clientSecret?.let { append("client_secret", it) }
+                        },
+                )
 
             if (response.status.value !in 200..299) {
                 return null
@@ -64,14 +76,15 @@ class GoogleDesktopSignInHelper(
     }
 
     private fun buildAuthUrl(): String {
-        val encodedParams = listOf(
-            "response_type=code",
-            "client_id=${URLEncoder.encode(clientId, StandardCharsets.UTF_8)}",
-            "redirect_uri=${URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)}",
-            "scope=${URLEncoder.encode(scopes.joinToString(" "), StandardCharsets.UTF_8)}",
-            "access_type=offline",
-            "prompt=consent",
-        ).joinToString("&", prefix = "?")
+        val encodedParams =
+            listOf(
+                "response_type=code",
+                "client_id=${URLEncoder.encode(clientId, StandardCharsets.UTF_8)}",
+                "redirect_uri=${URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)}",
+                "scope=${URLEncoder.encode(scopes.joinToString(" "), StandardCharsets.UTF_8)}",
+                "access_type=offline",
+                "prompt=consent",
+            ).joinToString("&", prefix = "?")
 
         return "https://accounts.google.com/o/oauth2/v2/auth$encodedParams"
     }
@@ -97,15 +110,34 @@ class GoogleDesktopSignInHelper(
         val codeDeferred = CompletableDeferred<String?>()
 
         server.createContext(path) { exchange ->
-            val queryParams = exchange.requestURI.query?.split("&")?.associate { param ->
-                val (key, value) = param.split("=", limit = 2)
-                key to value
-            } ?: emptyMap()
+            val queryParams =
+                exchange.requestURI.query?.split("&")?.associate { param ->
+                    val (key, value) = param.split("=", limit = 2)
+                    key to value
+                } ?: emptyMap()
 
             codeDeferred.complete(queryParams["code"])
 
-            exchange.sendResponseHeaders(200, 0)
-            exchange.responseBody.close()
+            val responseHtml =
+                """
+                <!doctype html>
+                <html lang="en">
+                  <body>
+                      <p>Login successful. You can now close this tab and return to the app.</p>
+                    <script>
+                      try {
+                        window.close();
+                        setTimeout(() => window.close(), 250);
+                      } catch (_) {}
+                    </script>
+                  </body>
+                </html>
+                """.trimIndent()
+
+            val bytes = responseHtml.toByteArray(StandardCharsets.UTF_8)
+            exchange.responseHeaders.add("Content-Type", "text/html; charset=utf-8")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
         }
 
         Thread { server.start() }.start()

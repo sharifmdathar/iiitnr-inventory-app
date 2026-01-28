@@ -1,0 +1,146 @@
+config:
+    validation: true
+    warningsAsErrors: false
+
+processors:
+    active: true
+
+console-reports:
+    active: true
+    exclude:
+        - "ProjectStatisticsReport"
+        - "ComplexityReport"
+        - "NotificationReport"
+        - "IssuesReport"
+        - "FileBasedIssuesReport"
+
+comments:
+    active: true
+    UndocumentedPublicClass:
+        active: false
+    UndocumentedPublicFunction:
+        active: false
+    UndocumentedPublicProperty:
+        active: false
+
+complexity:
+    active: true
+
+    LongMethod:
+        active: true
+        allowedLines: 60
+
+    LongParameterList:
+        active: true
+        allowedFunctionParameters: 6
+        allowedConstructorParameters: 7
+        ignoreDefaultParameters: true
+        ignoreDataClasses: true
+
+    CyclomaticComplexMethod:
+        active: true
+        allowedComplexity: 14
+
+    CognitiveComplexMethod:
+        active: true
+        allowedComplexity: 15
+
+    TooManyFunctions:
+        active: true
+        allowedFunctionsPerFile: 15
+        allowedFunctionsPerClass: 15
+        allowedFunctionsPerObject: 15
+        allowedFunctionsPerInterface: 15
+        allowedFunctionsPerEnum: 10
+
+coroutines:
+    active: true
+    InjectDispatcher:
+        active: true
+        dispatcherNames:
+            - "IO"
+            - "Default"
+            - "Unconfined"
+    RedundantSuspendModifier:
+        active: true
+    SleepInsteadOfDelay:
+        active: true
+
+exceptions:
+    active: true
+    TooGenericExceptionCaught:
+        active: true
+        exceptionNames:
+            - "Exception"
+            - "RuntimeException"
+            - "Throwable"
+    SwallowedException:
+        active: true
+
+naming:
+    active: true
+
+    FunctionNaming:
+        active: true
+        functionPattern: "[a-z][a-zA-Z0-9]*|[A-Z][a-zA-Z0-9]*"
+        excludes:
+            - "**/test/**"
+            - "**/androidTest/**"
+
+    ClassNaming:
+        active: true
+    VariableNaming:
+        active: true
+    PackageNaming:
+        active: true
+
+performance:
+    active: true
+    SpreadOperator:
+        active: false
+
+potential-bugs:
+    active: true
+    EqualsAlwaysReturnsTrueOrFalse:
+        active: true
+    UnsafeCast:
+        active: true
+
+style:
+    active: true
+
+    MagicNumber:
+        active: false
+
+    MaxLineLength:
+        active: true
+        maxLineLength: 120
+        excludePackageStatements: true
+        excludeImportStatements: true
+
+    ReturnCount:
+        active: true
+        max: 2
+        excludedFunctions:
+            - "equals"
+
+    WildcardImport:
+        active: true
+        excludeImports:
+            - "kotlinx.android.synthetic.**"
+
+    NewLineAtEndOfFile:
+        active: true
+
+    TrailingWhitespace:
+        active: true
+
+    OptionalUnit:
+        active: true
+
+    ForbiddenComment:
+        active: true
+        comments:
+            - "TODO"
+            - "FIXME"
+            - "STOPSHIP"
