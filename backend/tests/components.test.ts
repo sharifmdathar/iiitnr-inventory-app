@@ -19,8 +19,8 @@ let facultyUserId: string;
 before(async () => {
   app = await buildApp();
 
-  await (prisma as any).requestItem.deleteMany({});
-  await (prisma as any).request.deleteMany({});
+  await prisma.requestItem.deleteMany({});
+  await prisma.request.deleteMany({});
   await prisma.component.deleteMany({});
 
   // Create test users with different roles

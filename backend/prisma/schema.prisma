@@ -28,29 +28,29 @@ enum Location {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  passwordHash String?
-  googleId   String?  @unique
-  role      UserRole @default(STUDENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  requests  Request[]
+  id              String    @id @default(uuid())
+  email           String    @unique
+  name            String?
+  passwordHash    String?
+  googleId        String?   @unique
+  role            UserRole  @default(STUDENT)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  requests        Request[]
   facultyRequests Request[] @relation("RequestFaculty")
 }
 
 model Component {
-  id          String            @id @default(uuid())
-  name        String
-  description String?
-  totalQuantity Int             @default(0)
-  availableQuantity Int         @default(0)
-  category    ComponentCategory?
-  location    Location?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  requestItems RequestItem[]
+  id                String             @id @default(uuid())
+  name              String
+  description       String?
+  totalQuantity     Int                @default(0)
+  availableQuantity Int                @default(0)
+  category          ComponentCategory?
+  location          Location?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  requestItems      RequestItem[]
 }
 
 enum RequestStatus {
@@ -61,31 +61,31 @@ enum RequestStatus {
 }
 
 model Request {
-  id           String        @id @default(uuid())
-  userId       String
+  id              String        @id @default(uuid())
+  userId          String
   targetFacultyId String
-  projectTitle String
-  status       RequestStatus @default(PENDING)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  projectTitle    String
+  status          RequestStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id])
-  targetFaculty User         @relation("RequestFaculty", fields: [targetFacultyId], references: [id])
-  items        RequestItem[]
+  user          User          @relation(fields: [userId], references: [id])
+  targetFaculty User          @relation("RequestFaculty", fields: [targetFacultyId], references: [id])
+  items         RequestItem[]
 
   @@index([targetFacultyId])
 }
 
 model RequestItem {
-  id        String   @id @default(uuid())
-  requestId String
+  id          String   @id @default(uuid())
+  requestId   String
   componentId String
-  quantity  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  quantity    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  request   Request       @relation(fields: [requestId], references: [id])
-  component Component     @relation(fields: [componentId], references: [id])
+  request   Request   @relation(fields: [requestId], references: [id])
+  component Component @relation(fields: [componentId], references: [id])
 
   @@index([requestId])
   @@index([componentId])

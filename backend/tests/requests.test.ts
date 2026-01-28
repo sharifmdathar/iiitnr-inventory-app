@@ -12,8 +12,9 @@ let facultyToken: string;
 let studentId: string;
 let adminUserId: string;
 let facultyId: string;
-let createdOtherUserIds: string[] = [];
 let createdComponentIds: string[] = [];
+
+const createdOtherUserIds: string[] = [];
 const requestStatus = {
   APPROVED: 'APPROVED',
 } as const;
@@ -21,8 +22,8 @@ const requestStatus = {
 before(async () => {
   app = await buildApp();
 
-  await (prisma as any).requestItem.deleteMany({});
-  await (prisma as any).request.deleteMany({});
+  await prisma.requestItem.deleteMany({});
+  await prisma.request.deleteMany({});
 
   const suffix = randomUUID();
   const adminEmail = `admin_${suffix}@example.com`;
@@ -68,8 +69,8 @@ before(async () => {
 });
 
 after(async () => {
-  await (prisma as any).requestItem.deleteMany({});
-  await (prisma as any).request.deleteMany({});
+  await prisma.requestItem.deleteMany({});
+  await prisma.request.deleteMany({});
   const userIds = [adminUserId, studentId, facultyId, ...createdOtherUserIds].filter(Boolean);
   if (userIds.length > 0) {
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
@@ -79,14 +80,14 @@ after(async () => {
 
 describe('Request API', () => {
   beforeEach(async () => {
-    await (prisma as any).requestItem.deleteMany({});
-    await (prisma as any).request.deleteMany({});
+    await prisma.requestItem.deleteMany({});
+    await prisma.request.deleteMany({});
     createdComponentIds = [];
   });
 
   afterEach(async () => {
-    await (prisma as any).requestItem.deleteMany({});
-    await (prisma as any).request.deleteMany({});
+    await prisma.requestItem.deleteMany({});
+    await prisma.request.deleteMany({});
     if (createdComponentIds.length > 0) {
       await prisma.component.deleteMany({ where: { id: { in: createdComponentIds } } });
     }
@@ -347,7 +348,7 @@ describe('Request API', () => {
       });
 
       assert.equal(deleteResponse.statusCode, 204);
-      const exists = await (prisma as any).request.findUnique({ where: { id: createdId } });
+      const exists = await prisma.request.findUnique({ where: { id: createdId } });
       assert.equal(exists, null);
     });
 
@@ -367,13 +368,13 @@ describe('Request API', () => {
       });
       createdOtherUserIds.push(otherUser.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: otherUser.id,
           targetFacultyId: facultyId,
           projectTitle: 'Other User Project',
           items: {
-            create: [{ componentId: component.id, quantity: 1 }],
+            create: [{ component: { connect: { id: component.id } }, quantity: 1 }],
           },
         },
       });
@@ -393,14 +394,14 @@ describe('Request API', () => {
       });
       createdComponentIds.push(component.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Approved Component',
           status: requestStatus.APPROVED,
           items: {
-            create: [{ componentId: component.id, quantity: 1 }],
+            create: [{ component: { connect: { id: component.id } }, quantity: 1 }],
           },
         },
       });
@@ -412,7 +413,7 @@ describe('Request API', () => {
       });
 
       assert.equal(deleteResponse.statusCode, 400);
-      const stillExists = await (prisma as any).request.findUnique({ where: { id: request.id } });
+      const stillExists = await prisma.request.findUnique({ where: { id: request.id } });
       assert.ok(stillExists);
     });
   });
@@ -443,24 +444,24 @@ describe('Request API', () => {
       });
       createdOtherUserIds.push(otherUser.id);
 
-      await (prisma as any).request.create({
+      await prisma.request.create({
         data: {
           userId: otherUser.id,
           targetFacultyId: facultyId,
           projectTitle: 'Other User Request',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
 
-      await (prisma as any).request.create({
+      await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Student Request',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -485,14 +486,14 @@ describe('Request API', () => {
       });
       createdComponentIds.push(item.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Display Project',
           status: requestStatus.APPROVED,
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -514,38 +515,38 @@ describe('Request API', () => {
       });
       createdComponentIds.push(item.id);
 
-      const approvedRequest = await (prisma as any).request.create({
+      const approvedRequest = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Approved Request',
           status: 'APPROVED',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
 
-      const pendingRequest = await (prisma as any).request.create({
+      const pendingRequest = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Pending Request',
           status: 'PENDING',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
 
-      const rejectedRequest = await (prisma as any).request.create({
+      const rejectedRequest = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Rejected Request',
           status: 'REJECTED',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -560,14 +561,14 @@ describe('Request API', () => {
       });
       createdOtherUserIds.push(otherFaculty.id);
 
-      const otherFacultyRequest = await (prisma as any).request.create({
+      const otherFacultyRequest = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: otherFaculty.id,
           projectTitle: 'Other Faculty Request',
           status: 'PENDING',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -651,14 +652,14 @@ describe('Request API', () => {
       });
       createdComponentIds.push(item.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Approve Test',
           status: 'PENDING',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -682,14 +683,14 @@ describe('Request API', () => {
       });
       createdComponentIds.push(item.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Reject Test',
           status: 'PENDING',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -723,14 +724,14 @@ describe('Request API', () => {
       });
       createdOtherUserIds.push(otherFaculty.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: otherFaculty.id,
           projectTitle: 'Other Faculty Approve Test',
           status: 'PENDING',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -751,14 +752,14 @@ describe('Request API', () => {
       });
       createdComponentIds.push(item.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Cannot Update Non-Pending',
           status: 'APPROVED',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -779,14 +780,14 @@ describe('Request API', () => {
       });
       createdComponentIds.push(item.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Admin Approve Test',
           status: 'PENDING',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });
@@ -809,14 +810,14 @@ describe('Request API', () => {
       });
       createdComponentIds.push(item.id);
 
-      const request = await (prisma as any).request.create({
+      const request = await prisma.request.create({
         data: {
           userId: studentId,
           targetFacultyId: facultyId,
           projectTitle: 'Student Approve Test',
           status: 'PENDING',
           items: {
-            create: [{ componentId: item.id, quantity: 1 }],
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
           },
         },
       });

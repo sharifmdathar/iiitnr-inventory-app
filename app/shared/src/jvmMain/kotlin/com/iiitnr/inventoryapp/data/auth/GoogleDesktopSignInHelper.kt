@@ -103,10 +103,22 @@ class GoogleDesktopSignInHelper(
 
     private fun startLocalServerForCode(): Pair<HttpServer, CompletableDeferred<String?>> {
         val uri = URI(redirectUri)
+        require(uri.scheme == "http") {
+            "Only http redirect URIs are supported for desktop sign-in"
+        }
+
+        val host =
+            uri.host?.lowercase()
+                ?: throw IllegalArgumentException("Redirect URI must include a host")
+
+        require(host == "localhost" || host == "127.0.0.1") {
+            "Redirect URI host must be localhost or 127.0.0.1"
+        }
+
         val port = if (uri.port != -1) uri.port else 80
         val path = uri.path.ifBlank { "/" }
 
-        val server = HttpServer.create(InetSocketAddress(uri.host, port), 0)
+        val server = HttpServer.create(InetSocketAddress(host, port), 0)
         val codeDeferred = CompletableDeferred<String?>()
 
         server.createContext(path) { exchange ->

@@ -6,7 +6,7 @@ import { buildApp } from '../src/app.js';
 import { prisma } from '../src/lib/prisma.js';
 
 let app: Awaited<ReturnType<typeof buildApp>>;
-let createdUserIds: string[] = [];
+const createdUserIds: string[] = [];
 
 before(async () => {
   app = await buildApp();

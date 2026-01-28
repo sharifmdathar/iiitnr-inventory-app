@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import Fastify from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import { compare, hash } from 'bcryptjs';
@@ -20,16 +21,16 @@ export async function buildApp() {
     logger: isTest
       ? false
       : {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            colorizeObjects: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
+          transport: {
+            target: 'pino-pretty',
+            options: {
+              colorize: true,
+              colorizeObjects: true,
+              translateTime: 'SYS:standard',
+              ignore: 'pid,hostname',
+            },
           },
         },
-      },
   });
 
   await app.register(cors, { origin: true });
@@ -37,7 +38,7 @@ export async function buildApp() {
   app.addContentTypeParser(
     'application/x-www-form-urlencoded',
     { parseAs: 'string' },
-    async (req: any, body: any) => {
+    async (req: FastifyRequest, body: string) => {
       if (req.method === 'DELETE' || !body || body.length === 0) {
         return {};
       }
@@ -207,13 +208,16 @@ export async function buildApp() {
 
     const primaryClientId = process.env.GOOGLE_CLIENT_ID;
     const extraClientIds = process.env.GOOGLE_CLIENT_EXTRA_IDS
-      ? process.env.GOOGLE_CLIENT_EXTRA_IDS.split(',').map((id) => id.trim()).filter(Boolean)
+      ? process.env.GOOGLE_CLIENT_EXTRA_IDS.split(',')
+          .map((id) => id.trim())
+          .filter(Boolean)
       : [];
-    const allowedClientIds = [primaryClientId, ...extraClientIds].filter(Boolean);
 
-    if (!allowedClientIds.length) {
+    if (!primaryClientId) {
       return reply.code(500).send({ error: 'Google OAuth not configured' });
     }
+
+    const allowedClientIds = [primaryClientId, ...extraClientIds];
 
     const client = new OAuth2Client(allowedClientIds[0]);
 
@@ -262,7 +266,7 @@ export async function buildApp() {
 
       let user = await prisma.user.findFirst({
         where: {
-          OR: [{ googleId: googleId }, { email: email }],
+          OR: [{ googleId }, { email }],
         },
         select: {
           id: true,
@@ -319,31 +323,38 @@ export async function buildApp() {
         },
         token,
       });
-    } catch (err: any) {
-      app.log.error('Google Sign-In error:', err);
+    } catch (err: unknown) {
+      app.log.error({ err }, 'Google Sign-In error');
 
-      if (err.message?.includes('audience') || err.code === 'auth/id-token-audience-mismatch') {
-        return reply.code(400).send({
-          error:
-            'Token audience mismatch. The Web application Client ID in the backend must match the serverClientId used in the app.',
-        });
+      type GoogleAuthError = Error & { code?: string };
+
+      if (err instanceof Error) {
+        const { message } = err;
+        const code = (err as GoogleAuthError).code;
+
+        if (message.includes('audience') || code === 'auth/id-token-audience-mismatch') {
+          return reply.code(400).send({
+            error:
+              'Token audience mismatch. The Web application Client ID in the backend must match the serverClientId used in the app.',
+          });
+        }
+
+        const errorMessage = message || String(err) || 'unknown error';
+        return reply.code(400).send({ error: `Invalid Google token: ${errorMessage}` });
       }
 
-      const errorMessage = err.message || err.toString() || 'unknown error';
-      return reply.code(400).send({ error: `Invalid Google token: ${errorMessage}` });
+      const fallbackMessage = String(err) || 'unknown error';
+      return reply.code(400).send({ error: `Invalid Google token: ${fallbackMessage}` });
     }
   });
 
-  const requireAuth = async (request: any, reply: any) => {
-    await request.jwtVerify();
-  };
+  const requireAuth = async (request: FastifyRequest) => await request.jwtVerify();
 
-  const requireAdminOrTA = async (request: any, reply: any) => {
+  const requireAdminOrTA = async (request: FastifyRequest, reply: FastifyReply) => {
     await request.jwtVerify();
     const userRole = (request.user as { role?: UserRole })?.role;
-    if (userRole !== UserRole.ADMIN && userRole !== UserRole.TA) {
-      return reply.code(403).send({ error: 'forbidden: admin or TA role required' });
-    }
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.TA)
+      reply.code(403).send({ error: 'forbidden: admin or TA role required' });
   };
 
   const isAdminOrTA = (role?: UserRole) => role === UserRole.ADMIN || role === UserRole.TA;
@@ -358,16 +369,17 @@ export async function buildApp() {
   const locationValues = locationEnumValues.map((v) => v.replace(/_/g, ' '));
   type LocationValue = string;
 
-  const toLocationEnum = (label: string): string => label.replace(/\s+/g, '_');
-  const fromLocationEnum = (value: string | null): string | null =>
-    value ? value.replace(/_/g, ' ') : value;
+  const toLocationEnum = (label: string): PrismaLocation =>
+    label.replace(/\s+/g, '_') as PrismaLocation;
+  // const fromLocationEnum = (value: string | null): string | null =>
+  //   value ? value.replace(/_/g, ' ') : value;
 
   app.get(
     '/components',
     {
       preHandler: requireAuth,
     },
-    async (request, reply) => {
+    async (_, reply) => {
       try {
         const components = await prisma.component.findMany({
           orderBy: { createdAt: 'desc' },
@@ -449,17 +461,14 @@ export async function buildApp() {
 
       if (category && !categoryValues.includes(category as CategoryValue)) {
         return reply.code(400).send({
-          error:
-            'invalid category. Must be one of ' +
-            categoryValues.join(', ') +
-            ' (use Others if none apply)',
+          error: `invalid category. Must be one of ${categoryValues.join(', ')} (use Others if none apply)`,
         });
       }
 
       if (location && !locationValues.includes(location as LocationValue)) {
         return reply
           .code(400)
-          .send({ error: 'invalid location. Must be one of ' + locationValues.join(', ') });
+          .send({ error: `invalid location. Must be one of ${locationValues.join(', ')}` });
       }
 
       try {
@@ -467,10 +476,10 @@ export async function buildApp() {
           data: {
             name,
             description: description || null,
-            totalQuantity: totalQuantity,
+            totalQuantity,
             availableQuantity: availableQuantity ? availableQuantity : totalQuantity,
             category: category ? (category as CategoryValue) : null,
-            location: location ? (toLocationEnum(location) as any) : null,
+            location: location ? toLocationEnum(location) : null,
           },
         });
 
@@ -524,10 +533,9 @@ export async function buildApp() {
       if (category !== undefined && category !== null && category !== '') {
         if (!categoryValues.includes(category as CategoryValue)) {
           return reply.code(400).send({
-            error:
-              'invalid category. Must be one of ' +
-              categoryValues.join(', ') +
-              ' (use Others if none apply)',
+            error: `invalid category. Must be one of ${categoryValues.join(
+              ', ',
+            )} (use Others if none apply)`,
           });
         }
       }
@@ -578,7 +586,7 @@ export async function buildApp() {
               category: category ? (category as CategoryValue) : null,
             }),
             ...(location !== undefined && {
-              location: location ? (toLocationEnum(location) as any) : null,
+              location: location ? toLocationEnum(location) : null,
             }),
           },
         });
@@ -694,15 +702,17 @@ export async function buildApp() {
           return reply.code(400).send({ error: 'one or more components not found' });
         }
 
-        const createdRequest = await (prisma as any).request.create({
+        const createdRequest = await prisma.request.create({
           data: {
             userId,
             targetFacultyId,
             projectTitle,
             items: {
               create: normalizedItems.map((item) => ({
-                componentId: item.componentId,
-                quantity: item.quantity!,
+                component: {
+                  connect: { id: item.componentId as string },
+                },
+                quantity: item.quantity ?? 0,
               })),
             },
           },
@@ -791,7 +801,7 @@ export async function buildApp() {
       }
 
       try {
-        const requests = await (prisma as any).request.findMany({
+        const requests = await prisma.request.findMany({
           where,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -820,7 +830,7 @@ export async function buildApp() {
         });
 
         if (user?.role === UserRole.FACULTY) {
-          requests.sort((a: any, b: any) => {
+          requests.sort((a, b) => {
             const aIsPending = a.status === RequestStatus.PENDING;
             const bIsPending = b.status === RequestStatus.PENDING;
 
@@ -881,7 +891,7 @@ export async function buildApp() {
       }
 
       try {
-        const existingRequest = await (prisma as any).request.findUnique({
+        const existingRequest = await prisma.request.findUnique({
           where: { id },
           include: {
             items: {
@@ -914,13 +924,9 @@ export async function buildApp() {
               .code(403)
               .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
           }
-        }
-
-        else if (existingRequest.status === RequestStatus.APPROVED) {
+        } else if (existingRequest.status === RequestStatus.APPROVED) {
           if (newStatus !== RequestStatus.FULFILLED) {
-            return reply
-              .code(400)
-              .send({ error: 'approved request can only be set to FULFILLED' });
+            return reply.code(400).send({ error: 'approved request can only be set to FULFILLED' });
           }
 
           if (!isAdminOrTA(user?.role)) {
@@ -939,7 +945,7 @@ export async function buildApp() {
           }
 
           for (const item of existingRequest.items) {
-            await (prisma as any).component.update({
+            await prisma.component.update({
               where: { id: item.componentId },
               data: {
                 availableQuantity: {
@@ -949,12 +955,12 @@ export async function buildApp() {
             });
           }
         } else {
-          return reply
-            .code(400)
-            .send({ error: 'request status can only be updated when status is PENDING or APPROVED' });
+          return reply.code(400).send({
+            error: 'request status can only be updated when status is PENDING or APPROVED',
+          });
         }
 
-        const updatedRequest = await (prisma as any).request.update({
+        const updatedRequest = await prisma.request.update({
           where: { id },
           data: { status: newStatus },
           include: {
@@ -1010,7 +1016,7 @@ export async function buildApp() {
       }
 
       try {
-        const existingRequest = await (prisma as any).request.findUnique({
+        const existingRequest = await prisma.request.findUnique({
           where: { id },
         });
 
@@ -1031,8 +1037,8 @@ export async function buildApp() {
             .send({ error: 'request can only be deleted when status is PENDING' });
         }
 
-        await (prisma as any).requestItem.deleteMany({ where: { requestId: id } });
-        await (prisma as any).request.delete({ where: { id } });
+        await prisma.requestItem.deleteMany({ where: { requestId: id } });
+        await prisma.request.delete({ where: { id } });
 
         return reply.code(204).send();
       } catch (err) {
