@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -49,6 +50,7 @@ fun RequestCard(
     onApproveRequest: ((String) -> Unit)? = null,
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
+    onShowQr: ((Request) -> Unit)? = null,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -118,13 +120,26 @@ fun RequestCard(
                             )
                         }
                     }
-                } else if (request.status == "APPROVED" && onFulfillRequest != null) {
-                    IconButton(onClick = { onFulfillRequest(request.id) }) {
-                        Icon(
-                            imageVector = Icons.Default.DoneAll,
-                            contentDescription = "Fulfill request",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                } else if (request.status == "APPROVED") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (!isFaculty && onShowQr != null) {
+                            IconButton(onClick = { onShowQr(request) }) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCode2,
+                                    contentDescription = "Show QR for TA to scan",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                        if (onFulfillRequest != null) {
+                            IconButton(onClick = { onFulfillRequest(request.id) }) {
+                                Icon(
+                                    imageVector = Icons.Default.DoneAll,
+                                    contentDescription = "Fulfill request",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
                     }
                 }
             }

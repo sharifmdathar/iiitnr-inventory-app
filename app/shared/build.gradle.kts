@@ -34,7 +34,6 @@ kotlin {
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.serialization.kotlinx.json)
-                implementation(libs.ktor.client.logging)
 
                 implementation(libs.kotlinx.serialization.json)
 
@@ -44,6 +43,7 @@ kotlin {
 
                 implementation(libs.coil.compose)
                 implementation(libs.coil.network)
+                implementation(libs.qrose)
             }
         }
 
@@ -55,6 +55,11 @@ kotlin {
                 implementation(libs.androidx.credentials)
                 implementation(libs.androidx.credentials.play.services.auth)
                 implementation(libs.googleid)
+                implementation(libs.androidx.camera.core)
+                implementation(libs.androidx.camera.camera2)
+                implementation(libs.androidx.camera.lifecycle)
+                implementation(libs.androidx.camera.view)
+                implementation(libs.zxing.core)
             }
         }
 

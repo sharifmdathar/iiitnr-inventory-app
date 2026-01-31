@@ -22,6 +22,7 @@ fun RequestsList(
     onApproveRequest: ((String) -> Unit)? = null,
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
+    onShowQr: ((Request) -> Unit)? = null,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -40,6 +41,7 @@ fun RequestsList(
                     onApproveRequest = onApproveRequest,
                     onRejectRequest = onRejectRequest,
                     onFulfillRequest = onFulfillRequest,
+                    onShowQr = onShowQr,
                     isFaculty = isFaculty,
                 )
             }
