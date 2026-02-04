@@ -1,6 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import prismaDefault from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
+
+type PrismaClientConstructor = new (...args: unknown[]) => unknown;
+
+const { PrismaClient } = prismaDefault as {
+  PrismaClient: PrismaClientConstructor;
+};
 
 const { Pool } = pg;
 
