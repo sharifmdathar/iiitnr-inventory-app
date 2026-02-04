@@ -31,6 +31,7 @@ model User {
   id              String    @id @default(uuid())
   email           String    @unique
   name            String?
+  imageUrl        String?
   passwordHash    String?
   googleId        String?   @unique
   role            UserRole  @default(STUDENT)
@@ -58,6 +59,7 @@ enum RequestStatus {
   APPROVED
   REJECTED
   FULFILLED
+  RETURNED
 }
 
 model Request {

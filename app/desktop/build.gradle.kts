@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -66,15 +67,23 @@ compose.desktop {
         nativeDistributions {
             val buildInstallers =
                 project.findProperty("buildInstallers")?.toString()?.toBoolean() ?: false
+            val osName = System.getProperty("os.name").lowercase()
+            val formats = mutableListOf<TargetFormat>()
             if (buildInstallers) {
-                targetFormats(
-                    org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
-                    org.jetbrains.compose.desktop.application.dsl.TargetFormat.Exe,
-                )
+                if (osName.contains("win")) {
+                    formats.add(TargetFormat.Msi)
+                    formats.add(TargetFormat.Exe)
+                }
+            }
+            if (osName.contains("linux")) {
+                formats.add(TargetFormat.AppImage)
+            }
+            if (formats.isNotEmpty()) {
+                targetFormats(*formats.toTypedArray())
             }
 
             packageName = "IIITNR Inventory App"
-            packageVersion = "1.9.0"
+            packageVersion = "1.10.0"
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"
@@ -87,6 +96,13 @@ compose.desktop {
                 }
                 menu = true
                 shortcut = true
+            }
+
+            linux {
+                val icon = project.file("icon.png")
+                if (icon.exists()) {
+                    iconFile.set(icon)
+                }
             }
         }
     }

@@ -10,6 +10,7 @@ expect fun createHttpClient(block: HttpClientConfig<*>.() -> Unit = {}): HttpCli
 
 object ApiClient {
     private const val BASE_URL = "https://iiitnr-inventory-backend.onrender.com"
+    // For Release Build: "https://iiitnr-inventory-backend.onrender.com"
     // For Android Emulator: "http://10.0.2.2:4000"
     // For Desktop: "http://localhost:4000"
 

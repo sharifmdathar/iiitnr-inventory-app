@@ -49,6 +49,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
           id: true,
           email: true,
           name: true,
+          imageUrl: true,
           role: true,
           createdAt: true,
         },
@@ -78,6 +79,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         id: true,
         email: true,
         name: true,
+        imageUrl: true,
         role: true,
         passwordHash: true,
       },
@@ -103,6 +105,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        imageUrl: user.imageUrl,
         role: user.role,
       },
       token,
@@ -128,6 +131,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
           id: true,
           email: true,
           name: true,
+          imageUrl: true,
           role: true,
         },
       });
@@ -178,6 +182,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       const googleId = payload.sub;
       const email = payload.email;
       const name = payload.name || payload.given_name || null;
+      const imageUrl = typeof payload.picture === 'string' ? payload.picture : null;
       const emailVerified = payload.email_verified;
 
       if (!email) {
@@ -214,33 +219,41 @@ const authRoutes: FastifyPluginAsync = async (app) => {
           id: true,
           email: true,
           name: true,
+          imageUrl: true,
           role: true,
           googleId: true,
         },
       });
 
-      if (user) {
-        if (!user.googleId || (name && user.name !== name)) {
-          user = await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              googleId: user.googleId || googleId,
-              name: name || user.name,
-            },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              role: true,
-              googleId: true,
-            },
-          });
-        }
-      } else {
+      const shouldUpdateProfile =
+        user &&
+        (!user.googleId ||
+          (name != null && user.name !== name) ||
+          (imageUrl != null && user.imageUrl !== imageUrl));
+
+      if (shouldUpdateProfile) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: user.googleId || googleId,
+            name: name ?? user.name,
+            imageUrl: imageUrl ?? user.imageUrl,
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            imageUrl: true,
+            role: true,
+            googleId: true,
+          },
+        });
+      } else if (!user) {
         user = await prisma.user.create({
           data: {
             email,
             name,
+            imageUrl,
             googleId,
             role: UserRole.STUDENT,
           },
@@ -248,6 +261,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
             id: true,
             email: true,
             name: true,
+            imageUrl: true,
             role: true,
             googleId: true,
           },
@@ -261,6 +275,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
           id: user.id,
           email: user.email,
           name: user.name,
+          imageUrl: user.imageUrl,
           role: user.role,
         },
         token,

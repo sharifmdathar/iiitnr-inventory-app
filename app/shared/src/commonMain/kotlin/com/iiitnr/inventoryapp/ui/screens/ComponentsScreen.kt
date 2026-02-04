@@ -36,6 +36,7 @@ import com.iiitnr.inventoryapp.ui.components.components.CartFAB
 import com.iiitnr.inventoryapp.ui.components.components.ComponentDialog
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsContent
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsTopBar
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -47,6 +48,7 @@ fun ComponentsScreen(
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showDialog by remember { mutableStateOf(false) }
     var editingComponent by remember { mutableStateOf<Component?>(null) }
@@ -100,10 +102,19 @@ fun ComponentsScreen(
             matchesSearch && matchesCategory && matchesLocation
         }
 
-    fun loadComponents() {
+    fun loadComponents(pollingMode: Boolean = false) {
         scope.launch {
-            isLoading = true
-            errorMessage = null
+            if (pollingMode && isRefreshing) {
+                return@launch
+            }
+
+            if (pollingMode) {
+                isRefreshing = true
+            } else {
+                isLoading = true
+                errorMessage = null
+            }
+
             try {
                 val token = tokenManager.token.first()
                 if (token != null) {
@@ -116,25 +127,34 @@ fun ComponentsScreen(
                     val response = ApiClient.componentApiService.getComponents("Bearer $token")
                     components = response.components
                 } else {
-                    errorMessage = "No authentication token"
+                    if (!pollingMode) {
+                        errorMessage = "No authentication token"
+                    }
                 }
             } catch (e: Exception) {
-                errorMessage =
-                    when {
-                        e.message?.contains(
-                            "401",
-                        ) == true ||
-                            e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
 
-                        e.message?.contains(
-                            "Network",
-                        ) == true ||
-                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                if (!pollingMode) {
+                    errorMessage =
+                        when {
+                            e.message?.contains(
+                                "401",
+                            ) == true ||
+                                e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
 
-                        else -> "Error: ${e.message ?: "Failed to load components"}"
-                    }
+                            e.message?.contains(
+                                "Network",
+                            ) == true ||
+                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+
+                            else -> "Error: ${e.message ?: "Failed to load components"}"
+                        }
+                }
             } finally {
-                isLoading = false
+                if (pollingMode) {
+                    isRefreshing = false
+                } else {
+                    isLoading = false
+                }
             }
         }
     }
@@ -222,6 +242,12 @@ fun ComponentsScreen(
 
     LaunchedEffect(Unit) {
         loadComponents()
+        while (true) {
+            delay(8000)
+            if (errorMessage == null && !isLoading && !isRefreshing) {
+                loadComponents(pollingMode = true)
+            }
+        }
     }
 
     LaunchedEffect(userRole) {

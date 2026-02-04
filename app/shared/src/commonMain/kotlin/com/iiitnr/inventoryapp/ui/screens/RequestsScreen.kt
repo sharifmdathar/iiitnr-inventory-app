@@ -40,6 +40,7 @@ import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -52,6 +53,7 @@ fun RequestsScreen(
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
     var requestToShowQr by remember { mutableStateOf<Request?>(null) }
     var showFulfillByQrDialog by remember { mutableStateOf(false) }
@@ -81,35 +83,55 @@ fun RequestsScreen(
             matchesStatus && (query.isBlank() || textMatches || itemMatches)
         }
 
-    fun loadRequests() {
+    fun loadRequests(pollingMode: Boolean = false) {
         scope.launch {
-            isLoading = true
-            errorMessage = null
+            if (pollingMode && isRefreshing) {
+                return@launch
+            }
+
+            if (pollingMode) {
+                isRefreshing = true
+            } else {
+                isLoading = true
+                errorMessage = null
+            }
+
             try {
                 val token = tokenManager.token.first()
                 if (token != null) {
                     val response = ApiClient.requestApiService.getRequests("Bearer $token")
                     requests = response.requests
+                    if (pollingMode && errorMessage != null) {
+                        errorMessage = null
+                    }
                 } else {
-                    errorMessage = "No authentication token"
+                    if (!pollingMode) {
+                        errorMessage = "No authentication token"
+                    }
                 }
             } catch (e: Exception) {
-                errorMessage =
-                    when {
-                        e.message?.contains(
-                            "401",
-                        ) == true ||
-                            e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
+                if (!pollingMode) {
+                    errorMessage =
+                        when {
+                            e.message?.contains(
+                                "401",
+                            ) == true ||
+                                e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
 
-                        e.message?.contains(
-                            "Network",
-                        ) == true ||
-                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                            e.message?.contains(
+                                "Network",
+                            ) == true ||
+                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
-                        else -> "Error: ${e.message ?: "Failed to load requests"}"
-                    }
+                            else -> "Error: ${e.message ?: "Failed to load requests"}"
+                        }
+                }
             } finally {
-                isLoading = false
+                if (pollingMode) {
+                    isRefreshing = false
+                } else {
+                    isLoading = false
+                }
             }
         }
     }
@@ -168,7 +190,13 @@ fun RequestsScreen(
 
     LaunchedEffect(Unit) {
         loadUserData()
-        loadRequests()
+        loadRequests(pollingMode = false)
+        while (true) {
+            delay(8000)
+            if (errorMessage == null && !isLoading && !isRefreshing) {
+                loadRequests(pollingMode = true)
+            }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

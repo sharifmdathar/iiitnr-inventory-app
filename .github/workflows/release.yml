@@ -60,7 +60,7 @@ jobs:
           path: app/android/build/outputs/apk/release/android-release.apk
           retention-days: 1
 
-  build-desktop:
+  build-windows-installers:
     runs-on: windows-latest
 
     steps:
@@ -112,8 +112,80 @@ jobs:
           path: IIITNR-Inventory-App.msi
           retention-days: 1
 
+  build-linux-appimage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: "gradle"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@f236b35da9d031e13b1005234ebe4392ed54c580
+
+      - name: Build Desktop app-image (Linux)
+        working-directory: app
+        env:
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+          GOOGLE_DESKTOP_REDIRECT_URI: ${{ secrets.GOOGLE_DESKTOP_REDIRECT_URI }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :desktop:packageDistributionForCurrentOS --parallel --build-cache
+
+      - name: Install ImageMagick (for AppImage icon)
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Prepare AppDir for AppImage
+        run: |
+          APP_SRC="app/desktop/build/compose/binaries/main/app/IIITNR Inventory App"
+          APPDIR="$RUNNER_TEMP/AppDir"
+          mkdir -p "$APPDIR"
+          cp -a "$APP_SRC"/* "$APPDIR/"
+          cat > "$APPDIR/AppRun" << 'APPRUN'
+          #!/bin/bash
+          SELF="$(readlink -f "$0")"
+          DIR="$(dirname "$SELF")"
+          exec "$DIR/bin/IIITNR Inventory App" "$@"
+          APPRUN
+          chmod +x "$APPDIR/AppRun"
+          cat > "$APPDIR/iiitnr-inventory-app.desktop" << 'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=IIITNR Inventory App
+          Exec=AppRun
+          Icon=iiitnr-inventory-app
+          Categories=Utility;
+          DESKTOP
+          convert -size 256x256 xc:'#1976D2' "$APPDIR/iiitnr-inventory-app.png"
+          echo "APPDIR=$APPDIR" >> $GITHUB_ENV
+
+      - name: Download appimagetool
+        run: |
+          curl -sL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -o appimagetool.AppImage
+          chmod +x appimagetool.AppImage
+
+      - name: Build AppImage
+        run: |
+          ./appimagetool.AppImage "$APPDIR" IIITNR-Inventory-App.AppImage
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: linux-appimage-release
+          path: IIITNR-Inventory-App.AppImage
+          retention-days: 1
+
   upload-release:
-    needs: [build-android, build-desktop]
+    needs: [build-android, build-windows-installers, build-linux-appimage]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -143,6 +215,7 @@ jobs:
             artifacts/android-release-apk/android-release.apk
             artifacts/desktop-release-exe/IIITNR-Inventory-App.exe
             artifacts/desktop-release-msi/IIITNR-Inventory-App.msi
+            artifacts/linux-appimage-release/IIITNR-Inventory-App.AppImage
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

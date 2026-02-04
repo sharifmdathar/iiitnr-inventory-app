@@ -26,6 +26,7 @@ data class User(
     val id: String,
     val email: String,
     val name: String? = null,
+    val imageUrl: String? = null,
     val role: String,
     val createdAt: String? = null,
 )
