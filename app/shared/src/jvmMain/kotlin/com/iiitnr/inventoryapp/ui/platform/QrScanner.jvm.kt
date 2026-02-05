@@ -16,7 +16,6 @@ actual fun isQrScanAvailable(): Boolean = false
 
 @Composable
 actual fun QrScannerContent(
-    onResult: (String) -> Unit,
     onCancel: () -> Unit,
 ) {
     Column(

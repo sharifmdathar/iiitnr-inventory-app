@@ -21,7 +21,7 @@ credentials = "1.6.0-rc01"
 credentialsPlayServicesAuth = "1.6.0-rc01"
 googleid = "1.2.0"
 coil = "3.3.0"
-qrose = "1.1.0"
+qrose = "1.1.1"
 cameraX = "1.5.3"
 zxingCore = "3.5.4"
 
