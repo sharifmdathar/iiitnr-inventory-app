@@ -141,8 +141,8 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :desktop:packageDistributionForCurrentOS --parallel --build-cache
 
-      - name: Install ImageMagick (for AppImage icon)
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
+      - name: Install ImageMagick and libfuse2 (for AppImage)
+        run: sudo apt-get update && sudo apt-get install -y imagemagick libfuse2
 
       - name: Prepare AppDir for AppImage
         run: |
