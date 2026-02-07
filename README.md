@@ -13,15 +13,14 @@ A monorepo inventory management system with an Android mobile app and a Fastify 
 
 ## Prerequisites
 
-- Node.js 20+
-- pnpm 10+
+- [Bun](https://bun.sh)
 - PostgreSQL (local or hosted)
 - Docker & Docker Compose (optional, for local PostgreSQL)
 
 ## Installation
 
 ```bash
-pnpm install
+bun install
 ```
 
 ## Database Setup
@@ -74,8 +73,8 @@ ADMIN_NAME="Test Admin"
 Generate Prisma client and run migrations:
 
 ```bash
-pnpm --filter @iiitnr/backend prisma:generate
-pnpm --filter @iiitnr/backend prisma:migrate
+bun run --cwd backend prisma:generate
+bun run --cwd backend prisma:migrate
 ```
 
 ### Seed Database
@@ -83,7 +82,7 @@ pnpm --filter @iiitnr/backend prisma:migrate
 Create an admin user:
 
 ```bash
-pnpm --filter @iiitnr/backend seed
+bun run --cwd backend seed
 ```
 
 This creates an admin account with the credentials specified in your `.env` file (defaults shown above).
@@ -91,7 +90,7 @@ This creates an admin account with the credentials specified in your `.env` file
 ### Start Development Server
 
 ```bash
-pnpm --filter @iiitnr/backend dev
+bun run --cwd backend dev
 ```
 
 The server will start on `http://localhost:4000` (or the port specified in `PORT`).
@@ -159,7 +158,7 @@ All request endpoints require authentication. Users can only see their own reque
 Run the test suite:
 
 ```bash
-pnpm --filter @iiitnr/backend test
+bun run --cwd backend test
 ```
 
 The test suite includes:
@@ -173,24 +172,24 @@ The test suite includes:
 
 ### Backend
 
-- `pnpm --filter @iiitnr/backend dev` - Start development server with hot reload
-- `pnpm --filter @iiitnr/backend build` - Build for production
-- `pnpm --filter @iiitnr/backend start` - Start production server
-- `pnpm --filter @iiitnr/backend lint` - Run ESLint
-- `pnpm --filter @iiitnr/backend lint:fix` - Fix ESLint errors
-- `pnpm --filter @iiitnr/backend typecheck` - Type check TypeScript
-- `pnpm --filter @iiitnr/backend format` - Format code with Prettier
-- `pnpm --filter @iiitnr/backend test` - Run tests
-- `pnpm --filter @iiitnr/backend prisma:generate` - Generate Prisma client
-- `pnpm --filter @iiitnr/backend prisma:migrate` - Run database migrations
-- `pnpm --filter @iiitnr/backend seed` - Seed database with admin user
+- `bun run --cwd backend dev` or `bun run dev` (from root) - Start development server with hot reload
+- `bun run --cwd backend build` - Build for production
+- `bun run --cwd backend start` - Start production server
+- `bun run --cwd backend lint` - Run ESLint
+- `bun run --cwd backend lint:fix` - Fix ESLint errors
+- `bun run --cwd backend typecheck` - Type check TypeScript
+- `bun run --cwd backend format` - Format code with Prettier
+- `bun run --cwd backend test` - Run tests
+- `bun run --cwd backend prisma:generate` - Generate Prisma client
+- `bun run --cwd backend prisma:migrate` - Run database migrations
+- `bun run --cwd backend seed` - Seed database with admin user
 
 ### Root
 
-- `pnpm lint` - Lint all packages
-- `pnpm lint:fix` - Fix linting errors in all packages
-- `pnpm typecheck` - Type check all packages
-- `pnpm format` - Format all packages
+- `bun run lint` - Lint backend
+- `bun run lint:fix` - Fix linting errors
+- `bun run typecheck` - Type check backend
+- `bun run format` - Format backend + Kotlin (ktlintFormat)
 
 ## Mobile App
 
@@ -204,8 +203,8 @@ To deploy the backend to Render:
 
 1. Create a new Web Service pointing at this repository
 2. Root directory: `backend`
-3. Build command: `pnpm install --frozen-lockfile && pnpm build`
-4. Start command: `pnpm start`
+3. Build command: `bun install --frozen-lockfile && bun run build`
+4. Start command: `bun run start`
 5. Add environment variables:
    - `DATABASE_URL` (required)
    - `JWT_SECRET` (required, must be changed from "change-me")

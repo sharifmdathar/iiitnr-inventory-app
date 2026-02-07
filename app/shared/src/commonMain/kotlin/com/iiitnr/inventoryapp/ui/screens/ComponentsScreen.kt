@@ -132,7 +132,6 @@ fun ComponentsScreen(
                     }
                 }
             } catch (e: Exception) {
-
                 if (!pollingMode) {
                     errorMessage =
                         when {

@@ -6,8 +6,7 @@ in
 
 pkgs.mkShell {
   packages = [
-    pkgs.pnpm
-    pkgs.nodejs-slim
+    pkgs.bun
     pkgs.openssl
     unstable.prisma-engines_7
     pkgs.podman

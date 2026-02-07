@@ -176,15 +176,17 @@ fun ProfilePicture(imageUrl: String?) {
         AsyncImage(
             model = imageUrl,
             contentDescription = "Profile picture",
-            modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape),
+            modifier =
+                Modifier
+                    .size(96.dp)
+                    .clip(CircleShape),
         )
     } else {
         Surface(
-            modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape),
+            modifier =
+                Modifier
+                    .size(96.dp)
+                    .clip(CircleShape),
             color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Box(

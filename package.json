@@ -1,13 +1,13 @@
 {
   "name": "iiitnr-inventory-app",
   "private": true,
-  "packageManager": "pnpm@10.26.1",
+  "workspaces": ["backend"],
   "scripts": {
-    "lint": "pnpm -r lint",
-    "lint:fix": "pnpm -r lint:fix",
-    "typecheck": "pnpm -r typecheck",
-    "format": "pnpm -r format && cd app && ./gradlew ktlintFormat",
-    "fmt": "pnpm format",
-    "dev": "pnpm --filter @iiitnr/backend dev"
+    "lint": "bun run --cwd backend lint",
+    "lint:fix": "bun run --cwd backend lint:fix",
+    "typecheck": "bun run --cwd backend typecheck",
+    "format": "bun run --cwd backend format && cd app && ./gradlew ktlintFormat",
+    "fmt": "bun run format",
+    "dev": "bun run --cwd backend dev"
   }
 }
