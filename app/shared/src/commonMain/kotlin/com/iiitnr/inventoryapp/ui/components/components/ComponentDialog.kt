@@ -41,6 +41,7 @@ fun ComponentDialog(
 ) {
     var name by remember { mutableStateOf(component?.name.orEmpty()) }
     var description by remember { mutableStateOf(component?.description.orEmpty()) }
+    var imageUrl by remember { mutableStateOf(component?.imageUrl.orEmpty()) }
     var totalQuantity by remember { mutableStateOf(component?.totalQuantity?.toString() ?: "0") }
     var availableQuantity by remember {
         mutableStateOf(component?.availableQuantity?.toString().orEmpty())
@@ -56,12 +57,14 @@ fun ComponentDialog(
             ComponentDialogFields(
                 name = name,
                 description = description,
+                imageUrl = imageUrl,
                 totalQuantity = totalQuantity,
                 availableQuantity = availableQuantity,
                 category = category,
                 location = location,
                 onNameChange = { name = it },
                 onDescriptionChange = { description = it },
+                onImageUrlChange = { imageUrl = it },
                 onTotalQuantityChange = { input ->
                     if (input.all(Char::isDigit)) {
                         totalQuantity = input
@@ -94,6 +97,7 @@ fun ComponentDialog(
                         ComponentRequest(
                             name = name.trim(),
                             description = description.trim().takeIf { it.isNotBlank() },
+                            imageUrl = imageUrl.trim().takeIf { it.isNotBlank() },
                             totalQuantity = totalQuantity.toIntOrNull() ?: 0,
                             availableQuantity =
                                 availableQuantity.toIntOrNull()
@@ -125,12 +129,14 @@ fun ComponentDialog(
 private fun ComponentDialogFields(
     name: String,
     description: String,
+    imageUrl: String,
     totalQuantity: String,
     availableQuantity: String,
     category: String,
     location: String,
     onNameChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
+    onImageUrlChange: (String) -> Unit,
     onTotalQuantityChange: (String) -> Unit,
     onAvailableQuantityChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
@@ -159,6 +165,14 @@ private fun ComponentDialogFields(
             label = { Text("Description") },
             modifier = Modifier.fillMaxWidth(),
             maxLines = 3,
+        )
+
+        OutlinedTextField(
+            value = imageUrl,
+            onValueChange = onImageUrlChange,
+            label = { Text("Image URL (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
         )
 
         Row(

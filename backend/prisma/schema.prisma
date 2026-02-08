@@ -45,6 +45,7 @@ model Component {
   id                String             @id @default(uuid())
   name              String
   description       String?
+  imageUrl          String?
   totalQuantity     Int                @default(0)
   availableQuantity Int                @default(0)
   category          ComponentCategory?
@@ -75,6 +76,7 @@ model Request {
   targetFaculty User          @relation("RequestFaculty", fields: [targetFacultyId], references: [id])
   items         RequestItem[]
 
+  @@index([userId])
   @@index([targetFacultyId])
 }
 

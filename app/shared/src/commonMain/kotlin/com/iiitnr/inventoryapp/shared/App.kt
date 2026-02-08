@@ -15,8 +15,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
-import com.iiitnr.inventoryapp.ui.screens.HomeScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
+import com.iiitnr.inventoryapp.ui.screens.ProfileScreen
 import com.iiitnr.inventoryapp.ui.screens.RegisterScreen
 import com.iiitnr.inventoryapp.ui.screens.RequestsScreen
 import kotlinx.coroutines.flow.first
@@ -77,7 +77,7 @@ fun App(
                     })
                 }
                 composable("home") {
-                    HomeScreen(tokenManager = tokenManager, onLogout = {
+                    ProfileScreen(tokenManager = tokenManager, onLogout = {
                         navController.navigate("login") {
                             popUpTo(0) { inclusive = true }
                         }

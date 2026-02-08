@@ -42,7 +42,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(
+fun ProfileScreen(
     tokenManager: TokenManager,
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,

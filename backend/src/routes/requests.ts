@@ -185,23 +185,6 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
         },
       });
 
-      if (user?.role === UserRole.FACULTY) {
-        requests.sort(
-          (
-            a: { status: RequestStatusValue; createdAt: Date },
-            b: { status: RequestStatusValue; createdAt: Date },
-          ): number => {
-            const aIsPending = a.status === RequestStatus.PENDING;
-            const bIsPending = b.status === RequestStatus.PENDING;
-
-            if (aIsPending && !bIsPending) return -1;
-            if (!aIsPending && bIsPending) return 1;
-
-            return b.createdAt.getTime() - a.createdAt.getTime();
-          },
-        );
-      }
-
       return reply.send({ requests });
     } catch (err) {
       app.log.error(err);

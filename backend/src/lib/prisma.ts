@@ -28,6 +28,7 @@ if (isTest && !process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
+  keepAlive: true,
 });
 
 const adapter = new PrismaPg(pool);

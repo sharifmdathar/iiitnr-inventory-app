@@ -46,6 +46,7 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
     const body = request.body as {
       name?: string;
       description?: string;
+      imageUrl?: string;
       totalQuantity?: number;
       availableQuantity?: number;
       category?: string;
@@ -54,6 +55,7 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
 
     const name = body?.name?.trim();
     const description = body?.description?.trim();
+    const imageUrl = body?.imageUrl?.trim();
     const totalQuantity = body?.totalQuantity;
     const availableQuantity = body?.availableQuantity;
     const category = body?.category?.trim();
@@ -91,6 +93,7 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
         data: {
           name,
           description: description || null,
+          imageUrl: imageUrl || null,
           totalQuantity,
           availableQuantity: availableQuantity ? availableQuantity : totalQuantity,
           category: category ? (category as CategoryValue) : null,
@@ -111,6 +114,7 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
     const body = request.body as {
       name?: string;
       description?: string;
+      imageUrl?: string;
       availableQuantity?: number;
       totalQuantity?: number;
       category?: string;
@@ -123,6 +127,7 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
 
     const name = body?.name?.trim();
     const description = body?.description?.trim();
+    const imageUrl = body?.imageUrl?.trim();
     const availableQuantity = body?.availableQuantity;
     const totalQuantity = body?.totalQuantity;
     const category = body?.category?.trim();
@@ -187,6 +192,7 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
         data: {
           ...(name !== undefined && { name }),
           ...(description !== undefined && { description: description || null }),
+          ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
           ...(totalQuantity !== undefined && { totalQuantity: nextTotalQuantity }),
           ...((availableQuantity !== undefined || totalQuantity !== undefined) && {
             availableQuantity: nextAvailableQuantity,
