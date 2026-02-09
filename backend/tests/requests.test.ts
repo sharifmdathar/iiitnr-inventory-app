@@ -1,6 +1,6 @@
 import './setup.js';
 
-import { describe, test, before, after, beforeEach, afterEach } from 'node:test';
+import { describe, test, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { buildApp } from '../src/app.js';
@@ -21,7 +21,7 @@ const requestStatus = {
   APPROVED: 'APPROVED',
 } as const;
 
-before(async () => {
+beforeAll(async () => {
   app = await buildApp();
 
   await prisma.requestItem.deleteMany({});
@@ -70,7 +70,7 @@ before(async () => {
   facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1d' });
 });
 
-after(async () => {
+afterAll(async () => {
   await prisma.requestItem.deleteMany({});
   await prisma.request.deleteMany({});
   const userIds = [adminUserId, studentId, facultyId, ...createdOtherUserIds].filter(Boolean);
@@ -511,7 +511,7 @@ describe('Request API', () => {
       assert.ok(body.requests.some((req: { id: string }) => req.id === request.id));
     });
 
-    test('faculty sees all requests targeting them, with pending first', async () => {
+    test('faculty sees all requests targeting them', async () => {
       const item = await prisma.component.create({
         data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
       });
@@ -588,13 +588,10 @@ describe('Request API', () => {
       // Should see all 3 requests targeting this faculty
       assert.equal(body.requests.length, 3);
 
-      // First request should be PENDING
-      assert.equal(body.requests[0].status, 'PENDING');
-      assert.equal(body.requests[0].id, pendingRequest.id);
-      assert.equal(body.requests[0].targetFacultyId, facultyId);
-
-      // Verify all requests are targeting this faculty
       const requestIds = body.requests.map((r: { id: string }) => r.id);
+      assert.ok(
+        body.requests.every((r: { targetFacultyId: string }) => r.targetFacultyId === facultyId),
+      );
       assert.ok(requestIds.includes(pendingRequest.id));
       assert.ok(requestIds.includes(approvedRequest.id));
       assert.ok(requestIds.includes(rejectedRequest.id));

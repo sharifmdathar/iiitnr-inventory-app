@@ -1,6 +1,6 @@
 import './setup.js';
 
-import { describe, test, before, after } from 'node:test';
+import { describe, test, beforeAll, afterAll } from 'bun:test';
 import assert from 'node:assert/strict';
 import { buildApp } from '../src/app.js';
 import { prisma } from '../src/lib/prisma.js';
@@ -16,7 +16,7 @@ let taUserId: string;
 let studentUserId: string;
 let facultyUserId: string;
 
-before(async () => {
+beforeAll(async () => {
   app = await buildApp();
 
   await prisma.requestItem.deleteMany({});
@@ -86,7 +86,7 @@ before(async () => {
   facultyUserId = facultyResponse.json().user.id;
 });
 
-after(async () => {
+afterAll(async () => {
   // Clean up test data
   await prisma.component.deleteMany({});
   const userIds = [adminUserId, taUserId, studentUserId, facultyUserId].filter(Boolean);
@@ -372,7 +372,7 @@ describe('Component CRUD API', () => {
       assert.ok(body.component.createdAt);
       assert.ok(body.component.updatedAt);
 
-      await prisma.component.delete({ where: { id: body.component.id } });
+      await prisma.component.deleteMany({ where: { id: body.component.id } });
     });
 
     test('creates component with minimal fields (ADMIN)', async () => {
@@ -397,7 +397,7 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.category, null);
       assert.equal(body.component.location, null);
 
-      await prisma.component.delete({ where: { id: body.component.id } });
+      await prisma.component.deleteMany({ where: { id: body.component.id } });
     });
   });
 

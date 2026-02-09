@@ -1,20 +1,88 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-.kotlin/
+# =========================
+# Gradle
+# =========================
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# Release folders
-**/release/
-**/binaries/
+# =========================
+# Kotlin / KMP
+# =========================
+.kotlin/
+**/.kotlin/
+*.kotlin_metadata
+*.klib
+*.kexe
+
+# =========================
+# Android
+# =========================
+*.apk
+*.aab
+*.dex
+*.iml
+local.properties
+.cxx/
+.externalNativeBuild/
+captures/
+
+# Android Studio
+.idea/
+.idea/**
+
+# =========================
+# iOS / Xcode
+# =========================
+*.xcworkspace
+*.xcodeproj
+*.xcuserstate
+*.xcuserdata/
+DerivedData/
+Pods/
+
+# =========================
+# JavaScript / Web (KMP JS target)
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+dist/
+out/
+
+# =========================
+# Native / Apple
+# =========================
+*.dSYM
+*.hmap
+*.ipa
+
+# =========================
+# Testing / Coverage
+# =========================
+coverage/
+*.profraw
+*.profdata
+
+# =========================
+# OS / Editors
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Secrets / Env
+# =========================
+.env
+.env.*
+!.env.example
+desktop/src/jvmMain/resources/google-desktop-config.properties

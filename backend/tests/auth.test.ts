@@ -1,6 +1,6 @@
 import './setup.js';
 
-import { describe, test, before, after } from 'node:test';
+import { describe, test, beforeAll, afterAll } from 'bun:test';
 import assert from 'node:assert/strict';
 import { buildApp } from '../src/app.js';
 import { prisma } from '../src/lib/prisma.js';
@@ -8,11 +8,11 @@ import { prisma } from '../src/lib/prisma.js';
 let app: Awaited<ReturnType<typeof buildApp>>;
 const createdUserIds: string[] = [];
 
-before(async () => {
+beforeAll(async () => {
   app = await buildApp();
 });
 
-after(async () => {
+afterAll(async () => {
   if (createdUserIds.length > 0) {
     await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
   }

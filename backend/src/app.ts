@@ -60,17 +60,44 @@ export async function buildApp() {
     secret: jwtSecret,
   });
 
+  app.setErrorHandler((error, request, reply) => {
+    if (reply.raw.headersSent || reply.sent) {
+      request.log.error({ err: error }, 'Unhandled error after headers sent');
+      return;
+    }
+
+    request.log.error(error);
+
+    const err = error as { statusCode: number; message?: string };
+    const statusCode = err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
+
+    void reply.code(statusCode).send({
+      error: err.message ?? (statusCode === 500 ? 'Internal Server Error' : 'Request failed'),
+    });
+  });
+
   app.get('/', async () => {
     return { message: 'IIITNR Inventory App Backend' };
   });
 
-  app.get('/health', async () => {
-    return { status: 'ok' };
+  app.get('/health', async (_, reply) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+
+      return reply.code(200).send({ status: 'ok', db: 'up' });
+    } catch (error) {
+      app.log.error({ err: error }, 'Health check DB query failed');
+      return reply.code(503).send({ status: 'error', db: 'down' });
+    }
   });
 
   await app.register(routes);
 
   app.addHook('onClose', async () => {
+    if (isTest) {
+      return;
+    }
+
     await prisma.$disconnect();
     await pool.end();
   });

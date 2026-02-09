@@ -1,0 +1,32 @@
+services:
+  db:
+    image: docker.io/postgres:alpine
+    restart: unless-stopped
+    profiles:
+      - main
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: iiitnr_inventory
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  db-test:
+    image: docker.io/postgres:alpine
+    restart: unless-stopped
+    profiles:
+      - test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: iiitnr_inventory_test
+    ports:
+      - '5432:5432'
+    volumes:
+      - type: tmpfs
+        target: /var/lib/postgresql
+
+volumes:
+  pgdata:

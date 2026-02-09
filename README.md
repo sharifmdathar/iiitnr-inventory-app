@@ -1,5 +1,8 @@
 # IIITNR Inventory App
 
+[![Release](https://img.shields.io/github/v/release/sharifmdathar/iiitnr-inventory-app?label=Release&style=for-the-badge)](https://github.com/sharifmdathar/iiitnr-inventory-app/releases)
+[![CodeFactor](https://img.shields.io/codefactor/grade/github/sharifmdathar/iiitnr-inventory-app?label=CodeFactor&style=for-the-badge)](https://www.codefactor.io/repository/github/sharifmdathar/iiitnr-inventory-app)
+
 A monorepo inventory management system with an Android mobile app and a Fastify + Prisma backend.
 
 ## Features
@@ -19,24 +22,45 @@ A monorepo inventory management system with an Android mobile app and a Fastify 
 
 ## Installation
 
+### Backend dependencies
+
 ```bash
+cd backend
 bun install
 ```
 
+### Android app
+
+Follow the usual Android/Kotlin setup for the `app/` module (Android Studio with a recent Gradle and JDK)
+
 ## Database Setup
 
-### Using Docker Compose (Recommended)
+### Using Docker Compose
 
-Start PostgreSQL with Docker Compose:
+Compose uses **profiles** so the main and test databases don’t run at the same time (same port). From `backend/`:
+
+| Command | Effect |
+|--------|--------|
+| `docker compose --profile prod up -d` | Start **main** Postgres (port 5432, DB `iiitnr_inventory`, data persisted) |
+| `docker compose --profile test up -d` | Start **test** Postgres (port 5432, DB `iiitnr_inventory_test`, ephemeral) |
+
+Main DB (development):
 
 ```bash
-docker compose up -d
+cd backend
+docker compose --profile main up -d
 ```
 
-This will start a PostgreSQL container on port 5432 with:
 - Database: `iiitnr_inventory`
 - User: `postgres`
 - Password: `postgres`
+
+Test DB (used by `just test`; ephemeral, no volume):
+
+```bash
+cd backend
+docker compose --profile test up -d
+```
 
 ### Manual Setup
 
@@ -52,19 +76,7 @@ Copy the example environment file:
 cp backend/config/env.example backend/.env
 ```
 
-Edit `backend/.env` and configure:
-
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/iiitnr_inventory"
-TEST_DATABASE_URL="postgresql://postgres:postgres@localhost:5432/iiitnr_inventory_test"
-PORT=4000
-JWT_SECRET="your-secret-key-here"  # Must be changed from "change-me"
-
-# Optional: Seed script configuration
-ADMIN_EMAIL="admin@test.com"
-ADMIN_PASSWORD="admin123"
-ADMIN_NAME="Test Admin"
-```
+Edit `backend/.env` and set your Environment Variables
 
 **Important**: Change `JWT_SECRET` to a secure random string. The application will not start if it's set to "change-me".
 
@@ -73,8 +85,9 @@ ADMIN_NAME="Test Admin"
 Generate Prisma client and run migrations:
 
 ```bash
-bun run --cwd backend prisma:generate
-bun run --cwd backend prisma:migrate
+cd backend
+bun run prisma:generate
+bun run prisma:migrate
 ```
 
 ### Seed Database
@@ -82,7 +95,8 @@ bun run --cwd backend prisma:migrate
 Create an admin user:
 
 ```bash
-bun run --cwd backend seed
+cd backend
+bun run seed
 ```
 
 This creates an admin account with the credentials specified in your `.env` file (defaults shown above).
@@ -90,7 +104,8 @@ This creates an admin account with the credentials specified in your `.env` file
 ### Start Development Server
 
 ```bash
-bun run --cwd backend dev
+cd backend
+bun run dev
 ```
 
 The server will start on `http://localhost:4000` (or the port specified in `PORT`).
@@ -155,10 +170,19 @@ All request endpoints require authentication. Users can only see their own reque
 
 ## Testing
 
-Run the test suite:
+**Recommended** – from repo root, use the Justfile to start the ephemeral test DB, run migrations, then tests:
 
 ```bash
-bun run --cwd backend test
+just test
+```
+
+This runs `docker compose --profile test up -d`, migrates using `TEST_DATABASE_URL` from `backend/.env`, runs `bun test`, then brings the test DB down.
+
+To run tests only (test DB must already be running, either locally or on remote):
+
+```bash
+cd backend
+bun test
 ```
 
 The test suite includes:
@@ -170,26 +194,33 @@ The test suite includes:
 
 ## Development Scripts
 
-### Backend
+### Backend (Bun)
 
-- `bun run --cwd backend dev` or `bun run dev` (from root) - Start development server with hot reload
-- `bun run --cwd backend build` - Build for production
-- `bun run --cwd backend start` - Start production server
-- `bun run --cwd backend lint` - Run ESLint
-- `bun run --cwd backend lint:fix` - Fix ESLint errors
-- `bun run --cwd backend typecheck` - Type check TypeScript
-- `bun run --cwd backend format` - Format code with Prettier
-- `bun run --cwd backend test` - Run tests
-- `bun run --cwd backend prisma:generate` - Generate Prisma client
-- `bun run --cwd backend prisma:migrate` - Run database migrations
-- `bun run --cwd backend seed` - Seed database with admin user
+From `backend/`:
 
-### Root
+- `bun run dev` - Start development server with hot reload
+- `bun run build` - Build for production
+- `bun run start` - Start production server
+- `bun run lint` - Run ESLint
+- `bun run lint:fix` - Fix ESLint errors
+- `bun run typecheck` - Type check TypeScript
+- `bun run format` - Format backend code with Prettier
+- `bun run prisma:generate` - Generate Prisma client
+- `bun run prisma:migrate` - Run database migrations
+- `bun run seed` - Seed database with admin user
 
-- `bun run lint` - Lint backend
-- `bun run lint:fix` - Fix linting errors
-- `bun run typecheck` - Type check backend
-- `bun run format` - Format backend + Kotlin (ktlintFormat)
+### Root Justfile
+
+At the repo root there is a `Justfile` to streamline common tasks:
+
+- `just` or `just dev` - Start the backend dev server
+- `just install` - Install backend dependencies
+- `just test` - Start test DB (`--profile test`), run migrations and `bun test`, then stop test DB
+- `just lint` - Lint backend and run `ktlintCheck` for the Android app
+- `just lint-fix` - Fix backend lint issues and run `ktlintFormat` for the Android app
+- `just typecheck` - Type-check the backend
+- `just fmt` - Format backend code and run `ktlintFormat` for the Android app
+- `just detekt` - Run Detekt on the Android app
 
 ## Mobile App
 
@@ -225,9 +256,10 @@ The health check endpoint is available at `GET /health` for Render's health chec
 │   │   └── lib/       # Library code (Prisma client)
 │   ├── tests/         # Test suite
 │   └── dist/          # Compiled output
-├── app/               # Android mobile app
-├── compose.yaml       # Docker Compose configuration
-└── package.json       # Root package.json for monorepo
+├── app/               # KMP app (frontend)
+├── backend/
+│   └── compose.yaml   # Docker Compose file for local database (optional)
+└── Justfile           # Root task runner for backend + app
 ```
 
 ## Database Schema
