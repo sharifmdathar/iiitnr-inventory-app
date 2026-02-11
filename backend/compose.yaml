@@ -1,5 +1,6 @@
 services:
   db:
+    container_name: db
     image: docker.io/postgres:alpine
     restart: unless-stopped
     profiles:
@@ -12,6 +13,8 @@ services:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - iiitnr-inventory
 
   db-test:
     image: docker.io/postgres:alpine
@@ -27,6 +30,13 @@ services:
     volumes:
       - type: tmpfs
         target: /var/lib/postgresql
+    networks:
+      - iiitnr-inventory
 
 volumes:
   pgdata:
+
+networks:
+  iiitnr-inventory:
+    name: iiitnr-inventory
+    external: false

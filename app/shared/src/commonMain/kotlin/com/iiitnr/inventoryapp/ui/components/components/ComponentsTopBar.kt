@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,6 +29,8 @@ fun ComponentsTopBar(
     onNavigateToHome: () -> Unit,
     onNavigateToRequests: () -> Unit,
     pendingRequestsCount: Int? = null,
+    showExportCsv: Boolean = false,
+    onExportCsv: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -39,9 +45,18 @@ fun ComponentsTopBar(
             color = MaterialTheme.colorScheme.primary,
         )
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (showExportCsv && onExportCsv != null) {
+                IconButton(onClick = onExportCsv) {
+                    Icon(
+                        imageVector = Icons.Outlined.FileDownload,
+                        contentDescription = "Export CSV",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
             TextButton(onClick = onNavigateToRequests) {
                 Box {
                     Text(

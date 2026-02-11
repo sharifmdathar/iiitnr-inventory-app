@@ -45,6 +45,7 @@ fun ComponentsScreen(
     tokenManager: TokenManager,
     onNavigateToRequests: () -> Unit,
     onNavigateToHome: () -> Unit,
+    onExportCsv: ((String) -> Unit)? = null,
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -71,11 +72,45 @@ fun ComponentsScreen(
 
     val isFaculty = userRole?.uppercase() == "FACULTY"
 
+    val canExportCsv =
+        userRole?.let { role ->
+            val roleUpper = role.uppercase()
+            roleUpper == "ADMIN" || roleUpper == "TA" || roleUpper == "FACULTY"
+        } ?: false
+
     val isReadOnly =
         userRole?.let { role ->
             val roleUpper = role.uppercase()
             roleUpper != "TA" && roleUpper != "ADMIN"
         } ?: true
+
+    fun exportComponentsCsv() {
+        if (!canExportCsv || onExportCsv == null || components.isEmpty()) return
+
+        val csvHeader = "Name,Description,Category,Location,Total Quantity,Available Quantity"
+        val csvRows =
+            components.map { c ->
+                fun escapeCsv(value: String?): String {
+                    if (value.isNullOrEmpty()) return ""
+                    val escaped = value.replace("\"", "\"\"")
+                    return if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
+                        "\"$escaped\""
+                    } else {
+                        escaped
+                    }
+                }
+                listOf(
+                    escapeCsv(c.name),
+                    escapeCsv(c.description),
+                    escapeCsv(c.category?.replace("_", " ")),
+                    escapeCsv(c.location?.replace("_", " ")),
+                    c.totalQuantity.toString(),
+                    c.availableQuantity.toString(),
+                ).joinToString(",")
+            }
+        val csvContent = (listOf(csvHeader) + csvRows).joinToString("\n")
+        onExportCsv.invoke(csvContent)
+    }
 
     val filteredComponents =
         components.filter { component ->
@@ -281,31 +316,36 @@ fun ComponentsScreen(
         }
     }
 
-    Scaffold(topBar = {
-        ComponentsTopBar(
-            onNavigateToHome = onNavigateToHome,
-            onNavigateToRequests = onNavigateToRequests,
-            pendingRequestsCount = if (isFaculty) pendingRequestsCount else null,
-        )
-    }, floatingActionButton = {
-        when {
-            cartQuantities.isNotEmpty() -> {
-                CartFAB(
-                    itemCount = cartQuantities.values.sum(),
-                    onClick = { showCartDialog = true },
-                )
-            }
+    Scaffold(
+        topBar = {
+            ComponentsTopBar(
+                onNavigateToHome = onNavigateToHome,
+                onNavigateToRequests = onNavigateToRequests,
+                pendingRequestsCount = if (isFaculty) pendingRequestsCount else null,
+                showExportCsv = canExportCsv && components.isNotEmpty(),
+                onExportCsv = { exportComponentsCsv() },
+            )
+        },
+        floatingActionButton = {
+            when {
+                cartQuantities.isNotEmpty() -> {
+                    CartFAB(
+                        itemCount = cartQuantities.values.sum(),
+                        onClick = { showCartDialog = true },
+                    )
+                }
 
-            !isReadOnly -> {
-                AddComponentFAB(
-                    onClick = {
-                        editingComponent = null
-                        showDialog = true
-                    },
-                )
+                !isReadOnly -> {
+                    AddComponentFAB(
+                        onClick = {
+                            editingComponent = null
+                            showDialog = true
+                        },
+                    )
+                }
             }
-        }
-    }) { paddingValues ->
+        },
+    ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             SearchBar(
                 searchQuery = searchQuery,

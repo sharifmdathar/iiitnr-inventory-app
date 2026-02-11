@@ -1,5 +1,5 @@
-import java.util.Properties
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -83,7 +83,7 @@ compose.desktop {
             }
 
             packageName = "IIITNR Inventory App"
-            packageVersion = "1.11.0"
+            packageVersion = "1.12.0"
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"

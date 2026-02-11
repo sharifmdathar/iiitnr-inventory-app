@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import com.iiitnr.inventoryapp.data.auth.GoogleSignInHelper
 import com.iiitnr.inventoryapp.data.storage.createTokenManager
 import com.iiitnr.inventoryapp.shared.App
+import com.iiitnr.inventoryapp.ui.platform.exportComponentsCsvAndroid
 import com.iiitnr.inventoryapp.ui.theme.IIITNRInventoryAppTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,13 @@ class MainActivity : ComponentActivity() {
                             onGoogleSignInResult?.invoke(idToken)
                             onGoogleSignInResult = null
                         }
+                    },
+                    onExportComponentsCsv = { csvContent ->
+                        exportComponentsCsvAndroid(
+                            context = this@MainActivity,
+                            filename = "components.csv",
+                            content = csvContent,
+                        )
                     },
                 )
             }

@@ -49,6 +49,7 @@ import com.google.zxing.common.HybridBinarizer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+@Suppress("SameReturnValue")
 actual fun isQrScanAvailable(): Boolean = true
 
 @Composable

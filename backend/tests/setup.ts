@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { execSync } from 'node:child_process';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
@@ -11,10 +12,10 @@ if (!process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
     url.pathname = `/${dbName}_test`;
     process.env.TEST_DATABASE_URL = url.toString();
     console.warn(
-      '⚠️  TEST_DATABASE_URL not set. Using derived test database:',
+      '⚠️ TEST_DATABASE_URL not set. Using derived test database:',
       process.env.TEST_DATABASE_URL,
     );
-    console.warn('⚠️  Please set TEST_DATABASE_URL explicitly in your .env file for safety.');
+    console.warn('⚠️ Please set TEST_DATABASE_URL explicitly in your .env file for safety.');
   } catch (err) {
     console.error('Failed to derive TEST_DATABASE_URL from DATABASE_URL:', err);
     throw new Error(
@@ -35,7 +36,27 @@ if (process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
 
   if (!testDb.includes('test') && !testDb.includes('_test')) {
     console.warn(
-      '⚠️  WARNING: TEST_DATABASE_URL does not contain "test" - are you sure this is a test database?',
+      '⚠️ WARNING: TEST_DATABASE_URL does not contain "test" - are you sure this is a test database?',
     );
+  }
+}
+
+const dbUrlForMigrations = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+
+if (!dbUrlForMigrations) {
+  console.warn('⚠️ No TEST_DATABASE_URL or DATABASE_URL set; skipping Prisma migrations.');
+} else {
+  try {
+    console.log('📦 Running Prisma migrations for test database...');
+    execSync('bunx prisma migrate deploy', {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        DATABASE_URL: dbUrlForMigrations,
+      },
+    });
+  } catch (err) {
+    console.error('❌ Failed to run Prisma migrations for tests.', err);
+    throw err;
   }
 }

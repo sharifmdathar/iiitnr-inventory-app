@@ -5,6 +5,7 @@ import androidx.compose.ui.window.application
 import com.iiitnr.inventoryapp.data.auth.GoogleDesktopSignInHelper
 import com.iiitnr.inventoryapp.data.storage.createTokenManager
 import com.iiitnr.inventoryapp.shared.App
+import com.iiitnr.inventoryapp.ui.platform.exportComponentsCsvDesktop
 import com.iiitnr.inventoryapp.ui.theme.AppTheme
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -51,6 +52,12 @@ fun main() = application {
                         val idToken = googleHelper.signIn()
                         callback(idToken)
                     }
+                },
+                onExportComponentsCsv = { csvContent ->
+                    exportComponentsCsvDesktop(
+                        filename = "components.csv",
+                        content = csvContent,
+                    )
                 },
             )
         }

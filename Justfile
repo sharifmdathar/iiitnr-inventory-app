@@ -7,10 +7,9 @@ dev:
     cd backend && bun run dev
 
 test:
-    cd backend && podman compose --profile test up -d
-    cd backend && (set -a && . ./.env && set +a && DATABASE_URL="$TEST_DATABASE_URL" bun run prisma:migrate)
+    cd backend && docker compose --profile test up -d
     cd backend && bun test
-    cd backend && podman compose --profile test down
+    cd backend && docker compose --profile test down
 
 lint:
     cd backend && bun run lint

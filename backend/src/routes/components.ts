@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth, requireAdminOrTA } from '../middleware/auth.js';
-import { categoryValues, locationValues, toLocationEnum } from '../utils/enums.js';
-import type { CategoryValue } from '../utils/enums.js';
+import { UserRole, categoryValues, locationValues, toLocationEnum } from '../utils/enums.js';
+import type { CategoryValue, UserRoleValue } from '../utils/enums.js';
 import type { LocationValue } from '../utils/enums.js';
 
 const componentsRoutes: FastifyPluginAsync = async (app) => {
@@ -15,6 +15,46 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
     } catch (err) {
       app.log.error(err);
       return reply.code(500).send({ error: 'failed to fetch components' });
+    }
+  });
+
+  app.get('/export/csv', { preHandler: requireAuth }, async (request, reply) => {
+    const userRole = (request.user as { role?: UserRoleValue })?.role;
+    if (userRole !== UserRole.ADMIN && userRole !== UserRole.TA && userRole !== UserRole.FACULTY) {
+      return reply.code(403).send({ error: 'forbidden: admin, TA, or faculty role required' });
+    }
+
+    try {
+      const components = await prisma.component.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const csvHeader = 'Name,Description,Category,Location,Total Quantity,Available Quantity';
+      const csvRows = components.map((c: (typeof components)[number]) => {
+        const escapeCsv = (value: string | null | undefined) => {
+          if (value == null) return '';
+          const str = value.replace(/"/g, '""');
+          return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
+        };
+        return [
+          escapeCsv(c.name),
+          escapeCsv(c.description),
+          escapeCsv(c.category?.replace(/_/g, ' ') ?? null),
+          escapeCsv(c.location?.replace(/_/g, ' ') ?? null),
+          c.totalQuantity,
+          c.availableQuantity,
+        ].join(',');
+      });
+
+      const csv = [csvHeader, ...csvRows].join('\n');
+
+      return reply
+        .header('Content-Type', 'text/csv')
+        .header('Content-Disposition', 'attachment; filename="components.csv"')
+        .send(csv);
+    } catch (err) {
+      app.log.error(err);
+      return reply.code(500).send({ error: 'failed to export components' });
     }
   });
 
