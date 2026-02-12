@@ -1,17 +1,18 @@
 {
-	"name": "IIITNR Inventory",
-	"build": {
-        "dockerfile": "Dockerfile"
-    },
-	"mounts": [
-        {
-            "source": "/var/run/docker.sock",
-            "target": "/var/run/docker.sock",
-            "type": "bind"
-        }
-    ],
-	"forwardPorts": [4000],
-	"initializeCommand": "docker network create iiitnr-inventory 2> /dev/null || true",
-	"runArgs": ["--network=iiitnr-inventory"],
-	"postCreateCommand": "just install"
+  "name": "IIITNR Inventory",
+  "build": {
+    "context": "..",
+    "dockerfile": "Dockerfile"
+  },
+  "mounts": [
+    {
+      "source": "/var/run/docker.sock",
+      "target": "/var/run/docker.sock",
+      "type": "bind"
+    }
+  ],
+  "forwardPorts": [4000],
+  "initializeCommand": "docker network create iiitnr-inventory 2> /dev/null || true",
+  "runArgs": ["--network=iiitnr-inventory"],
+  "postCreateCommand": "just install && cd app && ./gradlew --version"
 }

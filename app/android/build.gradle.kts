@@ -11,15 +11,13 @@ android {
 
     val hasReleaseSigning =
         project.hasProperty("RELEASE_KEYSTORE_PATH") ||
-            !(
-                System.getenv("RELEASE_KEYSTORE_PATH").orEmpty()
-            ).isBlank()
+            !System.getenv("RELEASE_KEYSTORE_PATH").orEmpty().isBlank()
     if (hasReleaseSigning) {
         signingConfigs {
             create("release") {
                 storeFile =
                     file(
-                        (project.findProperty("RELEASE_KEYSTORE_PATH") as String?)
+                        project.findProperty("RELEASE_KEYSTORE_PATH") as String?
                             ?: System.getenv("RELEASE_KEYSTORE_PATH")!!,
                     )
                 storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString()

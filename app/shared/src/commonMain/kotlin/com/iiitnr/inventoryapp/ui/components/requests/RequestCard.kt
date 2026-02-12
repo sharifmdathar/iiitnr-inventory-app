@@ -93,55 +93,15 @@ fun RequestCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                if (request.status == "PENDING") {
-                    if (isFaculty && onApproveRequest != null && onRejectRequest != null) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            IconButton(onClick = { onRejectRequest(request.id) }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Reject request",
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                            IconButton(onClick = { onApproveRequest(request.id) }) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Approve request",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    } else if (!isFaculty && onDeleteRequest != null) {
-                        IconButton(onClick = { onDeleteRequest(request.id) }) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Retract request",
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                } else if (request.status == "APPROVED") {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (!isFaculty && onShowQr != null) {
-                            IconButton(onClick = { onShowQr(request) }) {
-                                Icon(
-                                    imageVector = Icons.Default.QrCode2,
-                                    contentDescription = "Show QR for TA to scan",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                        if (onFulfillRequest != null) {
-                            IconButton(onClick = { onFulfillRequest(request.id) }) {
-                                Icon(
-                                    imageVector = Icons.Default.DoneAll,
-                                    contentDescription = "Fulfill request",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    }
-                }
+                RequestCardActions(
+                    request = request,
+                    isFaculty = isFaculty,
+                    onDeleteRequest = onDeleteRequest,
+                    onApproveRequest = onApproveRequest,
+                    onRejectRequest = onRejectRequest,
+                    onFulfillRequest = onFulfillRequest,
+                    onShowQr = onShowQr,
+                )
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -181,6 +141,100 @@ fun RequestCard(
             Spacer(modifier = Modifier.height(4.dp))
             request.items.forEach { item ->
                 RequestItemRow(item = item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RequestCardActions(
+    request: Request,
+    isFaculty: Boolean,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+    onFulfillRequest: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    when (request.status) {
+        "PENDING" ->
+            PendingRequestActions(
+                request = request,
+                isFaculty = isFaculty,
+                onDeleteRequest = onDeleteRequest,
+                onApproveRequest = onApproveRequest,
+                onRejectRequest = onRejectRequest,
+            )
+        "APPROVED" ->
+            ApprovedRequestActions(
+                request = request,
+                isFaculty = isFaculty,
+                onFulfillRequest = onFulfillRequest,
+                onShowQr = onShowQr,
+            )
+    }
+}
+
+@Composable
+private fun PendingRequestActions(
+    request: Request,
+    isFaculty: Boolean,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+) {
+    if (isFaculty && onApproveRequest != null && onRejectRequest != null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconButton(onClick = { onRejectRequest(request.id) }) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Reject request",
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+            IconButton(onClick = { onApproveRequest(request.id) }) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Approve request",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    } else if (!isFaculty && onDeleteRequest != null) {
+        IconButton(onClick = { onDeleteRequest(request.id) }) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Retract request",
+                tint = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ApprovedRequestActions(
+    request: Request,
+    isFaculty: Boolean,
+    onFulfillRequest: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!isFaculty && onShowQr != null) {
+            IconButton(onClick = { onShowQr(request) }) {
+                Icon(
+                    imageVector = Icons.Default.QrCode2,
+                    contentDescription = "Show QR for TA to scan",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (onFulfillRequest != null) {
+            IconButton(onClick = { onFulfillRequest(request.id) }) {
+                Icon(
+                    imageVector = Icons.Default.DoneAll,
+                    contentDescription = "Fulfill request",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
