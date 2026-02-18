@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ComponentsTopBar(
     onNavigateToHome: () -> Unit,
@@ -64,8 +67,7 @@ fun ComponentsTopBar(
                         color = MaterialTheme.colorScheme.primary,
                     )
                     if (pendingRequestsCount != null && pendingRequestsCount > 0) {
-                        val count =
-                            if (pendingRequestsCount > 99) "99+" else pendingRequestsCount.toString()
+                        val count = if (pendingRequestsCount > 99) "99+" else pendingRequestsCount.toString()
                         Box(
                             modifier =
                                 Modifier
@@ -89,10 +91,13 @@ fun ComponentsTopBar(
                     }
                 }
             }
-            TextButton(onClick = onNavigateToHome) {
-                Text(
-                    "Profile",
-                    color = MaterialTheme.colorScheme.primary,
+            IconButton(
+                onClick = onNavigateToHome,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountCircle,
+                    contentDescription = "Home",
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }

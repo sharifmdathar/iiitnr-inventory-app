@@ -7,9 +7,9 @@ dev:
     cd backend && bun run dev
 
 test:
-    cd backend && docker compose --profile test up -d
+    cd backend && podman compose --profile test up -d
     cd backend && bun test
-    cd backend && docker compose --profile test down
+    cd backend && podman compose --profile test down
 
 lint:
     cd backend && bun run lint

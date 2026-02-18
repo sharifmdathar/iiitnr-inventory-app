@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,8 +46,8 @@ import kotlinx.coroutines.launch
 fun ComponentsScreen(
     tokenManager: TokenManager,
     onNavigateToRequests: () -> Unit,
-    onNavigateToHome: () -> Unit,
-    onExportCsv: ((String) -> Unit)? = null,
+    onNavigateToProfile: () -> Unit,
+    onExportCsv: ((String) -> Boolean)? = null,
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -69,6 +71,7 @@ fun ComponentsScreen(
     var isLoadingFaculty by remember { mutableStateOf(false) }
     var pendingRequestsCount by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val isFaculty = userRole?.uppercase() == "FACULTY"
 
@@ -109,7 +112,18 @@ fun ComponentsScreen(
                 ).joinToString(",")
             }
         val csvContent = (listOf(csvHeader) + csvRows).joinToString("\n")
-        onExportCsv.invoke(csvContent)
+        val success = onExportCsv.invoke(csvContent)
+
+        scope.launch {
+            snackbarHostState.showSnackbar(
+                message =
+                    if (success) {
+                        "Exported components.csv successfully"
+                    } else {
+                        "Failed to export components.csv"
+                    },
+            )
+        }
     }
 
     val filteredComponents =
@@ -319,7 +333,7 @@ fun ComponentsScreen(
     Scaffold(
         topBar = {
             ComponentsTopBar(
-                onNavigateToHome = onNavigateToHome,
+                onNavigateToHome = onNavigateToProfile,
                 onNavigateToRequests = onNavigateToRequests,
                 pendingRequestsCount = if (isFaculty) pendingRequestsCount else null,
                 showExportCsv = canExportCsv && components.isNotEmpty(),
@@ -345,6 +359,7 @@ fun ComponentsScreen(
                 }
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             SearchBar(

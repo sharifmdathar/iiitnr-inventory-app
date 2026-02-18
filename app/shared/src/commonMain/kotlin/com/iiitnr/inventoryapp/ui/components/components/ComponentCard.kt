@@ -35,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -137,7 +139,12 @@ fun ComponentCard(
                             Icon(
                                 Icons.Default.AddShoppingCart,
                                 contentDescription = "Add to cart",
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint =
+                                    if (component.availableQuantity > 0) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.outline
+                                    },
                             )
                         }
                     } else {
@@ -176,15 +183,38 @@ fun ComponentCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                val available = component.availableQuantity
+                val total = component.totalQuantity
+                val quantityRatio =
+                    if (total > 0) {
+                        (available.toFloat() / total).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                val quantityColor =
+                    lerp(
+                        start = MaterialTheme.colorScheme.error,
+                        stop = Color(0xFF66BB6A),
+                        fraction = quantityRatio,
+                    )
+
+                if (!component.category.isNullOrBlank()) {
+                    InfoChip(
+                        label = "Category",
+                        primary = component.category.replace('_', ' '),
+                    )
+                }
                 InfoChip(
                     label = "Quantity",
-                    value = "${component.availableQuantity}/${component.totalQuantity}",
+                    primary = available.toString(),
+                    secondary = total.toString(),
+                    color = quantityColor,
                 )
-                if (!component.category.isNullOrBlank()) {
-                    InfoChip("Category", component.category.replace('_', ' '))
-                }
                 if (!component.location.isNullOrBlank()) {
-                    InfoChip("Location", component.location.replace('_', ' '))
+                    InfoChip(
+                        label = "Location",
+                        component.location.replace('_', ' '),
+                    )
                 }
             }
         }

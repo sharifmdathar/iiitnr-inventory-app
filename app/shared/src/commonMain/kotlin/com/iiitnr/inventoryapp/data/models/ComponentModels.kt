@@ -58,6 +58,7 @@ data class ComponentRequest(
 @Serializable
 data class ComponentsResponse(
     val components: List<Component>,
+    val lastModified: String? = null,
 )
 
 @Serializable

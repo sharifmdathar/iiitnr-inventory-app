@@ -180,7 +180,16 @@ jobs:
           Icon=iiitnr-inventory-app
           Categories=Utility;
           DESKTOP
-          convert -size 256x256 xc:'#1976D2' "$APPDIR/iiitnr-inventory-app.png"
+          # Copy and convert icon if it exists, otherwise generate a temporary one
+          if [ -f "app/desktop/icon.png" ]; then
+            cp "app/desktop/icon.png" "$APPDIR/iiitnr-inventory-app.png"
+          elif [ -f "app/desktop/icon.jpg" ]; then
+            convert "app/desktop/icon.jpg" -resize 256x256 "$APPDIR/iiitnr-inventory-app.png"
+          elif [ -f "app/desktop/icon.jpeg" ]; then
+            convert "app/desktop/icon.jpeg" -resize 256x256 "$APPDIR/iiitnr-inventory-app.png"
+          else
+            convert -size 256x256 xc:'#1976D2' "$APPDIR/iiitnr-inventory-app.png"
+          fi
           echo "APPDIR=$APPDIR" >> $GITHUB_ENV
 
       - name: Download appimagetool

@@ -8,7 +8,7 @@ import platform.Foundation.NSUserDefaults
 class IosTokenManager : TokenManager {
     private val userDefaults = NSUserDefaults.standardUserDefaults
     private val tokenKey = "auth_token"
-    
+
     // We use a MutableStateFlow to emit updates.
     // Initial value is read from NSUserDefaults.
     private val _token = MutableStateFlow(userDefaults.stringForKey(tokenKey))

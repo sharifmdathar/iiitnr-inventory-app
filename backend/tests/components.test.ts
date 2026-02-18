@@ -107,7 +107,7 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 401);
     });
 
-    test('returns 200 for STUDENT role', async () => {
+    test('returns 204 for STUDENT role', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -116,12 +116,10 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 200);
-      const body = response.json();
-      assert.ok(Array.isArray(body.components));
+      assert.equal(response.statusCode, 204);
     });
 
-    test('returns 200 for FACULTY role', async () => {
+    test('returns 204 for FACULTY role', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -130,12 +128,10 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 200);
-      const body = response.json();
-      assert.ok(Array.isArray(body.components));
+      assert.equal(response.statusCode, 204);
     });
 
-    test('returns empty array when no components exist (ADMIN)', async () => {
+    test('returns 204 when no components exist (ADMIN)', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -144,14 +140,10 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 200);
-      const body = response.json();
-      assert.ok(Array.isArray(body.components));
-      assert.equal(body.components.length, 0);
+      assert.equal(response.statusCode, 204);
     });
 
-    test('returns all components (TA)', async () => {
-      // Create test components
+    test('returns 200 with components (TA)', async () => {
       const component1 = await prisma.component.create({
         data: {
           name: 'Resistor 10k',
@@ -191,7 +183,46 @@ describe('Component CRUD API', () => {
       assert.equal(body.components[0].id, component2.id);
       assert.equal(body.components[1].id, component1.id);
 
-      // Clean up
+      await prisma.component.deleteMany({});
+    });
+
+    test('returns 304 Not Modified when If-Modified-Since is up to date (TA)', async () => {
+      await prisma.component.deleteMany({});
+
+      await prisma.component.create({
+        data: {
+          name: 'Conditional GET Component',
+          description: 'For If-Modified-Since testing',
+          totalQuantity: 5,
+          availableQuantity: 5,
+          category: ComponentCategory.Sensors,
+          location: Location.IoT_Lab,
+        },
+      });
+
+      const firstResponse = await app.inject({
+        method: 'GET',
+        url: '/components',
+        headers: {
+          authorization: `Bearer ${taToken}`,
+        },
+      });
+
+      assert.equal(firstResponse.statusCode, 200);
+      const lastModified = firstResponse.headers['last-modified'];
+      assert.ok(lastModified);
+
+      const secondResponse = await app.inject({
+        method: 'GET',
+        url: '/components',
+        headers: {
+          authorization: `Bearer ${taToken}`,
+          'if-modified-since': lastModified,
+        },
+      });
+
+      assert.equal(secondResponse.statusCode, 304);
+
       await prisma.component.deleteMany({});
     });
   });

@@ -6,12 +6,41 @@ import type { CategoryValue, UserRoleValue } from '../utils/enums.js';
 import type { LocationValue } from '../utils/enums.js';
 
 const componentsRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/', { preHandler: requireAuth }, async (_, reply) => {
+  app.get('/', { preHandler: requireAuth }, async (request, reply) => {
     try {
       const components = await prisma.component.findMany({
         orderBy: { createdAt: 'desc' },
       });
-      return reply.send({ components });
+      const lastModifiedMs = components.reduce(
+        (latestMs: number, c: { updatedAt?: Date; createdAt: Date }) => {
+          const currentMs = new Date(c.updatedAt ?? c.createdAt).getTime();
+          return Math.max(latestMs, currentMs);
+        },
+        0,
+      );
+
+      if (lastModifiedMs == 0) return reply.code(204).send();
+
+      const lastModifiedDate = new Date(lastModifiedMs);
+      lastModifiedDate.setMilliseconds(0);
+
+      const modifiedSinceHeader = request.headers['if-modified-since'];
+      if (modifiedSinceHeader) {
+        const modifiedSinceDate = new Date(modifiedSinceHeader);
+
+        if (!Number.isNaN(modifiedSinceDate.getTime()) && modifiedSinceDate >= lastModifiedDate) {
+          return reply.code(304).send();
+        }
+      }
+      return reply
+        .headers({
+          'Last-Modified': lastModifiedDate.toUTCString(),
+          'Cache-Control': 'private, max-age=0, must-revalidate',
+        })
+        .send({
+          components,
+          lastModified: lastModifiedDate.toUTCString(),
+        });
     } catch (err) {
       app.log.error(err);
       return reply.code(500).send({ error: 'failed to fetch components' });

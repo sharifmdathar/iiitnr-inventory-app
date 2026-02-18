@@ -5,14 +5,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 @Composable
 fun InfoChip(
     label: String,
-    value: String,
+    primary: String,
+    secondary: String? = null,
     modifier: Modifier = Modifier,
+    color: Color? = null,
 ) {
     Column(modifier = modifier) {
         Text(
@@ -22,10 +25,10 @@ fun InfoChip(
             fontSize = 10.sp,
         )
         Text(
-            text = value,
+            text = if (secondary == null) primary else "$primary/$secondary",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.primary,
+            color = color ?: MaterialTheme.colorScheme.primary,
         )
     }
 }

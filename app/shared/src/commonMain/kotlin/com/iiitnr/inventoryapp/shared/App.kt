@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 fun App(
     tokenManager: TokenManager,
     onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
-    onExportComponentsCsv: ((String) -> Unit)? = null,
+    onExportComponentsCsv: ((String) -> Boolean)? = null,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         val navController = rememberNavController()
@@ -76,13 +76,13 @@ fun App(
                         onNavigateToRequests = {
                             navController.navigate("requests")
                         },
-                        onNavigateToHome = {
-                            navController.navigate("home")
+                        onNavigateToProfile = {
+                            navController.navigate("profile")
                         },
                         onExportCsv = onExportComponentsCsv,
                     )
                 }
-                composable("home") {
+                composable("profile") {
                     ProfileScreen(tokenManager = tokenManager, onLogout = {
                         navController.navigate("login") {
                             popUpTo(0) { inclusive = true }
