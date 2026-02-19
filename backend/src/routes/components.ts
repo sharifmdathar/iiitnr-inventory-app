@@ -19,7 +19,7 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
         0,
       );
 
-      if (lastModifiedMs == 0) return reply.code(204).send();
+      if (lastModifiedMs === 0) return reply.code(204).send();
 
       const lastModifiedDate = new Date(lastModifiedMs);
       lastModifiedDate.setMilliseconds(0);

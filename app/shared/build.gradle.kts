@@ -5,9 +5,13 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
     androidLibrary {
         namespace = "com.iiitnr.inventoryapp.shared"
         compileSdk = 36
@@ -51,11 +55,14 @@ kotlin {
                 implementation(libs.coil.compose)
                 implementation(libs.coil.network)
                 implementation(libs.qrose)
+                implementation(libs.sqldelight.runtime)
+                implementation(libs.sqldelight.coroutines.extensions)
             }
         }
 
         val androidMain by getting {
             dependencies {
+                implementation(libs.sqldelight.driver.android)
                 implementation(libs.ktor.client.android)
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.datastore.preferences)
@@ -70,26 +77,27 @@ kotlin {
             }
         }
 
-        val iosX64Main by getting {
-            dependencies {
+        val iosTargets = listOf(iosX64Main, iosArm64Main, iosSimulatorArm64Main)
+        iosTargets.forEach { target ->
+            target.dependencies {
                 implementation(libs.ktor.client.darwin)
-            }
-        }
-        val iosArm64Main by getting {
-            dependencies {
-                implementation(libs.ktor.client.darwin)
-            }
-        }
-        val iosSimulatorArm64Main by getting {
-            dependencies {
-                implementation(libs.ktor.client.darwin)
+                implementation(libs.sqldelight.driver.native)
             }
         }
 
         val jvmMain by getting {
             dependencies {
                 implementation(libs.ktor.client.cio)
+                implementation(libs.sqldelight.driver.sqlite)
             }
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("AppDatabase") {
+            packageName.set("com.iiitnr.inventoryapp.db")
         }
     }
 }

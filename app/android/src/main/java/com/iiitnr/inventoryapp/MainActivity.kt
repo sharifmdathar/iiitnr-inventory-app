@@ -5,7 +5,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.remember
 import com.iiitnr.inventoryapp.data.auth.GoogleSignInHelper
+import com.iiitnr.inventoryapp.data.cache.createComponentsCache
 import com.iiitnr.inventoryapp.data.storage.createTokenManager
 import com.iiitnr.inventoryapp.shared.App
 import com.iiitnr.inventoryapp.ui.platform.exportComponentsCsvAndroid
@@ -30,8 +32,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             IIITNRInventoryAppTheme {
                 val tokenManager = createTokenManager(this@MainActivity)
+                val componentsCache = remember { createComponentsCache(this@MainActivity) }
                 App(
                     tokenManager = tokenManager,
+                    componentsCache = componentsCache,
                     onGoogleSignInClick = { callback ->
                         onGoogleSignInResult = callback
                         coroutineScope.launch {

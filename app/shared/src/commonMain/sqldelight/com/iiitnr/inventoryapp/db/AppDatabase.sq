@@ -1,0 +1,34 @@
+CREATE TABLE Component (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    imageUrl TEXT,
+    totalQuantity INTEGER NOT NULL,
+    availableQuantity INTEGER NOT NULL,
+    category TEXT,
+    location TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+);
+
+CREATE TABLE SyncMetadata (
+    key TEXT PRIMARY KEY,
+    lastModified TEXT
+);
+
+insertComponent:
+INSERT OR REPLACE INTO Component(id, name, description, imageUrl, totalQuantity, availableQuantity, category, location, createdAt, updatedAt)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectAll:
+SELECT * FROM Component ORDER BY createdAt DESC;
+
+deleteAllComponents:
+DELETE FROM Component;
+
+saveLastModified:
+INSERT OR REPLACE INTO SyncMetadata(key, lastModified)
+VALUES ('components_sync', ?);
+
+getLastModified:
+SELECT lastModified FROM SyncMetadata WHERE key = 'components_sync';

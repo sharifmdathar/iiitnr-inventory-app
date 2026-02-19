@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
+import com.iiitnr.inventoryapp.data.cache.ComponentsCache
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentCategory
 import com.iiitnr.inventoryapp.data.models.ComponentLocation
@@ -45,12 +46,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun ComponentsScreen(
     tokenManager: TokenManager,
+    componentsCache: ComponentsCache? = null,
     onNavigateToRequests: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onExportCsv: ((String) -> Boolean)? = null,
 ) {
     var components by remember { mutableStateOf<List<Component>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading by remember(componentsCache) { mutableStateOf(componentsCache == null) }
     var isRefreshing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showDialog by remember { mutableStateOf(false) }
@@ -157,12 +159,12 @@ fun ComponentsScreen(
                 return@launch
             }
 
-            if (pollingMode) {
+            if (pollingMode || componentsCache != null) {
                 isRefreshing = true
             } else {
                 isLoading = true
-                errorMessage = null
             }
+            if (!pollingMode) errorMessage = null
 
             try {
                 val token = tokenManager.token.first()
@@ -174,7 +176,11 @@ fun ComponentsScreen(
                     }
 
                     val response = ApiClient.componentApiService.getComponents("Bearer $token")
-                    components = response.components
+                    if (componentsCache != null) {
+                        componentsCache.save(response.components, response.lastModified)
+                    } else {
+                        components = response.components
+                    }
                 } else {
                     if (!pollingMode) {
                         errorMessage = "No authentication token"
@@ -182,23 +188,30 @@ fun ComponentsScreen(
                 }
             } catch (e: Exception) {
                 if (!pollingMode) {
-                    errorMessage =
-                        when {
-                            e.message?.contains(
-                                "401",
-                            ) == true ||
-                                e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
+                    val hasCachedData = components.isNotEmpty()
+                    if (!hasCachedData) {
+                        errorMessage =
+                            when {
+                                e.message?.contains(
+                                    "401",
+                                ) == true ||
+                                    e.message?.contains(
+                                        "Unauthorized",
+                                    ) == true -> "Session expired. Please login again."
 
-                            e.message?.contains(
-                                "Network",
-                            ) == true ||
-                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                                e.message?.contains(
+                                    "Network",
+                                ) == true ||
+                                    e.message?.contains(
+                                        "timeout",
+                                    ) == true -> "Network error. Please check your connection."
 
-                            else -> "Error: ${e.message ?: "Failed to load components"}"
-                        }
+                                else -> "Error: ${e.message ?: "Failed to load components"}"
+                            }
+                    }
                 }
             } finally {
-                if (pollingMode) {
+                if (pollingMode || componentsCache != null) {
                     isRefreshing = false
                 } else {
                     isLoading = false
@@ -285,6 +298,13 @@ fun ComponentsScreen(
             } finally {
                 isSubmittingRequest = false
             }
+        }
+    }
+
+    LaunchedEffect(componentsCache) {
+        componentsCache?.componentsFlow()?.collect { cached ->
+            components = cached
+            isLoading = false
         }
     }
 

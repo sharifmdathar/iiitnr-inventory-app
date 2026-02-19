@@ -3,6 +3,8 @@ package com.iiitnr.inventoryapp.desktop
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.iiitnr.inventoryapp.data.auth.GoogleDesktopSignInHelper
+import com.iiitnr.inventoryapp.data.cache.DriverFactory
+import com.iiitnr.inventoryapp.data.cache.createComponentsCache
 import com.iiitnr.inventoryapp.data.storage.createTokenManager
 import com.iiitnr.inventoryapp.shared.App
 import com.iiitnr.inventoryapp.ui.platform.exportComponentsCsvDesktop
@@ -15,6 +17,7 @@ import kotlinx.coroutines.launch
 
 fun main() = application {
     val tokenManager = createTokenManager()
+    val componentsCache = createComponentsCache(DriverFactory())
 
     val properties = try {
         val classLoader = Thread.currentThread().contextClassLoader ?: ClassLoader.getSystemClassLoader()
@@ -47,6 +50,7 @@ fun main() = application {
         AppTheme {
             App(
                 tokenManager = tokenManager,
+                componentsCache = componentsCache,
                 onGoogleSignInClick = { callback ->
                     scope.launch {
                         val idToken = googleHelper.signIn()

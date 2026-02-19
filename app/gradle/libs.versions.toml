@@ -24,6 +24,7 @@ coil = "3.3.0"
 qrose = "1.1.2"
 cameraX = "1.5.3"
 zxingCore = "3.5.4"
+sqldelight = "2.2.1"
 
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
@@ -67,6 +68,11 @@ androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", 
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-driver-android = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
+sqldelight-driver-native = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqldelight-driver-sqlite = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -78,4 +84,5 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 compose-desktop = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "14.0.1" }
 detekt = { id = "dev.detekt", version = "2.0.0-alpha.2" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 

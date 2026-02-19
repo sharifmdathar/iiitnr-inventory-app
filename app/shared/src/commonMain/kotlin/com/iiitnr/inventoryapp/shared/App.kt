@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.iiitnr.inventoryapp.data.cache.ComponentsCache
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
@@ -27,6 +28,7 @@ fun App(
     tokenManager: TokenManager,
     onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
     onExportComponentsCsv: ((String) -> Boolean)? = null,
+    componentsCache: ComponentsCache? = null,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         val navController = rememberNavController()
@@ -73,6 +75,7 @@ fun App(
                 composable("components") {
                     ComponentsScreen(
                         tokenManager = tokenManager,
+                        componentsCache = componentsCache,
                         onNavigateToRequests = {
                             navController.navigate("requests")
                         },
