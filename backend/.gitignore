@@ -52,6 +52,7 @@ coverage/
 # =========================
 # Prisma / ORM
 # =========================
+backups/
 prisma/migrations/
 !prisma/migrations/.gitkeep
 

@@ -1,9 +1,9 @@
 package com.iiitnr.inventoryapp.data.cache
 
-import com.iiitnr.inventoryapp.data.models.Component
-import com.iiitnr.inventoryapp.db.AppDatabase
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import com.iiitnr.inventoryapp.data.models.Component
+import com.iiitnr.inventoryapp.db.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +23,8 @@ class DefaultComponentsCache(
         }
 
     override fun componentsFlow(): Flow<List<Component>> =
-        queries.selectAll()
+        queries
+            .selectAll()
             .asFlow()
             .mapToList(Dispatchers.IO)
             .map { list -> list.map { it.toAppComponent() } }

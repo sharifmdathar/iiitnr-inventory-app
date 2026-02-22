@@ -11,6 +11,7 @@ let adminToken: string;
 let taToken: string;
 let studentToken: string;
 let facultyToken: string;
+
 let adminUserId: string;
 let taUserId: string;
 let studentUserId: string;
@@ -45,45 +46,38 @@ beforeAll(async () => {
   adminUserId = adminUser.id;
   adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1d' });
 
-  // Register other roles through API
-  const taResponse = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: {
+  const taUser = await prisma.user.create({
+    data: {
       email: taEmail,
-      password: 'password123',
+      passwordHash,
       name: 'TA User',
       role: UserRole.TA,
     },
   });
-  taToken = taResponse.json().token;
-  taUserId = taResponse.json().user.id;
+  taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1d' });
+  taUserId = taUser.id;
 
-  const studentResponse = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: {
+  const studentUser = await prisma.user.create({
+    data: {
       email: studentEmail,
-      password: 'password123',
+      passwordHash,
       name: 'Student User',
       role: UserRole.STUDENT,
     },
   });
-  studentToken = studentResponse.json().token;
-  studentUserId = studentResponse.json().user.id;
+  studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1d' });
+  studentUserId = studentUser.id;
 
-  const facultyResponse = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: {
+  const facultyUser = await prisma.user.create({
+    data: {
       email: facultyEmail,
-      password: 'password123',
+      passwordHash,
       name: 'Faculty User',
       role: UserRole.FACULTY,
     },
   });
-  facultyToken = facultyResponse.json().token;
-  facultyUserId = facultyResponse.json().user.id;
+  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1d' });
+  facultyUserId = facultyUser.id;
 });
 
 afterAll(async () => {

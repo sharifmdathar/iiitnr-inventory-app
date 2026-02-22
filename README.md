@@ -3,16 +3,19 @@
 [![Release](https://img.shields.io/github/v/release/sharifmdathar/iiitnr-inventory-app?label=Release&style=for-the-badge)](https://github.com/sharifmdathar/iiitnr-inventory-app/releases)
 [![CodeFactor](https://img.shields.io/codefactor/grade/github/sharifmdathar/iiitnr-inventory-app?label=CodeFactor&style=for-the-badge)](https://www.codefactor.io/repository/github/sharifmdathar/iiitnr-inventory-app)
 
-A monorepo inventory management system with an Android mobile app and a Fastify + Prisma backend.
+A monorepo inventory management system with a **Kotlin Multiplatform app** (Android + iOS + Desktop) and a Fastify + Prisma backend.
 
 ## Features
 
 - **User Authentication**: JWT-based authentication with role-based access control
 - **Component Management**: CRUD operations for inventory components (Admin/TA only)
 - **Request System**: Users can create requests for components, admins/TAs can view and manage requests
-- **Role-Based Access**: Four user roles (ADMIN, FACULTY, STUDENT, TA) with different permissions
+- **Role-Based Access**: User roles (ADMIN, FACULTY, STUDENT, TA, PENDING) with different permissions; new registrations start as PENDING until promoted
 - **Database Seeding**: Automated admin user creation for initial setup
 - **Comprehensive Testing**: Full test suite for authentication, components, and requests
+- **HTTP Caching & Local Cache**:
+  - Backend supports conditional `GET` via `If-Modified-Since` / `Last-Modified` and returns `304 Not Modified` when the client cache is fresh.
+  - The KMP app uses **SQLDelight** to cache the components list locally and drives the UI from the cache, so the list remains visible across navigation and 304 responses.
 
 ## Prerequisites
 
@@ -29,9 +32,22 @@ cd backend
 bun install
 ```
 
-### Android app
+### KMP app (Android + Desktop)
 
-Follow the usual Android/Kotlin setup for the `app/` module (Android Studio with a recent Gradle and JDK)
+The UI lives in the `app/` multiplatform module:
+
+- **Android**:
+  - Open the repo in Android Studio.
+  - Use a recent JDK (21+) and Android Gradle Plugin (already configured).
+  - Run the `android` run configuration or `./gradlew :android:installDebug` from `app/`.
+
+- **Desktop**:
+  - Requires JDK 21+.
+  - From `app/`:
+    ```bash
+    ./gradlew :desktop:run
+    ```
+  - This launches the Compose Desktop app (AppImage/MSI/EXE packaging is configured for releases).
 
 ## Database Setup
 
@@ -122,8 +138,8 @@ The server will start on `http://localhost:4000` (or the port specified in `PORT
 All authentication endpoints are public (no auth required).
 
 - `POST /auth/register` - Register a new user
-  - Body: `{ email, password, name?, role? }`
-  - Roles: `STUDENT` (default), `FACULTY`, `TA` (ADMIN cannot be registered via API)
+  - Body: `{ email, password, name? }`
+  - New users receive role `PENDING` until an admin promotes them
   - Returns: `{ user, token }`
 
 - `POST /auth/login` - Login with email and password
@@ -167,6 +183,7 @@ All request endpoints require authentication. Users can only see their own reque
 - **TA** (Teaching Assistant): Can manage components and view all requests
 - **FACULTY**: Can view components and create/view their own requests
 - **STUDENT**: Can view components and create/view their own requests
+- **PENDING**: New registrations start here; protected routes return 403 until an admin assigns a role (e.g. via `bun run create:user`)
 
 ## Testing
 
@@ -176,7 +193,7 @@ All request endpoints require authentication. Users can only see their own reque
 just test
 ```
 
-This runs `docker compose --profile test up -d`, migrates using `TEST_DATABASE_URL` from `backend/.env`, runs `bun test`, then brings the test DB down.
+This runs `docker compose --profile test up -d`, runs `prisma generate` and migrations using `TEST_DATABASE_URL` (or derived from `DATABASE_URL`) from `backend/.env`, then `bun test`.
 
 To run tests only (test DB must already be running, either locally or on remote):
 
@@ -190,7 +207,7 @@ The test suite includes:
 - Component management tests (`tests/components.test.ts`)
 - Request system tests (`tests/requests.test.ts`)
 
-**Important**: Tests use a separate test database (`TEST_DATABASE_URL`). Make sure it's configured and different from your production database.
+**Important**: `TEST_DATABASE_URL` (or `DATABASE_URL` for derivation) must be set; the test setup exits with an error if not. Use a dedicated test database (e.g. name containing `_test`) and keep it different from production.
 
 ## Development Scripts
 
@@ -208,6 +225,8 @@ From `backend/`:
 - `bun run prisma:generate` - Generate Prisma client
 - `bun run prisma:migrate` - Run database migrations
 - `bun run seed` - Seed database with admin user
+- `bun run migrate:backup` - Backup app data, reset public schema, run migrations, then restore data (works on Supabase/Neon; requires `pg_dump` and `psql`). Optional: `bun run migrate:backup -- --restore-from=backups/data_YYYY-MM-DD.sql` to restore from a specific backup file.
+- `bun run create:user` - Create a user (e.g. promote PENDING to a role). Usage: `bun run create:user -- --email ... --password ... --role PENDING|STUDENT|FACULTY|TA|ADMIN [--name "Name"]`
 
 ### Root Justfile
 

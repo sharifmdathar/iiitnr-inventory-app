@@ -30,6 +30,7 @@ beforeAll(async () => {
   const suffix = randomUUID();
   const adminEmail = `admin_${suffix}@example.com`;
   const studentEmail = `student_${suffix}@example.com`;
+  const facultyEmail = `faculty_${suffix}@example.com`;
 
   const { hash } = await import('bcryptjs');
   const passwordHash = await hash('password123', 12);
@@ -45,18 +46,16 @@ beforeAll(async () => {
   adminUserId = adminUser.id;
   adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1d' });
 
-  const studentResponse = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: {
+  const studentUser = await prisma.user.create({
+    data: {
       email: studentEmail,
-      password: 'password123',
+      passwordHash,
       name: 'Student User',
       role: UserRole.STUDENT,
     },
   });
-  studentToken = studentResponse.json().token;
-  studentId = studentResponse.json().user.id;
+  studentId = studentUser.id;
+  studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1d' });
 
   const facultyUser = await prisma.user.create({
     data: {

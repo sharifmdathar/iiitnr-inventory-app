@@ -31,7 +31,6 @@ describe('Authentication API', () => {
         email,
         password,
         name: 'Test User',
-        role: 'STUDENT',
       },
     });
 
@@ -39,7 +38,7 @@ describe('Authentication API', () => {
 
     const registerBody = registerResponse.json();
     assert.equal(registerBody.user.email, email);
-    assert.equal(registerBody.user.role, 'STUDENT');
+    assert.equal(registerBody.user.role, 'PENDING');
     assert.ok(registerBody.token);
     createdUserIds.push(registerBody.user.id);
 
@@ -56,7 +55,7 @@ describe('Authentication API', () => {
 
     const loginBody = loginResponse.json();
     assert.equal(loginBody.user.email, email);
-    assert.equal(loginBody.user.role, 'STUDENT');
+    assert.equal(loginBody.user.role, 'PENDING');
     assert.ok(loginBody.token);
   });
 

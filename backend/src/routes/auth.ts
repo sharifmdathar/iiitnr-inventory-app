@@ -148,13 +148,11 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       email?: string;
       password?: string;
       name?: string;
-      role?: UserRoleValue;
     };
 
     const email = body?.email?.trim();
     const password = body?.password;
     const name = body?.name?.trim();
-    const role = body?.role;
 
     if (!email || !password) {
       return reply.code(400).send({ error: 'email and password are required' });
@@ -162,14 +160,6 @@ const authRoutes: FastifyPluginAsync = async (app) => {
 
     if (password.length < 8) {
       return reply.code(400).send({ error: 'password must be at least 8 characters' });
-    }
-
-    if (role === UserRole.ADMIN) {
-      return reply.code(400).send({ error: 'invalid role' });
-    }
-
-    if (role && !Object.values(UserRole).includes(role)) {
-      return reply.code(400).send({ error: 'invalid role' });
     }
 
     const passwordHash = await hash(password, 12);
@@ -180,7 +170,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
           email,
           name,
           passwordHash,
-          role: role ?? UserRole.STUDENT,
+          role: UserRole.PENDING,
         },
         select: {
           id: true,

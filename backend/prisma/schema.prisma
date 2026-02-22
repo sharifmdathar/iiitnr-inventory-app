@@ -9,6 +9,7 @@ datasource db {
 enum UserRole {
   ADMIN
   FACULTY
+  PENDING
   STUDENT
   TA
 }
@@ -34,7 +35,7 @@ model User {
   imageUrl        String?
   passwordHash    String?
   googleId        String?   @unique
-  role            UserRole  @default(STUDENT)
+  role            UserRole  @default(PENDING)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   requests        Request[]

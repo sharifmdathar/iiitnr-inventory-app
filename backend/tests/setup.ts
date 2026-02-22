@@ -34,9 +34,9 @@ if (process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
     throw new Error('TEST_DATABASE_URL must be different from DATABASE_URL');
   }
 
-  if (!testDb.includes('test') && !testDb.includes('_test')) {
+  if (!testDb.includes('_test')) {
     console.warn(
-      '⚠️ WARNING: TEST_DATABASE_URL does not contain "test" - are you sure this is a test database?',
+      '⚠️ WARNING: TEST_DATABASE_URL does not contain "_test" - are you sure this is a test database?',
     );
   }
 }
@@ -44,19 +44,29 @@ if (process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
 const dbUrlForMigrations = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 
 if (!dbUrlForMigrations) {
-  console.warn('⚠️ No TEST_DATABASE_URL or DATABASE_URL set; skipping Prisma migrations.');
-} else {
-  try {
-    console.log('📦 Running Prisma migrations for test database...');
-    execSync('bunx prisma migrate deploy', {
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        DATABASE_URL: dbUrlForMigrations,
-      },
-    });
-  } catch (err) {
-    console.error('❌ Failed to run Prisma migrations for tests.', err);
-    throw err;
-  }
+  console.error('❌ TEST_DATABASE_URL (or DATABASE_URL for derivation) must be set to run tests.');
+  process.exit(1);
+}
+
+try {
+  console.log('📦 Generating Prisma client...');
+  execSync('bun prisma generate', { stdio: 'inherit' });
+  console.log('📦 Running Prisma migrations for test database...');
+  execSync('bun prisma migrate reset --force', {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      DATABASE_URL: dbUrlForMigrations,
+    },
+  });
+  execSync('bun prisma migrate deploy', {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      DATABASE_URL: dbUrlForMigrations,
+    },
+  });
+} catch (err) {
+  console.error('❌ Failed to run Prisma migrations for tests.', err);
+  throw err;
 }

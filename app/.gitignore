@@ -87,3 +87,4 @@ Thumbs.db
 .env.*
 !.env.example
 desktop/src/jvmMain/resources/google-desktop-config.properties
+/desktop/inventory.db

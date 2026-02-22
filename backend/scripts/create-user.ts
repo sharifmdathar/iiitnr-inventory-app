@@ -23,7 +23,7 @@ async function main() {
 
   if (!email || !password || !roleRaw) {
     console.error(
-      'Usage: pnpm create:user -- --email someone@example.com --password secret --role STUDENT|FACULTY|TA|ADMIN [--name "Full Name"]',
+      'Usage: bun create:user -- --email someone@example.com --password secret --role PENDING|STUDENT|FACULTY|TA|ADMIN [--name "Full Name"]',
     );
     process.exitCode = 1;
     return;

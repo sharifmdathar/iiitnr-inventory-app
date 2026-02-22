@@ -2,7 +2,7 @@
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'FACULTY', 'STUDENT', 'TA');
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'FACULTY', 'PENDING', 'STUDENT', 'TA');
 
 -- CreateEnum
 CREATE TYPE "ComponentCategory" AS ENUM ('Sensors', 'Actuators', 'Microcontrollers', 'Microprocessors', 'Others');
@@ -21,7 +21,7 @@ CREATE TABLE "User" (
     "imageUrl" TEXT,
     "passwordHash" TEXT,
     "googleId" TEXT,
-    "role" "UserRole" NOT NULL DEFAULT 'STUDENT',
+    "role" "UserRole" NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
