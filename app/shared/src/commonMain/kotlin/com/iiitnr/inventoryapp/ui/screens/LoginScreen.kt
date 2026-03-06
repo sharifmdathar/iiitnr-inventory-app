@@ -65,30 +65,42 @@ fun LoginScreen(
         errorMessage = null
         scope.launch {
             try {
-                val authResponse =
-                    ApiClient.authApiService.login(LoginRequest(email.trim(), password))
+                val authResponse = ApiClient.authApiService.login(LoginRequest(email.trim(), password))
                 tokenManager.saveToken(authResponse.token)
                 onLoginSuccess()
             } catch (e: Exception) {
                 errorMessage =
                     when {
                         e.message?.contains(
-                            "401",
-                        ) == true ||
-                            e.message?.contains("Unauthorized") == true ->
-                            "Invalid email or password"
-
-                        e.message?.contains(
                             "400",
                         ) == true ||
-                            e.message?.contains("Bad Request") == true ->
-                            "Invalid request. Please check your input."
+                            e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
+
+                        e.message?.contains(
+                            "401",
+                        ) == true ||
+                            e.message?.contains("Unauthorized") == true -> {
+                            when {
+                                e.message?.contains("invalid credentials") == true -> "Invalid email or password"
+                                e.message?.contains(
+                                    "this account uses Google Sign-In",
+                                ) == true -> "This account uses Google Sign-In. Please use Sign in with Google instead."
+
+                                else -> "Unauthorized. Please check your credentials"
+                            }
+                        }
+
+                        e.message?.contains(
+                            "403",
+                        ) == true ||
+                            e.message?.contains(
+                                "Forbidden",
+                            ) == true -> "This account is currently pending approval. Please contact an admin for assistance"
 
                         e.message?.contains(
                             "Network",
                         ) == true ||
-                            e.message?.contains("timeout") == true ->
-                            "Network error. Please check your connection."
+                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
                         else -> "Login failed: ${e.message ?: "Please check your credentials"}"
                     }
@@ -139,11 +151,7 @@ fun LoginScreen(
                 errorMessage = null
             },
             label = { Text("Password") },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
-                    .focusRequester(passwordFocusRequester),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).focusRequester(passwordFocusRequester),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             enabled = !isLoading,
@@ -201,14 +209,11 @@ fun LoginScreen(
                                         errorMsg.contains("403") -> {
                                             when {
                                                 errorMsg.contains("email addresses are allowed") -> {
-                                                    errorMsg
-                                                        .substringAfter(": ")
-                                                        .takeIf { it.isNotBlank() }
+                                                    errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
                                                         ?: "Only @iiitnr.edu.in email addresses are allowed."
                                                 }
 
-                                                else ->
-                                                    "Access denied. Only @iiitnr.edu.in email addresses are allowed."
+                                                else -> "Access denied. Only @iiitnr.edu.in email addresses are allowed."
                                             }
                                         }
 
@@ -224,9 +229,7 @@ fun LoginScreen(
                                                 ) -> "Google account email is not verified"
 
                                                 else ->
-                                                    errorMsg
-                                                        .substringAfter(": ")
-                                                        .takeIf { it.isNotBlank() }
+                                                    errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
                                                         ?: "Google Sign-In failed"
                                             }
                                         }

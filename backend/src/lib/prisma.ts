@@ -1,12 +1,5 @@
-import type { PrismaClient as PrismaClientType } from '@prisma/client/extension';
-import prismaDefault from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
-const { PrismaClient } = prismaDefault as unknown as {
-  PrismaClient: new (options: { adapter: unknown }) => PrismaClientType;
-};
-
-const { Pool } = pg;
 
 const isTest = process.env.NODE_ENV === 'test';
 const databaseUrl = isTest
@@ -26,12 +19,6 @@ if (isTest && !process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
   );
 }
 
-const pool = new Pool({
-  connectionString: databaseUrl,
-  keepAlive: true,
-});
-
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg({ connectionString: databaseUrl });
 
 export const prisma = new PrismaClient({ adapter });
-export { pool };

@@ -3,7 +3,7 @@ import Fastify from 'fastify';
 import type { FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
-import { prisma, pool } from './lib/prisma.js';
+import { prisma } from './lib/prisma.js';
 import routes from './routes/index.js';
 
 export async function buildApp() {
@@ -99,7 +99,6 @@ export async function buildApp() {
     }
 
     await prisma.$disconnect();
-    await pool.end();
   });
 
   return app;

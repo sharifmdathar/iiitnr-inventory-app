@@ -40,9 +40,6 @@ jobs:
         uses: gradle/actions/setup-gradle@f236b35da9d031e13b1005234ebe4392ed54c580
         with:
           cache-read-only: false
-          build-scan-publish: true
-          build-scan-terms-of-use-url: https://gradle.com/terms-of-service
-          build-scan-terms-of-use-agree: yes
 
       - name: Build Android release APK
         working-directory: app
@@ -85,9 +82,6 @@ jobs:
         uses: gradle/actions/setup-gradle@f236b35da9d031e13b1005234ebe4392ed54c580
         with:
           cache-read-only: false
-          build-scan-publish: true
-          build-scan-terms-of-use-url: https://gradle.com/terms-of-service
-          build-scan-terms-of-use-agree: yes
 
       - name: Build Desktop installers (EXE + MSI)
         working-directory: app
@@ -96,8 +90,8 @@ jobs:
           GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
           GOOGLE_DESKTOP_REDIRECT_URI: ${{ secrets.GOOGLE_DESKTOP_REDIRECT_URI }}
         run: |
-          .\gradlew.bat :desktop:packageExe -PbuildInstallers=true --parallel --build-cache --scan
-          .\gradlew.bat :desktop:packageMsi -PbuildInstallers=true --parallel --build-cache --scan
+          .\gradlew.bat :desktop:packageExe -PbuildInstallers=true --parallel --build-cache
+          .\gradlew.bat :desktop:packageMsi -PbuildInstallers=true --parallel --build-cache
 
       - name: Locate and copy EXE + MSI
         env:
@@ -142,9 +136,6 @@ jobs:
         uses: gradle/actions/setup-gradle@f236b35da9d031e13b1005234ebe4392ed54c580
         with:
           cache-read-only: false
-          build-scan-publish: true
-          build-scan-terms-of-use-url: https://gradle.com/terms-of-service
-          build-scan-terms-of-use-agree: yes
 
       - name: Build Desktop app-image (Linux)
         working-directory: app
@@ -154,7 +145,7 @@ jobs:
           GOOGLE_DESKTOP_REDIRECT_URI: ${{ secrets.GOOGLE_DESKTOP_REDIRECT_URI }}
         run: |
           chmod +x ./gradlew
-          ./gradlew :desktop:packageDistributionForCurrentOS --parallel --build-cache --scan
+          ./gradlew :desktop:packageDistributionForCurrentOS --parallel --build-cache
 
       - name: Install ImageMagick and libfuse2 (for AppImage)
         run: sudo apt-get update && sudo apt-get install -y imagemagick libfuse2
@@ -183,10 +174,6 @@ jobs:
           # Copy and convert icon if it exists, otherwise generate a temporary one
           if [ -f "app/desktop/icon.png" ]; then
             cp "app/desktop/icon.png" "$APPDIR/iiitnr-inventory-app.png"
-          elif [ -f "app/desktop/icon.jpg" ]; then
-            convert "app/desktop/icon.jpg" -resize 256x256 "$APPDIR/iiitnr-inventory-app.png"
-          elif [ -f "app/desktop/icon.jpeg" ]; then
-            convert "app/desktop/icon.jpeg" -resize 256x256 "$APPDIR/iiitnr-inventory-app.png"
           else
             convert -size 256x256 xc:'#1976D2' "$APPDIR/iiitnr-inventory-app.png"
           fi

@@ -20,7 +20,7 @@ afterAll(async () => {
 });
 
 describe('Authentication API', () => {
-  test('registers a user and logs in', async () => {
+  test('registers a user but gets 403 when trying to log in', async () => {
     const email = `user_${Date.now()}@example.com`;
     const password = 'password123';
 
@@ -51,12 +51,199 @@ describe('Authentication API', () => {
       },
     });
 
-    assert.equal(loginResponse.statusCode, 200);
+    assert.equal(loginResponse.statusCode, 403);
+  });
 
-    const loginBody = loginResponse.json();
-    assert.equal(loginBody.user.email, email);
-    assert.equal(loginBody.user.role, 'PENDING');
-    assert.ok(loginBody.token);
+  describe('POST /auth/register', () => {
+    test('returns 400 when fields are missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/register',
+        payload: { email: 'test@example.com' },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('required'));
+    });
+
+    test('returns 400 when password is too short', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/register',
+        payload: {
+          email: `short_${Date.now()}@example.com`,
+          password: 'short',
+          name: 'Short Pass',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('at least 8 characters'));
+    });
+
+    test('returns 400 when email is already in use', async () => {
+      const email = `duplicate_${Date.now()}@example.com`;
+      await prisma.user.create({
+        data: {
+          email,
+          passwordHash: 'hash',
+          name: 'Existing User',
+        },
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/register',
+        payload: {
+          email,
+          password: 'password123',
+          name: 'New User',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('already in use'));
+    });
+  });
+
+  describe('POST /auth/login', () => {
+    test('returns 400 when fields are missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        payload: { email: 'test@example.com' },
+      });
+
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('returns 401 for non-existent user', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        payload: {
+          email: 'nonexistent@example.com',
+          password: 'password123',
+        },
+      });
+
+      assert.equal(response.statusCode, 401);
+      assert.ok(response.json().error.includes('invalid credentials'));
+    });
+
+    test('returns 401 for incorrect password', async () => {
+      const email = `wrongpass_${Date.now()}@example.com`;
+      const { hash } = await import('bcryptjs');
+      const passwordHash = await hash('correctpassword', 12);
+
+      const user = await prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          name: 'Wrong Pass User',
+          role: 'ADMIN',
+        },
+      });
+      createdUserIds.push(user.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        payload: {
+          email,
+          password: 'wrongpassword',
+        },
+      });
+
+      assert.equal(response.statusCode, 401);
+    });
+
+    test('returns 401 for Google-only account', async () => {
+      const email = `googleonly_${Date.now()}@example.com`;
+      const user = await prisma.user.create({
+        data: {
+          email,
+          googleId: 'google-123',
+          name: 'Google User',
+          role: 'STUDENT',
+        },
+      });
+      createdUserIds.push(user.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        payload: {
+          email,
+          password: 'somepassword',
+        },
+      });
+
+      assert.equal(response.statusCode, 401);
+      assert.ok(response.json().error.includes('uses Google Sign-In'));
+    });
+  });
+
+  describe('GET /auth/me', () => {
+    test('returns 401 without token', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/auth/me',
+      });
+
+      assert.equal(response.statusCode, 401);
+    });
+
+    test('returns user for valid token', async () => {
+      const email = `me_${Date.now()}@example.com`;
+      const user = await prisma.user.create({
+        data: {
+          email,
+          name: 'Me User',
+          role: 'ADMIN',
+        },
+      });
+      createdUserIds.push(user.id);
+      const token = app.jwt.sign({ sub: user.id, role: user.role });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/auth/me',
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      assert.equal(response.json().user.email, email);
+    });
+
+    test('returns 401 for invalid token', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/auth/me',
+        headers: {
+          authorization: 'Bearer invalid-token',
+        },
+      });
+
+      assert.equal(response.statusCode, 401);
+    });
+
+    test('returns 401 if user no longer exists', async () => {
+      const id = 'deleted-user-id';
+      const token = app.jwt.sign({ sub: id, role: 'STUDENT' });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/auth/me',
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+
+      assert.equal(response.statusCode, 401);
+    });
   });
 
   describe('POST /auth/google - Google Sign-In', () => {

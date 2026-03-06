@@ -11,6 +11,9 @@ test:
     cd backend && bun test
     cd backend && podman compose --profile test down
 
+desk:
+    cd app && ./gradlew desktop:run
+
 lint:
     cd backend && bun run lint
     cd app && ./gradlew ktlintCheck

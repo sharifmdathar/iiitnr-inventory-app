@@ -1,25 +1,16 @@
-import prismaDefault from '@prisma/client';
-
-type EnumRuntime = Record<string, string>;
-
-const {
+import {
   UserRole,
   RequestStatus,
   ComponentCategory,
-  Location: PrismaLocation,
-} = prismaDefault as {
-  UserRole: EnumRuntime;
-  RequestStatus: EnumRuntime;
-  ComponentCategory: EnumRuntime;
-  Location: EnumRuntime;
-};
+  Location as PrismaLocation,
+} from '@prisma/client';
 
 export { UserRole, RequestStatus, ComponentCategory, PrismaLocation };
 
-export type UserRoleValue = string;
-export type RequestStatusValue = string;
-export type CategoryValue = string;
-export type PrismaLocationValue = string;
+export type UserRoleValue = UserRole;
+export type RequestStatusValue = RequestStatus;
+export type CategoryValue = ComponentCategory;
+export type PrismaLocationValue = PrismaLocation;
 
 export const requestStatusValues = Object.values(RequestStatus);
 export const categoryValues = Object.values(ComponentCategory);

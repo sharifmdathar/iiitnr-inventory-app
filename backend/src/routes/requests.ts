@@ -263,9 +263,13 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
             .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
         }
 
-        const updatedRequest = await prisma.request.update({
+        await prisma.request.update({
           where: { id },
           data: { status: newStatus },
+        });
+
+        const updatedRequest = await prisma.request.findUnique({
+          where: { id },
           include: {
             items: {
               include: {
@@ -304,7 +308,7 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
         }
 
         try {
-          const updatedRequest = await prisma.$transaction(async (tx: typeof prisma) => {
+          await prisma.$transaction(async (tx) => {
             for (const item of existingRequest.items) {
               const result = await tx.component.updateMany({
                 where: {
@@ -325,33 +329,37 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
               }
             }
 
-            return tx.request.update({
+            await tx.request.update({
               where: { id },
               data: { status: newStatus },
-              include: {
-                items: {
-                  include: {
-                    component: true,
-                  },
-                },
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    name: true,
-                    role: true,
-                  },
-                },
-                targetFaculty: {
-                  select: {
-                    id: true,
-                    email: true,
-                    name: true,
-                    role: true,
-                  },
+            });
+          });
+
+          const updatedRequest = await prisma.request.findUnique({
+            where: { id },
+            include: {
+              items: {
+                include: {
+                  component: true,
                 },
               },
-            });
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  name: true,
+                  role: true,
+                },
+              },
+              targetFaculty: {
+                select: {
+                  id: true,
+                  email: true,
+                  name: true,
+                  role: true,
+                },
+              },
+            },
           });
 
           return reply.send({ request: updatedRequest });

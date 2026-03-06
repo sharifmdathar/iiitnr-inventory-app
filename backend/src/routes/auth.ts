@@ -3,7 +3,6 @@ import { compare, hash } from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma.js';
 import { UserRole } from '../utils/enums.js';
-import type { UserRoleValue } from '../utils/enums.js';
 
 function getGoogleClientIds(): { primary: string; all: string[] } | null {
   const primaryClientId = process.env.GOOGLE_CLIENT_ID;
@@ -95,11 +94,11 @@ async function findOrCreateGoogleUser(
 
   if (shouldUpdateProfile) {
     user = await prisma.user.update({
-      where: { id: user.id },
+      where: { id: user!.id },
       data: {
-        googleId: user.googleId || googleId,
-        name: name ?? user.name,
-        imageUrl: imageUrl ?? user.imageUrl,
+        googleId: user!.googleId || googleId,
+        name: name ?? user!.name,
+        imageUrl: imageUrl ?? user!.imageUrl,
       },
       select: userSelect,
     });
@@ -182,7 +181,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         },
       });
 
-      const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '1d' });
+      const token = app.jwt.sign({ sub: user.id, role: user.role });
 
       return reply.code(201).send({ user, token });
     } catch (err) {
@@ -225,7 +224,11 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(401).send({ error: 'invalid credentials' });
     }
 
-    const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '1d' });
+    if (user.role === UserRole.PENDING) {
+      return reply.code(403).send({ error: 'account pending approval by admin' });
+    }
+
+    const token = app.jwt.sign({ sub: user.id, role: user.role });
 
     return reply.send({
       user: {
@@ -309,7 +312,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       const imageUrl = payload.imageUrl || null;
       const user = await findOrCreateGoogleUser(payload.sub, payload.email, name, imageUrl);
 
-      const token = app.jwt.sign({ sub: user.id, role: user.role }, { expiresIn: '1d' });
+      const token = app.jwt.sign({ sub: user.id, role: user.role });
 
       return reply.send({
         user: {

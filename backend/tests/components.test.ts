@@ -44,7 +44,7 @@ beforeAll(async () => {
     },
   });
   adminUserId = adminUser.id;
-  adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1d' });
+  adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1h' });
 
   const taUser = await prisma.user.create({
     data: {
@@ -54,7 +54,7 @@ beforeAll(async () => {
       role: UserRole.TA,
     },
   });
-  taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1d' });
+  taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1h' });
   taUserId = taUser.id;
 
   const studentUser = await prisma.user.create({
@@ -65,7 +65,7 @@ beforeAll(async () => {
       role: UserRole.STUDENT,
     },
   });
-  studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1d' });
+  studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1h' });
   studentUserId = studentUser.id;
 
   const facultyUser = await prisma.user.create({
@@ -76,7 +76,7 @@ beforeAll(async () => {
       role: UserRole.FACULTY,
     },
   });
-  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1d' });
+  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1h' });
   facultyUserId = facultyUser.id;
 });
 
@@ -218,6 +218,58 @@ describe('Component CRUD API', () => {
       assert.equal(secondResponse.statusCode, 304);
 
       await prisma.component.deleteMany({});
+    });
+
+    describe('GET /components/export/csv', () => {
+      test('returns 401 without token', async () => {
+        const response = await app.inject({
+          method: 'GET',
+          url: '/components/export/csv',
+        });
+        assert.equal(response.statusCode, 401);
+      });
+
+      test('returns 403 for STUDENT role', async () => {
+        const response = await app.inject({
+          method: 'GET',
+          url: '/components/export/csv',
+          headers: { authorization: `Bearer ${studentToken}` },
+        });
+        assert.equal(response.statusCode, 403);
+      });
+
+      test('returns 200 and CSV content for ADMIN', async () => {
+        await prisma.component.create({
+          data: {
+            name: 'CSV Component',
+            totalQuantity: 10,
+            availableQuantity: 10,
+            category: ComponentCategory.Sensors,
+            location: Location.IoT_Lab,
+          },
+        });
+
+        const response = await app.inject({
+          method: 'GET',
+          url: '/components/export/csv',
+          headers: { authorization: `Bearer ${adminToken}` },
+        });
+
+        assert.equal(response.statusCode, 200);
+        assert.equal(response.headers['content-type'], 'text/csv');
+        assert.ok(response.payload.includes('CSV Component'));
+        assert.ok(response.payload.includes('Name,Description,Category,Location'));
+      });
+
+      test('returns 200 and CSV content for FACULTY', async () => {
+        const response = await app.inject({
+          method: 'GET',
+          url: '/components/export/csv',
+          headers: { authorization: `Bearer ${facultyToken}` },
+        });
+        assert.equal(response.statusCode, 200);
+        assert.equal(response.headers['content-type'], 'text/csv');
+      });
     });
   });
 
@@ -400,6 +452,36 @@ describe('Component CRUD API', () => {
       await prisma.component.deleteMany({ where: { id: body.component.id } });
     });
 
+    test('returns 400 for invalid category', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/components',
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: 'Invalid Cat Component',
+          category: 'InvalidCategory',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('invalid category'));
+    });
+
+    test('returns 400 for invalid location', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/components',
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: 'Invalid Loc Component',
+          location: 'InvalidLocation',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('invalid location'));
+    });
+
     test('creates component with minimal fields (ADMIN)', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -495,6 +577,25 @@ describe('Component CRUD API', () => {
       const body = response.json();
       assert.ok(body.error.includes('totalQuantity'));
 
+      await prisma.component.deleteMany({});
+    });
+
+    test('returns 400 when availableQuantity > totalQuantity', async () => {
+      const component = await prisma.component.create({
+        data: { name: 'Quant Test', totalQuantity: 10, availableQuantity: 10 },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/components/${component.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          availableQuantity: 15,
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('cannot be greater than'));
       await prisma.component.deleteMany({});
     });
 
@@ -722,6 +823,37 @@ describe('Component CRUD API', () => {
         where: { id: component.id },
       });
       assert.equal(deletedComponent, null);
+    });
+
+    test('returns 400 when component is in use', async () => {
+      const component = await prisma.component.create({
+        data: { name: 'In Use Component', totalQuantity: 5, availableQuantity: 5 },
+      });
+
+      // Create a request using this component
+      await prisma.request.create({
+        data: {
+          userId: adminUserId,
+          targetFacultyId: facultyUserId,
+          projectTitle: 'Usage Test',
+          items: {
+            create: [{ component: { connect: { id: component.id } }, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/components/${component.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('used in one or more requests'));
+
+      await prisma.requestItem.deleteMany({});
+      await prisma.request.deleteMany({});
+      await prisma.component.deleteMany({});
     });
   });
 

@@ -9,7 +9,7 @@ actual class DriverFactory {
         val driver: SqlDriver = JdbcSqliteDriver("jdbc:sqlite:inventory.db")
         try {
             AppDatabase.Schema.create(driver)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
         }
         return driver
     }

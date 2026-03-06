@@ -44,7 +44,7 @@ beforeAll(async () => {
     },
   });
   adminUserId = adminUser.id;
-  adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1d' });
+  adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1h' });
 
   const studentUser = await prisma.user.create({
     data: {
@@ -55,7 +55,7 @@ beforeAll(async () => {
     },
   });
   studentId = studentUser.id;
-  studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1d' });
+  studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1h' });
 
   const facultyUser = await prisma.user.create({
     data: {
@@ -66,7 +66,7 @@ beforeAll(async () => {
     },
   });
   facultyId = facultyUser.id;
-  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1d' });
+  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1h' });
 });
 
 afterAll(async () => {
@@ -317,6 +317,30 @@ describe('Request API', () => {
       const body = response.json();
       assert.equal(body.request.projectTitle, 'My IoT Project');
     });
+
+    test('returns 400 for duplicate componentId in request', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Duplicate Check', totalQuantity: 10, availableQuantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/requests',
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: {
+          items: [
+            { componentId: item.id, quantity: 1 },
+            { componentId: item.id, quantity: 2 },
+          ],
+          targetFacultyId: facultyId,
+          projectTitle: 'Duplicate Project',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('duplicate componentId'));
+    });
   });
 
   describe('DELETE /requests/:id - Retract request', () => {
@@ -508,6 +532,17 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.ok(body.requests.some((req: { id: string }) => req.id === request.id));
+    });
+
+    test('returns 400 for invalid status filter', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/requests?status=INVALID_STATUS',
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('invalid status'));
     });
 
     test('faculty sees all requests targeting them', async () => {
@@ -828,6 +863,153 @@ describe('Request API', () => {
       });
 
       assert.equal(response.statusCode, 403);
+    });
+
+    test('FULFILLED cannot be set directly from PENDING', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await prisma.request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Fulfilled Test',
+          status: 'PENDING',
+          items: {
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('must be APPROVED before'));
+    });
+
+    test('FULFILLED requires Admin or TA role', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await prisma.request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Fulfilled Test',
+          status: 'APPROVED',
+          items: {
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+
+      assert.equal(response.statusCode, 403);
+    });
+
+    test('successful FULFILLED decrements availableQuantity', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await prisma.request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Fulfilled Incremental Test',
+          status: 'APPROVED',
+          items: {
+            create: [{ component: { connect: { id: item.id } }, quantity: 3 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const updatedComponent = await prisma.component.findUnique({ where: { id: item.id } });
+      assert.equal(updatedComponent?.availableQuantity, 7);
+    });
+
+    test('returns 400 for insufficient quantity during FULFILLED', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 2 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await prisma.request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Insufficient Test',
+          status: 'APPROVED',
+          items: {
+            create: [{ component: { connect: { id: item.id } }, quantity: 5 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('insufficient quantity'));
+    });
+  });
+
+  describe('DELETE /requests/:id - Retract/Delete request', () => {
+    test('admin can delete any pending request', async () => {
+      const item = await prisma.component.create({
+        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      });
+      createdComponentIds.push(item.id);
+
+      const request = await prisma.request.create({
+        data: {
+          userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'Admin Delete Test',
+          status: 'PENDING',
+          items: {
+            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
+          },
+        },
+      });
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/requests/${request.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+
+      assert.equal(response.statusCode, 204);
+      const exists = await prisma.request.findUnique({ where: { id: request.id } });
+      assert.equal(exists, null);
     });
   });
 });
