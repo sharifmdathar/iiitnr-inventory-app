@@ -79,7 +79,7 @@ async function findOrCreateGoogleUser(
     googleId: true,
   } as const;
 
-  let existingUser = await prisma.user.findFirst({
+  const existingUser = await prisma.user.findFirst({
     where: {
       OR: [{ googleId }, { email }],
     },
