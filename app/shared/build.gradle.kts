@@ -12,7 +12,7 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
-    androidLibrary {
+    android {
         namespace = "com.iiitnr.inventoryapp.shared"
         compileSdk = 36
     }
@@ -107,4 +107,11 @@ detekt {
     allRules = false
     config.setFrom(files("$rootDir/detekt.yml"))
     baseline = file("$rootDir/detekt-baseline.xml")
+}
+
+ktlint {
+    filter {
+        exclude("**/build/**")
+        exclude("**/generated/**")
+    }
 }

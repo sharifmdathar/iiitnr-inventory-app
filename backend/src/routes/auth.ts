@@ -79,31 +79,15 @@ async function findOrCreateGoogleUser(
     googleId: true,
   } as const;
 
-  let user = await prisma.user.findFirst({
+  let existingUser = await prisma.user.findFirst({
     where: {
       OR: [{ googleId }, { email }],
     },
     select: userSelect,
   });
 
-  const shouldUpdateProfile =
-    user &&
-    (!user.googleId ||
-      (name != null && user.name !== name) ||
-      (imageUrl != null && user.imageUrl !== imageUrl));
-
-  if (shouldUpdateProfile) {
-    user = await prisma.user.update({
-      where: { id: user!.id },
-      data: {
-        googleId: user!.googleId || googleId,
-        name: name ?? user!.name,
-        imageUrl: imageUrl ?? user!.imageUrl,
-      },
-      select: userSelect,
-    });
-  } else if (!user) {
-    user = await prisma.user.create({
+  if (!existingUser) {
+    const createdUser = await prisma.user.create({
       data: {
         email,
         name,
@@ -113,9 +97,28 @@ async function findOrCreateGoogleUser(
       },
       select: userSelect,
     });
+    return createdUser;
   }
 
-  return user;
+  const shouldUpdateProfile =
+    !existingUser.googleId ||
+    (name != null && existingUser.name !== name) ||
+    (imageUrl != null && existingUser.imageUrl !== imageUrl);
+
+  if (shouldUpdateProfile) {
+    const updatedUser = await prisma.user.update({
+      where: { id: existingUser.id },
+      data: {
+        googleId: existingUser.googleId || googleId,
+        name: name ?? existingUser.name,
+        imageUrl: imageUrl ?? existingUser.imageUrl,
+      },
+      select: userSelect,
+    });
+    return updatedUser;
+  }
+
+  return existingUser;
 }
 
 function handleGoogleAuthError(err: unknown): { statusCode: number; error: string } {

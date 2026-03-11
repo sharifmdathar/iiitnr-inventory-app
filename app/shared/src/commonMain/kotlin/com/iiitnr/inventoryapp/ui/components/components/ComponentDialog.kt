@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -14,7 +17,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentCategory
@@ -90,7 +93,7 @@ fun ComponentDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     isLoading = true
                     onSave(
@@ -99,9 +102,7 @@ fun ComponentDialog(
                             description = description.trim().takeIf { it.isNotBlank() },
                             imageUrl = imageUrl.trim().takeIf { it.isNotBlank() },
                             totalQuantity = totalQuantity.toIntOrNull() ?: 0,
-                            availableQuantity =
-                                availableQuantity.toIntOrNull()
-                                    ?: totalQuantity.toIntOrNull(),
+                            availableQuantity = availableQuantity.toIntOrNull() ?: totalQuantity.toIntOrNull(),
                             category = category.trim().takeIf { it.isNotBlank() },
                             location = location.trim().takeIf { it.isNotBlank() },
                         ),
@@ -151,6 +152,8 @@ private fun ComponentDialogFields(
         var isCategoryExpanded by remember { mutableStateOf(false) }
         var isLocationExpanded by remember { mutableStateOf(false) }
 
+        var quantityToAdd by remember { mutableStateOf("") }
+
         OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
@@ -183,16 +186,10 @@ private fun ComponentDialogFields(
             OutlinedTextField(
                 value = availableQuantity,
                 onValueChange = onAvailableQuantityChange,
-                label = { Text("Available") },
+                label = { Text("AVL") },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
-            Text(
-                text = "/",
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(0.5f),
             )
 
             OutlinedTextField(
@@ -203,29 +200,73 @@ private fun ComponentDialogFields(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )
+
+            OutlinedTextField(
+                value = quantityToAdd,
+                onValueChange = { input ->
+                    if (input.all(Char::isDigit)) {
+                        quantityToAdd = input
+                    }
+                },
+                label = { Text("Add") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+
+            FilledIconButton(
+                onClick = {
+                    val currentAvailable = availableQuantity.toIntOrNull() ?: 0
+                    val currentTotal = totalQuantity.toIntOrNull() ?: 0
+                    val quantityToAddInt = quantityToAdd.toIntOrNull() ?: 0
+
+                    val newAvailable = (currentAvailable + quantityToAddInt).toString()
+                    val newTotal = (currentTotal + quantityToAddInt).toString()
+
+                    quantityToAdd = ""
+                    onAvailableQuantityChange(newAvailable)
+                    onTotalQuantityChange(newTotal)
+                },
+                enabled = quantityToAdd.isNotBlank(),
+                modifier = Modifier.align(Alignment.CenterVertically),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Quantity",
+                )
+            }
         }
 
-        CategoryDropdownField(
-            value = category,
-            options = categoryOptions,
-            expanded = isCategoryExpanded,
-            onExpandedChange = { isCategoryExpanded = it },
-            onSelect = onCategoryChange,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CategoryDropdownField(
+                modifier = Modifier.weight(1f),
+                value = category,
+                options = categoryOptions,
+                expanded = isCategoryExpanded,
+                onExpandedChange = { isCategoryExpanded = it },
+                onSelect = onCategoryChange,
+            )
 
-        LocationDropdownField(
-            value = location,
-            options = locationOptions,
-            expanded = isLocationExpanded,
-            onExpandedChange = { isLocationExpanded = it },
-            onSelect = onLocationChange,
-        )
+            LocationDropdownField(
+                modifier = Modifier.weight(1f),
+                value = location,
+                options = locationOptions,
+                expanded = isLocationExpanded,
+                onExpandedChange = { isLocationExpanded = it },
+                onSelect = onLocationChange,
+            )
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryDropdownField(
+    modifier: Modifier = Modifier,
     value: String,
     options: List<String>,
     expanded: Boolean,
@@ -233,6 +274,7 @@ private fun CategoryDropdownField(
     onSelect: (String) -> Unit,
 ) {
     ExposedDropdownMenuBox(
+        modifier = modifier,
         expanded = expanded,
         onExpandedChange = onExpandedChange,
     ) {
@@ -266,6 +308,7 @@ private fun CategoryDropdownField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationDropdownField(
+    modifier: Modifier = Modifier,
     value: String,
     options: List<String>,
     expanded: Boolean,
@@ -273,6 +316,7 @@ private fun LocationDropdownField(
     onSelect: (String) -> Unit,
 ) {
     ExposedDropdownMenuBox(
+        modifier = modifier,
         expanded = expanded,
         onExpandedChange = onExpandedChange,
     ) {

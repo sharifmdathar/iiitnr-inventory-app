@@ -76,7 +76,7 @@ export async function buildApp() {
     });
   });
 
-  app.get('/', async () => {
+  app.get('/', () => {
     return { message: 'IIITNR Inventory App Backend' };
   });
 

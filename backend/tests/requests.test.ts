@@ -28,16 +28,13 @@ beforeAll(async () => {
   await prisma.request.deleteMany({});
 
   const suffix = randomUUID();
-  const adminEmail = `admin_${suffix}@example.com`;
-  const studentEmail = `student_${suffix}@example.com`;
-  const facultyEmail = `faculty_${suffix}@example.com`;
 
   const { hash } = await import('bcryptjs');
   const passwordHash = await hash('password123', 12);
 
   const adminUser = await prisma.user.create({
     data: {
-      email: adminEmail,
+      email: `admin_${suffix}@example.com`,
       passwordHash,
       name: 'Admin User',
       role: UserRole.ADMIN,
@@ -48,7 +45,7 @@ beforeAll(async () => {
 
   const studentUser = await prisma.user.create({
     data: {
-      email: studentEmail,
+      email: `student_${suffix}@example.com`,
       passwordHash,
       name: 'Student User',
       role: UserRole.STUDENT,

@@ -95,7 +95,9 @@ fun LoginScreen(
                         ) == true ||
                             e.message?.contains(
                                 "Forbidden",
-                            ) == true -> "This account is currently pending approval. Please contact an admin for assistance"
+                            ) == true ->
+                            "This account is currently pending approval. " +
+                                "Please contact an admin for assistance"
 
                         e.message?.contains(
                             "Network",
@@ -213,7 +215,9 @@ fun LoginScreen(
                                                         ?: "Only @iiitnr.edu.in email addresses are allowed."
                                                 }
 
-                                                else -> "Access denied. Only @iiitnr.edu.in email addresses are allowed."
+                                                else ->
+                                                    "Access denied. " +
+                                                        "Only @iiitnr.edu.in email addresses are allowed."
                                             }
                                         }
 
