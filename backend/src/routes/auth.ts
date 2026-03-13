@@ -122,128 +122,180 @@ async function findOrCreateGoogleUser(
 }
 
 function handleGoogleAuthError(err: unknown): { statusCode: number; error: string } {
-  type GoogleAuthError = Error & { code?: string };
-
-  if (err instanceof Error) {
-    const { message } = err;
-    const code = (err as GoogleAuthError).code;
-
-    if (message.includes('audience') || code === 'auth/id-token-audience-mismatch') {
-      return {
-        statusCode: 400,
-        error:
-          'Token audience mismatch. The Web application Client ID in the backend must match the serverClientId used in the app.',
-      };
-    }
-
-    const errorMessage = message || String(err) || 'unknown error';
-    return { statusCode: 400, error: `Invalid Google token: ${errorMessage}` };
+  if (
+    err instanceof Error &&
+    (err.message.includes('audience') ||
+      (err as Error & { code?: string }).code === 'auth/id-token-audience-mismatch')
+  ) {
+    return {
+      statusCode: 400,
+      error: 'Google Sign-In failed: client ID mismatch. Contact the administrator.',
+    };
   }
 
-  const fallbackMessage = String(err) || 'unknown error';
-  return { statusCode: 400, error: `Invalid Google token: ${fallbackMessage}` };
+  return { statusCode: 400, error: 'Google Sign-In failed. Please try again.' };
 }
 
+const registerSchema = {
+  body: {
+    type: 'object',
+    required: ['email', 'password'],
+    properties: {
+      email: { type: 'string', maxLength: 254 },
+      password: { type: 'string', maxLength: 128 },
+      name: { type: 'string', maxLength: 100 },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
+const loginSchema = {
+  body: {
+    type: 'object',
+    required: ['email', 'password'],
+    properties: {
+      email: { type: 'string', maxLength: 254 },
+      password: { type: 'string', maxLength: 128 },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
+const googleSchema = {
+  body: {
+    type: 'object',
+    required: ['idToken'],
+    properties: {
+      idToken: { type: 'string', maxLength: 4096 },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
 const authRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/register', async (request, reply) => {
-    const body = request.body as {
-      email?: string;
-      password?: string;
-      name?: string;
-    };
-
-    const email = body?.email?.trim();
-    const password = body?.password;
-    const name = body?.name?.trim();
-
-    if (!email || !password) {
-      return reply.code(400).send({ error: 'email and password are required' });
-    }
-
-    if (password.length < 8) {
-      return reply.code(400).send({ error: 'password must be at least 8 characters' });
-    }
-
-    const passwordHash = await hash(password, 12);
-
-    try {
-      const user = await prisma.user.create({
-        data: {
-          email,
-          name,
-          passwordHash,
-          role: UserRole.PENDING,
+  app.post(
+    '/register',
+    {
+      schema: registerSchema,
+      config: {
+        rateLimit: {
+          max: 15,
+          timeWindow: '1 minute',
         },
+      },
+    },
+    async (request, reply) => {
+      const body = request.body as {
+        email?: string;
+        password?: string;
+        name?: string;
+      };
+
+      const email = body?.email?.trim();
+      const password = body?.password;
+      const name = body?.name?.trim();
+
+      if (!email || !password) {
+        return reply.code(400).send({ error: 'email and password are required' });
+      }
+
+      if (password.length < 8) {
+        return reply.code(400).send({ error: 'password must be at least 8 characters' });
+      }
+
+      const passwordHash = await hash(password, 12);
+
+      try {
+        const user = await prisma.user.create({
+          data: {
+            email,
+            name,
+            passwordHash,
+            role: UserRole.PENDING,
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            imageUrl: true,
+            role: true,
+            createdAt: true,
+          },
+        });
+
+        const token = app.jwt.sign({ sub: user.id, role: user.role });
+
+        return reply.code(201).send({ user, token });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(400).send({ error: 'email already in use' });
+      }
+    },
+  );
+
+  app.post(
+    '/login',
+    {
+      schema: loginSchema,
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+        },
+      },
+    },
+    async (request, reply) => {
+      const body = request.body as { email?: string; password?: string };
+      const email = body?.email?.trim();
+      const password = body?.password;
+
+      if (!email || !password) {
+        return reply.code(400).send({ error: 'email and password are required' });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { email },
         select: {
           id: true,
           email: true,
           name: true,
           imageUrl: true,
           role: true,
-          createdAt: true,
+          passwordHash: true,
         },
       });
 
+      if (!user) {
+        return reply.code(401).send({ error: 'invalid credentials' });
+      }
+
+      if (!user.passwordHash) {
+        return reply.code(401).send({ error: 'this account uses Google Sign-In' });
+      }
+
+      const matches = await compare(password, user.passwordHash);
+      if (!matches) {
+        return reply.code(401).send({ error: 'invalid credentials' });
+      }
+
+      if (user.role === UserRole.PENDING) {
+        return reply.code(403).send({ error: 'account pending approval by admin' });
+      }
+
       const token = app.jwt.sign({ sub: user.id, role: user.role });
 
-      return reply.code(201).send({ user, token });
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(400).send({ error: 'email already in use' });
-    }
-  });
-
-  app.post('/login', async (request, reply) => {
-    const body = request.body as { email?: string; password?: string };
-    const email = body?.email?.trim();
-    const password = body?.password;
-
-    if (!email || !password) {
-      return reply.code(400).send({ error: 'email and password are required' });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        imageUrl: true,
-        role: true,
-        passwordHash: true,
-      },
-    });
-
-    if (!user) {
-      return reply.code(401).send({ error: 'invalid credentials' });
-    }
-
-    if (!user.passwordHash) {
-      return reply.code(401).send({ error: 'this account uses Google Sign-In' });
-    }
-
-    const matches = await compare(password, user.passwordHash);
-    if (!matches) {
-      return reply.code(401).send({ error: 'invalid credentials' });
-    }
-
-    if (user.role === UserRole.PENDING) {
-      return reply.code(403).send({ error: 'account pending approval by admin' });
-    }
-
-    const token = app.jwt.sign({ sub: user.id, role: user.role });
-
-    return reply.send({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        imageUrl: user.imageUrl,
-        role: user.role,
-      },
-      token,
-    });
-  });
+      return reply.send({
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          imageUrl: user.imageUrl,
+          role: user.role,
+        },
+        token,
+      });
+    },
+  );
 
   app.get(
     '/me',
@@ -277,62 +329,74 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.post('/google', async (request, reply) => {
-    const body = request.body as { idToken?: string };
-    const idToken = body?.idToken;
-
-    if (!idToken) {
-      return reply.code(400).send({ error: 'idToken is required' });
-    }
-
-    const clientIds = getGoogleClientIds();
-    if (!clientIds) {
-      return reply.code(500).send({ error: 'Google OAuth not configured' });
-    }
-
-    try {
-      const payload = await verifyGoogleToken(idToken, clientIds.all);
-
-      if (!payload.email) {
-        app.log.error('Google Sign-In: No email in token payload');
-        return reply.code(400).send({ error: 'No email found in Google account' });
-      }
-
-      const domainCheck = validateEmailDomain(payload.email);
-      if (!domainCheck.valid) {
-        app.log.warn(
-          `Google Sign-In: Email domain not allowed - email: ${payload.email}, allowedDomain: ${process.env.ALLOWED_EMAIL_DOMAIN || '@iiitnr.edu.in'}`,
-        );
-        return reply.code(403).send({ error: domainCheck.error });
-      }
-
-      const verificationCheck = validateEmailVerification(payload.email_verified);
-      if (!verificationCheck.valid) {
-        return reply.code(400).send({ error: verificationCheck.error });
-      }
-
-      const name = payload.name || null;
-      const imageUrl = payload.imageUrl || null;
-      const user = await findOrCreateGoogleUser(payload.sub, payload.email, name, imageUrl);
-
-      const token = app.jwt.sign({ sub: user.id, role: user.role });
-
-      return reply.send({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          imageUrl: user.imageUrl,
-          role: user.role,
+  app.post(
+    '/google',
+    {
+      schema: googleSchema,
+      config: {
+        rateLimit: {
+          max: 100,
+          timeWindow: '1 minute',
         },
-        token,
-      });
-    } catch (err: unknown) {
-      app.log.error({ err }, 'Google Sign-In error');
-      const { statusCode, error } = handleGoogleAuthError(err);
-      return reply.code(statusCode).send({ error });
-    }
-  });
+      },
+    },
+    async (request, reply) => {
+      const body = request.body as { idToken?: string };
+      const idToken = body?.idToken;
+
+      if (!idToken) {
+        return reply.code(400).send({ error: 'idToken is required' });
+      }
+
+      const clientIds = getGoogleClientIds();
+      if (!clientIds) {
+        return reply.code(500).send({ error: 'Google OAuth not configured' });
+      }
+
+      try {
+        const payload = await verifyGoogleToken(idToken, clientIds.all);
+
+        if (!payload.email) {
+          app.log.error('Google Sign-In: No email in token payload');
+          return reply.code(400).send({ error: 'No email found in Google account' });
+        }
+
+        const domainCheck = validateEmailDomain(payload.email);
+        if (!domainCheck.valid) {
+          app.log.warn(
+            `Google Sign-In: Email domain not allowed - email: ${payload.email}, allowedDomain: ${process.env.ALLOWED_EMAIL_DOMAIN || '@iiitnr.edu.in'}`,
+          );
+          return reply.code(403).send({ error: domainCheck.error });
+        }
+
+        const verificationCheck = validateEmailVerification(payload.email_verified);
+        if (!verificationCheck.valid) {
+          return reply.code(400).send({ error: verificationCheck.error });
+        }
+
+        const name = payload.name || null;
+        const imageUrl = payload.imageUrl || null;
+        const user = await findOrCreateGoogleUser(payload.sub, payload.email, name, imageUrl);
+
+        const token = app.jwt.sign({ sub: user.id, role: user.role });
+
+        return reply.send({
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            imageUrl: user.imageUrl,
+            role: user.role,
+          },
+          token,
+        });
+      } catch (err: unknown) {
+        app.log.error({ err }, 'Google Sign-In error');
+        const { statusCode, error } = handleGoogleAuthError(err);
+        return reply.code(statusCode).send({ error });
+      }
+    },
+  );
 };
 
 export default authRoutes;

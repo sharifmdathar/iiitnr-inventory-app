@@ -5,108 +5,147 @@ import { RequestStatus, requestStatusValues, UserRole } from '../utils/enums.js'
 import type { RequestStatusValue } from '../utils/enums.js';
 import type { UserRoleValue } from '../utils/enums.js';
 
+const createRequestSchema = {
+  body: {
+    type: 'object',
+    properties: {
+      items: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 100,
+        items: {
+          type: 'object',
+          properties: {
+            componentId: { type: 'string', maxLength: 100 },
+            quantity: { type: 'integer', minimum: 1 },
+          },
+          additionalProperties: false,
+        },
+      },
+      targetFacultyId: { type: 'string', maxLength: 100 },
+      projectTitle: { type: 'string', minLength: 1, maxLength: 300 },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
+const updateRequestStatusSchema = {
+  body: {
+    type: 'object',
+    required: ['status'],
+    properties: {
+      status: { type: 'string', maxLength: 50 },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
 const requestsRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/requests', { preHandler: requireAuth }, async (request, reply) => {
-    const body = request.body as {
-      items?: Array<{ componentId?: string; quantity?: number }>;
-      targetFacultyId?: string;
-      projectTitle?: string;
-    };
+  app.post(
+    '/requests',
+    { preHandler: requireAuth, schema: createRequestSchema },
+    async (request, reply) => {
+      const body = request.body as {
+        items?: Array<{ componentId?: string; quantity?: number }>;
+        targetFacultyId?: string;
+        projectTitle?: string;
+      };
 
-    const userId = (request.user as { sub?: string })?.sub;
-    if (!userId) {
-      return reply.code(401).send({ error: 'invalid token' });
-    }
-
-    const items = body?.items ?? [];
-    const targetFacultyId = body?.targetFacultyId?.trim();
-    const projectTitle = body?.projectTitle?.trim();
-
-    if (!Array.isArray(items) || items.length === 0) {
-      return reply.code(400).send({ error: 'items are required' });
-    }
-    if (!targetFacultyId) {
-      return reply.code(400).send({ error: 'targetFacultyId is required' });
-    }
-    if (!projectTitle) {
-      return reply.code(400).send({ error: 'projectTitle is required' });
-    }
-
-    const normalizedItems = items.map((item) => ({
-      componentId: item?.componentId?.trim(),
-      quantity: item?.quantity,
-    }));
-
-    for (const item of normalizedItems) {
-      if (!item.componentId) {
-        return reply.code(400).send({ error: 'componentId is required' });
-      }
-      if (typeof item.quantity !== 'number' || item.quantity <= 0) {
-        return reply.code(400).send({ error: 'quantity must be a positive number' });
-      }
-    }
-
-    const componentIds = normalizedItems.map((item) => item.componentId as string);
-    const uniqueComponentIds = new Set(componentIds);
-    if (uniqueComponentIds.size !== componentIds.length) {
-      return reply.code(400).send({ error: 'duplicate componentId in request' });
-    }
-
-    try {
-      const faculty = await prisma.user.findUnique({
-        where: { id: targetFacultyId, role: UserRole.FACULTY },
-        select: { id: true },
-      });
-      if (!faculty) {
-        return reply.code(400).send({ error: 'invalid targetFacultyId' });
+      const userId = (request.user as { sub?: string })?.sub;
+      if (!userId) {
+        return reply.code(401).send({ error: 'invalid token' });
       }
 
-      const existingComponents = await prisma.component.findMany({
-        where: { id: { in: componentIds } },
-        select: { id: true },
-      });
+      const items = body?.items ?? [];
+      const targetFacultyId = body?.targetFacultyId?.trim();
+      const projectTitle = body?.projectTitle?.trim();
 
-      if (existingComponents.length !== componentIds.length) {
-        return reply.code(400).send({ error: 'one or more components not found' });
+      if (!Array.isArray(items) || items.length === 0) {
+        return reply.code(400).send({ error: 'items are required' });
+      }
+      if (!targetFacultyId) {
+        return reply.code(400).send({ error: 'targetFacultyId is required' });
+      }
+      if (!projectTitle) {
+        return reply.code(400).send({ error: 'projectTitle is required' });
       }
 
-      const createdRequest = await prisma.request.create({
-        data: {
-          userId,
-          targetFacultyId,
-          projectTitle,
-          items: {
-            create: normalizedItems.map((item) => ({
-              component: {
-                connect: { id: item.componentId as string },
+      const normalizedItems = items.map((item) => ({
+        componentId: item?.componentId?.trim(),
+        quantity: item?.quantity,
+      }));
+
+      for (const item of normalizedItems) {
+        if (!item.componentId) {
+          return reply.code(400).send({ error: 'componentId is required' });
+        }
+        if (typeof item.quantity !== 'number' || item.quantity <= 0) {
+          return reply.code(400).send({ error: 'quantity must be a positive number' });
+        }
+      }
+
+      const componentIds = normalizedItems.map((item) => item.componentId as string);
+      const uniqueComponentIds = new Set(componentIds);
+      if (uniqueComponentIds.size !== componentIds.length) {
+        return reply.code(400).send({ error: 'duplicate componentId in request' });
+      }
+
+      try {
+        const faculty = await prisma.user.findUnique({
+          where: { id: targetFacultyId, role: UserRole.FACULTY },
+          select: { id: true },
+        });
+        if (!faculty) {
+          return reply.code(400).send({ error: 'invalid targetFacultyId' });
+        }
+
+        const existingComponents = await prisma.component.findMany({
+          where: { id: { in: componentIds } },
+          select: { id: true },
+        });
+
+        if (existingComponents.length !== componentIds.length) {
+          return reply.code(400).send({ error: 'one or more components not found' });
+        }
+
+        const createdRequest = await prisma.request.create({
+          data: {
+            userId,
+            targetFacultyId,
+            projectTitle,
+            items: {
+              create: normalizedItems.map((item) => ({
+                component: {
+                  connect: { id: item.componentId as string },
+                },
+                quantity: item.quantity ?? 0,
+              })),
+            },
+          },
+          include: {
+            items: {
+              include: {
+                component: true,
               },
-              quantity: item.quantity ?? 0,
-            })),
-          },
-        },
-        include: {
-          items: {
-            include: {
-              component: true,
+            },
+            targetFaculty: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+              },
             },
           },
-          targetFaculty: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              role: true,
-            },
-          },
-        },
-      });
+        });
 
-      return reply.code(201).send({ request: createdRequest });
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to create request' });
-    }
-  });
+        return reply.code(201).send({ request: createdRequest });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to create request' });
+      }
+    },
+  );
 
   app.get('/faculty', { preHandler: requireAuth }, async (_, reply) => {
     try {
@@ -192,83 +231,47 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  app.put('/requests/:id', { preHandler: requireAuth }, async (request, reply) => {
-    const params = request.params as { id?: string };
-    const id = params?.id;
-    const body = request.body as { status?: string };
+  app.put(
+    '/requests/:id',
+    { preHandler: requireAuth, schema: updateRequestStatusSchema },
+    async (request, reply) => {
+      const params = request.params as { id?: string };
+      const id = params?.id;
+      const body = request.body as { status?: string };
 
-    if (!id) {
-      return reply.code(400).send({ error: 'request id is required' });
-    }
-
-    const status = body?.status?.trim();
-    if (!status) {
-      return reply.code(400).send({ error: 'status is required' });
-    }
-
-    if (!requestStatusValues.includes(status as RequestStatusValue)) {
-      return reply.code(400).send({ error: 'invalid status' });
-    }
-
-    const newStatus = status as RequestStatusValue;
-
-    if (
-      newStatus !== RequestStatus.APPROVED &&
-      newStatus !== RequestStatus.REJECTED &&
-      newStatus !== RequestStatus.FULFILLED
-    ) {
-      return reply
-        .code(400)
-        .send({ error: 'status can only be set to APPROVED, REJECTED, or FULFILLED' });
-    }
-
-    const user = request.user as { sub?: string; role?: UserRoleValue };
-    const currentUserId = user?.sub;
-    if (!currentUserId) {
-      return reply.code(401).send({ error: 'invalid token' });
-    }
-
-    try {
-      const existingRequest = await prisma.request.findUnique({
-        where: { id },
-        include: {
-          items: {
-            include: {
-              component: true,
-            },
-          },
-        },
-      });
-
-      if (!existingRequest) {
-        return reply.code(404).send({ error: 'request not found' });
+      if (!id) {
+        return reply.code(400).send({ error: 'request id is required' });
       }
 
-      if (existingRequest.status === RequestStatus.PENDING) {
-        if (newStatus === RequestStatus.FULFILLED) {
-          return reply
-            .code(400)
-            .send({ error: 'request must be APPROVED before it can be FULFILLED' });
-        }
+      const status = body?.status?.trim();
+      if (!status) {
+        return reply.code(400).send({ error: 'status is required' });
+      }
 
-        if (user?.role === UserRole.FACULTY) {
-          if (existingRequest.targetFacultyId !== currentUserId) {
-            return reply
-              .code(403)
-              .send({ error: 'forbidden: can only approve/reject requests targeting you' });
-          }
-        } else if (!isAdminOrTA(user?.role)) {
-          return reply
-            .code(403)
-            .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
-        }
+      if (!requestStatusValues.includes(status as RequestStatusValue)) {
+        return reply.code(400).send({ error: 'invalid status' });
+      }
 
-        await prisma.request.update({
-          where: { id },
-          data: { status: newStatus },
-        });
+      const newStatus = status as RequestStatusValue;
 
-        const updatedRequest = await prisma.request.findUnique({
+      if (
+        newStatus !== RequestStatus.APPROVED &&
+        newStatus !== RequestStatus.REJECTED &&
+        newStatus !== RequestStatus.FULFILLED
+      ) {
+        return reply
+          .code(400)
+          .send({ error: 'status can only be set to APPROVED, REJECTED, or FULFILLED' });
+      }
+
+      const user = request.user as { sub?: string; role?: UserRoleValue };
+      const currentUserId = user?.sub;
+      if (!currentUserId) {
+        return reply.code(401).send({ error: 'invalid token' });
+      }
+
+      try {
+        const existingRequest = await prisma.request.findUnique({
           where: { id },
           include: {
             items: {
@@ -276,63 +279,35 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
                 component: true,
               },
             },
-            user: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                role: true,
-              },
-            },
-            targetFaculty: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                role: true,
-              },
-            },
           },
         });
 
-        return reply.send({ request: updatedRequest });
-      } else if (existingRequest.status === RequestStatus.APPROVED) {
-        if (newStatus !== RequestStatus.FULFILLED) {
-          return reply.code(400).send({ error: 'approved request can only be set to FULFILLED' });
+        if (!existingRequest) {
+          return reply.code(404).send({ error: 'request not found' });
         }
 
-        if (!isAdminOrTA(user?.role)) {
-          return reply
-            .code(403)
-            .send({ error: 'forbidden: only admin or TA can fulfill requests' });
-        }
+        if (existingRequest.status === RequestStatus.PENDING) {
+          if (newStatus === RequestStatus.FULFILLED) {
+            return reply
+              .code(400)
+              .send({ error: 'request must be APPROVED before it can be FULFILLED' });
+          }
 
-        try {
-          await prisma.$transaction(async (tx) => {
-            for (const item of existingRequest.items) {
-              const result = await tx.component.updateMany({
-                where: {
-                  id: item.componentId,
-                  availableQuantity: {
-                    gte: item.quantity,
-                  },
-                },
-                data: {
-                  availableQuantity: {
-                    decrement: item.quantity,
-                  },
-                },
-              });
-
-              if (result.count === 0) {
-                throw new Error(`INSUFFICIENT_QUANTITY:${item.component.name}:${item.quantity}`);
-              }
+          if (user?.role === UserRole.FACULTY) {
+            if (existingRequest.targetFacultyId !== currentUserId) {
+              return reply
+                .code(403)
+                .send({ error: 'forbidden: can only approve/reject requests targeting you' });
             }
+          } else if (!isAdminOrTA(user?.role)) {
+            return reply
+              .code(403)
+              .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
+          }
 
-            await tx.request.update({
-              where: { id },
-              data: { status: newStatus },
-            });
+          await prisma.request.update({
+            where: { id },
+            data: { status: newStatus },
           });
 
           const updatedRequest = await prisma.request.findUnique({
@@ -363,26 +338,94 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
           });
 
           return reply.send({ request: updatedRequest });
-        } catch (error) {
-          if (error instanceof Error && error.message.startsWith('INSUFFICIENT_QUANTITY:')) {
-            const [, componentName] = error.message.split(':');
-            return reply.code(400).send({
-              error: `insufficient quantity for component "${componentName}"`,
-            });
+        } else if (existingRequest.status === RequestStatus.APPROVED) {
+          if (newStatus !== RequestStatus.FULFILLED) {
+            return reply.code(400).send({ error: 'approved request can only be set to FULFILLED' });
           }
 
-          throw error;
+          if (!isAdminOrTA(user?.role)) {
+            return reply
+              .code(403)
+              .send({ error: 'forbidden: only admin or TA can fulfill requests' });
+          }
+
+          try {
+            await prisma.$transaction(async (tx) => {
+              for (const item of existingRequest.items) {
+                const result = await tx.component.updateMany({
+                  where: {
+                    id: item.componentId,
+                    availableQuantity: {
+                      gte: item.quantity,
+                    },
+                  },
+                  data: {
+                    availableQuantity: {
+                      decrement: item.quantity,
+                    },
+                  },
+                });
+
+                if (result.count === 0) {
+                  throw new Error(`INSUFFICIENT_QUANTITY:${item.component.name}:${item.quantity}`);
+                }
+              }
+
+              await tx.request.update({
+                where: { id },
+                data: { status: newStatus },
+              });
+            });
+
+            const updatedRequest = await prisma.request.findUnique({
+              where: { id },
+              include: {
+                items: {
+                  include: {
+                    component: true,
+                  },
+                },
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    role: true,
+                  },
+                },
+                targetFaculty: {
+                  select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    role: true,
+                  },
+                },
+              },
+            });
+
+            return reply.send({ request: updatedRequest });
+          } catch (error) {
+            if (error instanceof Error && error.message.startsWith('INSUFFICIENT_QUANTITY:')) {
+              const [, componentName] = error.message.split(':');
+              return reply.code(400).send({
+                error: `insufficient quantity for component "${componentName}"`,
+              });
+            }
+
+            throw error;
+          }
+        } else {
+          return reply.code(400).send({
+            error: 'request status can only be updated when status is PENDING or APPROVED',
+          });
         }
-      } else {
-        return reply.code(400).send({
-          error: 'request status can only be updated when status is PENDING or APPROVED',
-        });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to update request' });
       }
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to update request' });
-    }
-  });
+    },
+  );
 
   app.delete('/requests/:id', { preHandler: requireAuth }, async (request, reply) => {
     const params = request.params as { id?: string };

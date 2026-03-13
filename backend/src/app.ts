@@ -2,6 +2,8 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import type { FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import { prisma } from './lib/prisma.js';
 import routes from './routes/index.js';
@@ -12,6 +14,7 @@ export async function buildApp() {
     process.argv.some((arg) => arg.includes('--test') || arg.includes('test'));
   const isProd = process.env.NODE_ENV === 'production';
   const app = Fastify({
+    bodyLimit: 512 * 1024,
     logger: isTest
       ? false
       : {
@@ -39,6 +42,22 @@ export async function buildApp() {
     origin: !isProd && !allowedOrigins ? true : (allowedOrigins ?? false),
   });
 
+  await app.register(helmet);
+
+  if (!isTest) {
+    await app.register(rateLimit, {
+      global: true,
+      max: 100,
+      timeWindow: '1 minute',
+      keyGenerator: (request) => {
+        return request.headers.authorization || `ip:${request.ip}`;
+      },
+      errorResponseBuilder: (_request, context) => ({
+        error: `Too many requests. Please wait ${Math.ceil(context.ttl / 1000)} seconds before retrying.`,
+      }),
+    });
+  }
+
   app.addContentTypeParser(
     'application/x-www-form-urlencoded',
     { parseAs: 'string' },
@@ -58,6 +77,19 @@ export async function buildApp() {
 
   await app.register(jwt, {
     secret: jwtSecret,
+  });
+
+  app.setSchemaErrorFormatter((errors, _dataVar) => {
+    const first = errors[0];
+    if (first?.params && 'missingProperty' in first.params) {
+      const field = first.params.missingProperty as string;
+      return new Error(`${field} is required`);
+    }
+    if (first?.instancePath) {
+      const field = first.instancePath.replace(/^\//, '');
+      return new Error(`${field} ${first.message ?? 'is invalid'}`);
+    }
+    return new Error(first?.message ?? 'Validation error');
   });
 
   app.setErrorHandler((error, request, reply) => {

@@ -5,6 +5,28 @@ import { UserRole, categoryValues, locationValues, toLocationEnum } from '../uti
 import type { CategoryValue, UserRoleValue } from '../utils/enums.js';
 import type { LocationValue } from '../utils/enums.js';
 
+const componentBodySchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string', minLength: 1, maxLength: 200 },
+    description: { type: 'string', maxLength: 2000 },
+    imageUrl: { type: 'string', maxLength: 2000 },
+    totalQuantity: { type: 'integer', minimum: 0 },
+    availableQuantity: { type: 'integer', minimum: 0 },
+    category: { type: 'string', maxLength: 100 },
+    location: { type: 'string', maxLength: 100 },
+  },
+  additionalProperties: false,
+} as const;
+
+const createComponentSchema = {
+  body: { ...componentBodySchema, required: ['name'] as ['name'] },
+} as const;
+
+const updateComponentSchema = {
+  body: componentBodySchema,
+} as const;
+
 const componentsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', { preHandler: requireAuth }, async (request, reply) => {
     try {
@@ -111,176 +133,184 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  app.post('/', { preHandler: requireAdminOrTA }, async (request, reply) => {
-    const body = request.body as {
-      name?: string;
-      description?: string;
-      imageUrl?: string;
-      totalQuantity?: number;
-      availableQuantity?: number;
-      category?: string;
-      location?: string;
-    };
+  app.post(
+    '/',
+    { preHandler: requireAdminOrTA, schema: createComponentSchema },
+    async (request, reply) => {
+      const body = request.body as {
+        name?: string;
+        description?: string;
+        imageUrl?: string;
+        totalQuantity?: number;
+        availableQuantity?: number;
+        category?: string;
+        location?: string;
+      };
 
-    const name = body?.name?.trim();
-    const description = body?.description?.trim();
-    const imageUrl = body?.imageUrl?.trim();
-    const totalQuantity = body?.totalQuantity;
-    const availableQuantity = body?.availableQuantity;
-    const category = body?.category?.trim();
-    const location = body?.location?.trim();
+      const name = body?.name?.trim();
+      const description = body?.description?.trim();
+      const imageUrl = body?.imageUrl?.trim();
+      const totalQuantity = body?.totalQuantity;
+      const availableQuantity = body?.availableQuantity;
+      const category = body?.category?.trim();
+      const location = body?.location?.trim();
 
-    if (!name) {
-      return reply.code(400).send({ error: 'name is required' });
-    }
+      if (!name) {
+        return reply.code(400).send({ error: 'name is required' });
+      }
 
-    if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
-      return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
-    }
+      if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
+        return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
+      }
 
-    if (
-      availableQuantity !== undefined &&
-      (typeof availableQuantity !== 'number' || availableQuantity < 0)
-    ) {
-      return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
-    }
+      if (
+        availableQuantity !== undefined &&
+        (typeof availableQuantity !== 'number' || availableQuantity < 0)
+      ) {
+        return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
+      }
 
-    if (category && !categoryValues.includes(category as CategoryValue)) {
-      return reply.code(400).send({
-        error: `invalid category. Must be one of ${categoryValues.join(', ')} (use Others if none apply)`,
-      });
-    }
-
-    if (location && !locationValues.includes(location as LocationValue)) {
-      return reply
-        .code(400)
-        .send({ error: `invalid location. Must be one of ${locationValues.join(', ')}` });
-    }
-
-    try {
-      const component = await prisma.component.create({
-        data: {
-          name,
-          description: description || null,
-          imageUrl: imageUrl || null,
-          totalQuantity,
-          availableQuantity: availableQuantity ? availableQuantity : totalQuantity,
-          category: category ? (category as CategoryValue) : null,
-          location: location ? toLocationEnum(location) : null,
-        },
-      });
-
-      return reply.code(201).send({ component });
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to create component' });
-    }
-  });
-
-  app.put('/:id', { preHandler: requireAdminOrTA }, async (request, reply) => {
-    const params = request.params as { id?: string };
-    const id = params?.id;
-    const body = request.body as {
-      name?: string;
-      description?: string;
-      imageUrl?: string;
-      availableQuantity?: number;
-      totalQuantity?: number;
-      category?: string;
-      location?: string;
-    };
-
-    if (!id) {
-      return reply.code(400).send({ error: 'component id is required' });
-    }
-
-    const name = body?.name?.trim();
-    const description = body?.description?.trim();
-    const imageUrl = body?.imageUrl?.trim();
-    const availableQuantity = body?.availableQuantity;
-    const totalQuantity = body?.totalQuantity;
-    const category = body?.category?.trim();
-    const location = body?.location?.trim();
-
-    if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
-      return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
-    }
-
-    if (
-      availableQuantity !== undefined &&
-      (typeof availableQuantity !== 'number' || availableQuantity < 0)
-    ) {
-      return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
-    }
-
-    if (category !== undefined && category !== null && category !== '') {
-      if (!categoryValues.includes(category as CategoryValue)) {
+      if (category && !categoryValues.includes(category as CategoryValue)) {
         return reply.code(400).send({
-          error: `invalid category. Must be one of ${categoryValues.join(
-            ', ',
-          )} (use Others if none apply)`,
+          error: `invalid category. Must be one of ${categoryValues.join(', ')} (use Others if none apply)`,
         });
       }
-    }
 
-    if (location !== undefined && location !== null && location !== '') {
-      if (!locationValues.includes(location as LocationValue)) {
+      if (location && !locationValues.includes(location as LocationValue)) {
         return reply
           .code(400)
-          .send({ error: 'invalid location. Must be one of IoT Lab, Robo Lab, VLSI Lab' });
-      }
-    }
-
-    try {
-      const existingComponent = await prisma.component.findUnique({
-        where: { id },
-      });
-
-      if (!existingComponent) {
-        return reply.code(404).send({ error: 'component not found' });
+          .send({ error: `invalid location. Must be one of ${locationValues.join(', ')}` });
       }
 
-      const nextTotalQuantity =
-        totalQuantity !== undefined ? totalQuantity : existingComponent.totalQuantity;
-
-      const nextAvailableQuantity =
-        availableQuantity !== undefined
-          ? availableQuantity
-          : totalQuantity !== undefined
-            ? totalQuantity
-            : existingComponent.availableQuantity;
-
-      if (nextAvailableQuantity > nextTotalQuantity) {
-        return reply
-          .code(400)
-          .send({ error: 'availableQuantity cannot be greater than totalQuantity' });
-      }
-
-      const component = await prisma.component.update({
-        where: { id },
-        data: {
-          ...(name !== undefined && { name }),
-          ...(description !== undefined && { description: description || null }),
-          ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
-          ...(totalQuantity !== undefined && { totalQuantity: nextTotalQuantity }),
-          ...((availableQuantity !== undefined || totalQuantity !== undefined) && {
-            availableQuantity: nextAvailableQuantity,
-          }),
-          ...(category !== undefined && {
+      try {
+        const component = await prisma.component.create({
+          data: {
+            name,
+            description: description || null,
+            imageUrl: imageUrl || null,
+            totalQuantity,
+            availableQuantity: availableQuantity ? availableQuantity : totalQuantity,
             category: category ? (category as CategoryValue) : null,
-          }),
-          ...(location !== undefined && {
             location: location ? toLocationEnum(location) : null,
-          }),
-        },
-      });
+          },
+        });
 
-      return reply.send({ component });
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to update component' });
-    }
-  });
+        return reply.code(201).send({ component });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to create component' });
+      }
+    },
+  );
+
+  app.put(
+    '/:id',
+    { preHandler: requireAdminOrTA, schema: updateComponentSchema },
+    async (request, reply) => {
+      const params = request.params as { id?: string };
+      const id = params?.id;
+      const body = request.body as {
+        name?: string;
+        description?: string;
+        imageUrl?: string;
+        availableQuantity?: number;
+        totalQuantity?: number;
+        category?: string;
+        location?: string;
+      };
+
+      if (!id) {
+        return reply.code(400).send({ error: 'component id is required' });
+      }
+
+      const name = body?.name?.trim();
+      const description = body?.description?.trim();
+      const imageUrl = body?.imageUrl?.trim();
+      const availableQuantity = body?.availableQuantity;
+      const totalQuantity = body?.totalQuantity;
+      const category = body?.category?.trim();
+      const location = body?.location?.trim();
+
+      if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
+        return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
+      }
+
+      if (
+        availableQuantity !== undefined &&
+        (typeof availableQuantity !== 'number' || availableQuantity < 0)
+      ) {
+        return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
+      }
+
+      if (category !== undefined && category !== null && category !== '') {
+        if (!categoryValues.includes(category as CategoryValue)) {
+          return reply.code(400).send({
+            error: `invalid category. Must be one of ${categoryValues.join(
+              ', ',
+            )} (use Others if none apply)`,
+          });
+        }
+      }
+
+      if (location !== undefined && location !== null && location !== '') {
+        if (!locationValues.includes(location as LocationValue)) {
+          return reply
+            .code(400)
+            .send({ error: 'invalid location. Must be one of IoT Lab, Robo Lab, VLSI Lab' });
+        }
+      }
+
+      try {
+        const existingComponent = await prisma.component.findUnique({
+          where: { id },
+        });
+
+        if (!existingComponent) {
+          return reply.code(404).send({ error: 'component not found' });
+        }
+
+        const nextTotalQuantity =
+          totalQuantity !== undefined ? totalQuantity : existingComponent.totalQuantity;
+
+        const nextAvailableQuantity =
+          availableQuantity !== undefined
+            ? availableQuantity
+            : totalQuantity !== undefined
+              ? totalQuantity
+              : existingComponent.availableQuantity;
+
+        if (nextAvailableQuantity > nextTotalQuantity) {
+          return reply
+            .code(400)
+            .send({ error: 'availableQuantity cannot be greater than totalQuantity' });
+        }
+
+        const component = await prisma.component.update({
+          where: { id },
+          data: {
+            ...(name !== undefined && { name }),
+            ...(description !== undefined && { description: description || null }),
+            ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
+            ...(totalQuantity !== undefined && { totalQuantity: nextTotalQuantity }),
+            ...((availableQuantity !== undefined || totalQuantity !== undefined) && {
+              availableQuantity: nextAvailableQuantity,
+            }),
+            ...(category !== undefined && {
+              category: category ? (category as CategoryValue) : null,
+            }),
+            ...(location !== undefined && {
+              location: location ? toLocationEnum(location) : null,
+            }),
+          },
+        });
+
+        return reply.send({ component });
+      } catch (err) {
+        app.log.error(err);
+        return reply.code(500).send({ error: 'failed to update component' });
+      }
+    },
+  );
 
   app.delete('/:id', { preHandler: requireAdminOrTA }, async (request, reply) => {
     const params = request.params as { id?: string };

@@ -22,7 +22,6 @@ object ApiClient {
                 json(
                     Json {
                         ignoreUnknownKeys = true
-                        isLenient = true
                         encodeDefaults = false
                     },
                 )

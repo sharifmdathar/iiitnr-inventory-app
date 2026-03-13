@@ -6,6 +6,9 @@ install:
 dev:
     cd backend && bun run dev
 
+dock:
+    cd backend && podman compose up -d
+
 test:
     cd backend && podman compose --profile test up -d
     cd backend && bun test
