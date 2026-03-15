@@ -3,16 +3,29 @@ default: dev
 install:
     cd backend && bun install
 
+image:
+    cd backend && podman build -t test . && podman images test && podman run --env-file .env -p4000:4000 test
+
 dev:
     cd backend && bun run dev
 
-dock:
+up:
     cd backend && podman compose up -d
 
+down:
+    cd backend && podman compose down
+
+restart:
+    cd backend && podman compose down
+    cd backend && podman compose up -d
+
+logs:
+    cd backend && podman compose logs -f
+
 test:
-    cd backend && podman compose --profile test up -d
+    cd backend && podman compose -f compose.db.yaml --profile test up -d
     cd backend && bun test
-    cd backend && podman compose --profile test down
+    cd backend && podman compose -f compose.db.yaml --profile test down
 
 desk:
     cd app && ./gradlew desktop:run

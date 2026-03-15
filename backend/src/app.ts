@@ -15,19 +15,21 @@ export async function buildApp() {
   const isProd = process.env.NODE_ENV === 'production';
   const app = Fastify({
     bodyLimit: 512 * 1024,
-    logger: isTest
-      ? false
-      : {
-          transport: {
-            target: 'pino-pretty',
-            options: {
-              colorize: true,
-              colorizeObjects: true,
-              translateTime: 'SYS:standard',
-              ignore: 'pid,hostname',
+    logger: isProd
+      ? true
+      : isTest
+        ? false
+        : {
+            transport: {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                colorizeObjects: true,
+                translateTime: 'SYS:standard',
+                ignore: 'pid,hostname',
+              },
             },
           },
-        },
   });
 
   const rawAllowedOrigins = process.env.ALLOWED_ORIGINS;
@@ -79,7 +81,7 @@ export async function buildApp() {
     secret: jwtSecret,
   });
 
-  app.setSchemaErrorFormatter((errors, _dataVar) => {
+  app.setSchemaErrorFormatter((errors) => {
     const first = errors[0];
     if (first?.params && 'missingProperty' in first.params) {
       const field = first.params.missingProperty as string;

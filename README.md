@@ -20,8 +20,8 @@ A monorepo inventory management system with a **Kotlin Multiplatform app** (Andr
 ## Prerequisites
 
 - [Bun](https://bun.sh)
-- PostgreSQL (local or hosted)
-- Docker & Docker Compose (optional, for local PostgreSQL)
+- PostgreSQL (local or hosted, e.g. Supabase/Neon)
+- Docker or Podman with Compose (optional: for local PostgreSQL and/or running the backend in a container)
 
 ## Installation
 
@@ -57,14 +57,14 @@ Compose uses **profiles** so the main and test databases don’t run at the same
 
 | Command | Effect |
 |--------|--------|
-| `docker compose --profile prod up -d` | Start **main** Postgres (port 5432, DB `iiitnr_inventory`, data persisted) |
-| `docker compose --profile test up -d` | Start **test** Postgres (port 5432, DB `iiitnr_inventory_test`, ephemeral) |
+| `podman compose -f compose.db.yaml --profile main up -d` | Start **main** Postgres (port 5432, DB `iiitnr_inventory`, persisted) |
+| `podman compose -f compose.db.yaml --profile test up -d` | Start **test** Postgres (port 5432, DB `iiitnr_inventory_test`, ephemeral) |
 
 Main DB (development):
 
 ```bash
 cd backend
-docker compose --profile main up -d
+podman compose -f compose.db.yaml --profile main up -d
 ```
 
 - Database: `iiitnr_inventory`
@@ -75,12 +75,12 @@ Test DB (used by `just test`; ephemeral, no volume):
 
 ```bash
 cd backend
-docker compose --profile test up -d
+podman compose -f compose.db.yaml --profile test up -d
 ```
 
-### Manual Setup
+### Cloud or manual PostgreSQL
 
-Alternatively, set up PostgreSQL manually and configure the connection string in your `.env` file.
+Use a hosted DB (e.g. Supabase, Neon) or install Postgres yourself. Set `DATABASE_URL` in `backend/.env`; no `POSTGRES_*` vars are required.
 
 ## Backend Setup
 
@@ -98,12 +98,19 @@ Edit `backend/.env` and set your Environment Variables
 
 ### Database Migrations
 
-Generate Prisma client and run migrations:
+**Development** (creates migration files, applies them, and generates the client):
 
 ```bash
 cd backend
 bun run prisma:generate
 bun run prisma:migrate
+```
+
+**Production / container** (apply existing migrations only; run once before starting the backend):
+
+```bash
+cd backend
+bunx prisma migrate deploy
 ```
 
 ### Seed Database
@@ -125,6 +132,29 @@ bun run dev
 ```
 
 The server will start on `http://localhost:4000` (or the port specified in `PORT`).
+
+### Running the backend in a container
+
+Use the pre-built image or build from `backend/Containerfile` (or `Dockerfile`). From `backend/`:
+
+1. **Migrations**: Run once (e.g. for Supabase/Neon or a remote DB):
+   ```bash
+   bunx prisma migrate deploy
+   ```
+2. **Compose** (uses `backend/compose.yaml`: image, `env_file: .env`, port 4000):
+   ```bash
+   podman compose up -d
+   ```
+   Ensure `backend/.env` exists and has `DATABASE_URL` (and `JWT_SECRET`, etc.). The backend listens on port 4000.
+
+**Build the image locally** (from `backend/`):
+
+```bash
+podman build -t iiitnr-inventory-backend -f Containerfile .
+# or: docker build -t iiitnr-inventory-backend .
+```
+
+Then run with `podman run --rm -p 4000:4000 --env-file .env iiitnr-inventory-backend`, or point `compose.yaml` at your image.
 
 ## API Endpoints
 
@@ -193,7 +223,7 @@ All request endpoints require authentication. Users can only see their own reque
 just test
 ```
 
-This runs `docker compose --profile test up -d`, runs `prisma generate` and migrations using `TEST_DATABASE_URL` (or derived from `DATABASE_URL`) from `backend/.env`, then `bun test`.
+This starts the test DB (`compose.db.yaml --profile test`), runs `bun test` (using `TEST_DATABASE_URL` or `DATABASE_URL` from `backend/.env`), then stops the test DB.
 
 To run tests only (test DB must already be running, either locally or on remote):
 
@@ -230,16 +260,22 @@ From `backend/`:
 
 ### Root Justfile
 
-At the repo root there is a `Justfile` to streamline common tasks:
+At the repo root, `Justfile` streamlines common tasks:
 
-- `just` or `just dev` - Start the backend dev server
-- `just install` - Install backend dependencies
-- `just test` - Start test DB (`--profile test`), run migrations and `bun test`, then stop test DB
-- `just lint` - Lint backend and run `ktlintCheck` for the Android app
-- `just lint-fix` - Fix backend lint issues and run `ktlintFormat` for the Android app
-- `just typecheck` - Type-check the backend
-- `just fmt` - Format backend code and run `ktlintFormat` for the Android app
-- `just detekt` - Run Detekt on the Android app
+- `just` / `just dev` — Start backend dev server
+- `just install` — Install backend dependencies
+- `just image` — Build backend image (Containerfile) and run with `--env-file .env -p 4000:4000`
+- `just up` — Start backend container (`podman compose up -d`)
+- `just down` — Stop backend container
+- `just restart` — `compose down` then `up -d`
+- `just logs` — Follow compose logs
+- `just test` — Start test DB (`compose.db.yaml --profile test`), run `bun test`, then stop DB
+- `just desk` — Run KMP desktop app
+- `just lint` — Lint backend + `ktlintCheck` (app)
+- `just lint-fix` — Lint fix + `ktlintFormat`
+- `just typecheck` — Backend typecheck
+- `just fmt` — Format backend + `ktlintFormat`
+- `just detekt` — Detekt on the app
 
 ## Mobile App
 
@@ -266,19 +302,20 @@ The health check endpoint is available at `GET /health` for Render's health chec
 
 ```
 .
-├── backend/           # Fastify backend API
-│   ├── config/        # Configuration files
-│   ├── prisma/        # Prisma schema and migrations
-│   ├── src/           # Source code
-│   │   ├── app.ts     # Fastify app setup and routes
-│   │   ├── server.ts  # Server entry point
-│   │   └── lib/       # Library code (Prisma client)
-│   ├── tests/         # Test suite
-│   └── dist/          # Compiled output
-├── app/               # KMP app (frontend)
-├── backend/
-│   └── compose.yaml   # Docker Compose file for local database (optional)
-└── Justfile           # Root task runner for backend + app
+├── backend/              # Fastify backend API
+│   ├── config/           # Config (e.g. env.example)
+│   ├── prisma/           # Prisma schema and migrations
+│   ├── src/              # Source code
+│   │   ├── app.ts        # Fastify app and routes
+│   │   ├── server.ts     # Entry point (DB + migration checks at startup)
+│   │   └── lib/          # Prisma client
+│   ├── tests/            # Test suite
+│   ├── compose.yaml      # Backend service (image, env_file, port 4000)
+│   ├── compose.db.yaml   # Local Postgres only (profiles: main, test)
+│   ├── Containerfile     # Multi-stage image build (Bun → runner)
+│   └── prisma.config.ts  # Prisma 7 config (DB URL, schema path)
+├── app/                  # KMP app (Android, Desktop)
+└── Justfile              # Tasks: dev, test, image, up, down, lint, etc.
 ```
 
 ## Database Schema
