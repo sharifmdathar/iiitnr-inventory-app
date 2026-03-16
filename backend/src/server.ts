@@ -1,11 +1,11 @@
 import { buildApp } from './app.js';
-import { prisma } from './lib/prisma.js';
+import { pool } from './drizzle/db.js';
 
 const app = await buildApp();
 const port = Number(process.env.PORT ?? 4000);
 
 try {
-  await prisma.$queryRaw`SELECT 1`;
+  await pool.query('SELECT 1');
   app.log.info('Database connection OK');
 } catch {
   app.log.error('DB connection failed, check your connection string');
@@ -13,18 +13,14 @@ try {
 }
 
 try {
-  const rows = await prisma.$queryRaw<
-    { n: number }[]
-  >`SELECT 1 AS n FROM _prisma_migrations WHERE finished_at IS NOT NULL LIMIT 1`;
-  if (rows.length === 0) {
-    app.log.error('No migrations applied. Run: bunx prisma migrate deploy');
+  const res = await pool.query('SELECT 1 AS n FROM drizzle.__drizzle_migrations LIMIT 1');
+  if (!res.rows?.length) {
+    app.log.error('No migrations applied. Run: bun run src/index.ts');
     process.exit(1);
   }
   app.log.info('Migrations applied');
 } catch {
-  app.log.error(
-    'Migrations not applied or migration table missing. Run: bunx prisma migrate deploy',
-  );
+  app.log.error('Migrations not applied or migration table missing. Run: bun run src/index.ts');
   process.exit(1);
 }
 

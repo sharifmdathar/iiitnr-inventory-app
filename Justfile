@@ -9,6 +9,9 @@ image:
 dev:
     cd backend && bun run dev
 
+db-up:
+    cd backend && podman compose -f compose.db.yaml --profile test up -d
+
 up:
     cd backend && podman compose up -d
 

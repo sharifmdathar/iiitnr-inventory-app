@@ -1,10 +1,9 @@
 import 'dotenv/config';
-import { PrismaClient, UserRole } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
+import { eq } from 'drizzle-orm';
 import { hash } from 'bcryptjs';
-
-const { Pool } = pg;
+import { db, pool } from '../src/drizzle/db.js';
+import { user } from '../src/drizzle/schema.js';
+import { UserRole } from '../src/utils/enums.js';
 
 function getArg(name: string): string | undefined {
   const idx = process.argv.findIndex((a) => a === name || a.startsWith(`${name}=`));
@@ -29,25 +28,15 @@ async function main() {
     return;
   }
 
-  if (!Object.values(UserRole).includes(roleRaw as UserRole)) {
+  if (!Object.values(UserRole).includes(roleRaw as (typeof UserRole)[keyof typeof UserRole])) {
     console.error('Invalid --role. Must be one of:', Object.values(UserRole).join(', '));
     process.exitCode = 1;
     return;
   }
 
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.error('DATABASE_URL is required');
-    process.exitCode = 1;
-    return;
-  }
-
-  const pool = new Pool({ connectionString: databaseUrl });
-  const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
-
   try {
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const [existing] = await db.select().from(user).where(eq(user.email, email)).limit(1);
+
     if (existing) {
       console.error(`User already exists: ${email} (${existing.id})`);
       process.exitCode = 1;
@@ -55,26 +44,32 @@ async function main() {
     }
 
     const passwordHash = await hash(password, 12);
-    const user = await prisma.user.create({
-      data: {
+    const now = new Date().toISOString();
+
+    const [created] = await db
+      .insert(user)
+      .values({
+        id: crypto.randomUUID(),
         email,
         passwordHash,
         name,
-        role: roleRaw as UserRole,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+        role: roleRaw as (typeof UserRole)[keyof typeof UserRole],
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        createdAt: user.createdAt,
+      });
 
-    console.log('✅ Created user:');
-    console.log(JSON.stringify(user, null, 2));
+    if (created) {
+      console.log('✅ Created user:');
+      console.log(JSON.stringify(created, null, 2));
+    }
   } finally {
-    await prisma.$disconnect();
     await pool.end();
   }
 }

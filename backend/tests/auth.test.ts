@@ -1,9 +1,11 @@
-import './setup.js';
+import './test-setup.js';
 
 import { describe, test, beforeAll, afterAll } from 'bun:test';
 import assert from 'node:assert/strict';
+import { inArray } from 'drizzle-orm';
 import { buildApp } from '../src/app.js';
-import { prisma } from '../src/lib/prisma.js';
+import { db } from '../src/drizzle/db.js';
+import { user } from '../src/drizzle/schema.js';
 
 let app: Awaited<ReturnType<typeof buildApp>>;
 const createdUserIds: string[] = [];
@@ -14,7 +16,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (createdUserIds.length > 0) {
-    await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
+    await db.delete(user).where(inArray(user.id, createdUserIds));
   }
   await app.close();
 });
@@ -83,12 +85,15 @@ describe('Authentication API', () => {
 
     test('returns 400 when email is already in use', async () => {
       const email = `duplicate_${Date.now()}@example.com`;
-      await prisma.user.create({
-        data: {
-          email,
-          passwordHash: 'hash',
-          name: 'Existing User',
-        },
+      const now = new Date().toISOString();
+      await db.insert(user).values({
+        id: crypto.randomUUID(),
+        email,
+        passwordHash: 'hash',
+        name: 'Existing User',
+        role: 'PENDING',
+        createdAt: now,
+        updatedAt: now,
       });
 
       const response = await app.inject({
@@ -135,16 +140,21 @@ describe('Authentication API', () => {
       const email = `wrongpass_${Date.now()}@example.com`;
       const { hash } = await import('bcryptjs');
       const passwordHash = await hash('correctpassword', 12);
+      const now = new Date().toISOString();
 
-      const user = await prisma.user.create({
-        data: {
+      const [created] = await db
+        .insert(user)
+        .values({
+          id: crypto.randomUUID(),
           email,
           passwordHash,
           name: 'Wrong Pass User',
           role: 'ADMIN',
-        },
-      });
-      createdUserIds.push(user.id);
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      if (created) createdUserIds.push(created.id);
 
       const response = await app.inject({
         method: 'POST',
@@ -160,15 +170,20 @@ describe('Authentication API', () => {
 
     test('returns 401 for Google-only account', async () => {
       const email = `googleonly_${Date.now()}@example.com`;
-      const user = await prisma.user.create({
-        data: {
+      const now = new Date().toISOString();
+      const [created] = await db
+        .insert(user)
+        .values({
+          id: crypto.randomUUID(),
           email,
           googleId: 'google-123',
           name: 'Google User',
           role: 'STUDENT',
-        },
-      });
-      createdUserIds.push(user.id);
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      if (created) createdUserIds.push(created.id);
 
       const response = await app.inject({
         method: 'POST',
@@ -196,26 +211,34 @@ describe('Authentication API', () => {
 
     test('returns user for valid token', async () => {
       const email = `me_${Date.now()}@example.com`;
-      const user = await prisma.user.create({
-        data: {
+      const now = new Date().toISOString();
+      const [created] = await db
+        .insert(user)
+        .values({
+          id: crypto.randomUUID(),
           email,
           name: 'Me User',
           role: 'ADMIN',
-        },
-      });
-      createdUserIds.push(user.id);
-      const token = app.jwt.sign({ sub: user.id, role: user.role });
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      assert.ok(created);
+      if (created) {
+        createdUserIds.push(created.id);
+        const token = app.jwt.sign({ sub: created.id, role: created.role });
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/auth/me',
-        headers: {
-          authorization: `Bearer ${token}`,
-        },
-      });
+        const response = await app.inject({
+          method: 'GET',
+          url: '/auth/me',
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        });
 
-      assert.equal(response.statusCode, 200);
-      assert.equal(response.json().user.email, email);
+        assert.equal(response.statusCode, 200);
+        assert.equal(response.json().user.email, email);
+      }
     });
 
     test('returns 401 for invalid token', async () => {

@@ -1,9 +1,10 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { prisma } from '../lib/prisma.js';
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import { db } from '../drizzle/db.js';
+import { component, request, requestItem, user } from '../drizzle/schema.js';
 import { requireAuth, isAdminOrTA } from '../middleware/auth.js';
 import { RequestStatus, requestStatusValues, UserRole } from '../utils/enums.js';
-import type { RequestStatusValue } from '../utils/enums.js';
-import type { UserRoleValue } from '../utils/enums.js';
+import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
 
 const createRequestSchema = {
   body: {
@@ -44,14 +45,14 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
   app.post(
     '/requests',
     { preHandler: requireAuth, schema: createRequestSchema },
-    async (request, reply) => {
-      const body = request.body as {
+    async (req, reply) => {
+      const body = req.body as {
         items?: Array<{ componentId?: string; quantity?: number }>;
         targetFacultyId?: string;
         projectTitle?: string;
       };
 
-      const userId = (request.user as { sub?: string })?.sub;
+      const userId = (req.user as { sub?: string })?.sub;
       if (!userId) {
         return reply.code(401).send({ error: 'invalid token' });
       }
@@ -91,55 +92,71 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       try {
-        const faculty = await prisma.user.findUnique({
-          where: { id: targetFacultyId, role: UserRole.FACULTY },
-          select: { id: true },
+        const facultyRow = await db.query.user.findFirst({
+          columns: { id: true },
+          where: (u, { eq, and }) => and(eq(u.id, targetFacultyId), eq(u.role, UserRole.FACULTY)),
         });
-        if (!faculty) {
+        if (!facultyRow) {
           return reply.code(400).send({ error: 'invalid targetFacultyId' });
         }
 
-        const existingComponents = await prisma.component.findMany({
-          where: { id: { in: componentIds } },
-          select: { id: true },
-        });
+        const existingComponents = await db
+          .select({ id: component.id })
+          .from(component)
+          .where(inArray(component.id, componentIds));
 
         if (existingComponents.length !== componentIds.length) {
           return reply.code(400).send({ error: 'one or more components not found' });
         }
 
-        const createdRequest = await prisma.request.create({
-          data: {
-            userId,
-            targetFacultyId,
-            projectTitle,
-            items: {
-              create: normalizedItems.map((item) => ({
-                component: {
-                  connect: { id: item.componentId as string },
-                },
-                quantity: item.quantity ?? 0,
-              })),
+        const now = new Date().toISOString();
+        const requestId = crypto.randomUUID();
+
+        await db.insert(request).values({
+          id: requestId,
+          userId,
+          targetFacultyId,
+          projectTitle,
+          status: RequestStatus.PENDING,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        await db.insert(requestItem).values(
+          normalizedItems.map((item) => ({
+            id: crypto.randomUUID(),
+            requestId,
+            componentId: item.componentId!,
+            quantity: item.quantity ?? 0,
+            createdAt: now,
+            updatedAt: now,
+          })),
+        );
+
+        const [createdRequest] = await db.query.request.findMany({
+          where: eq(request.id, requestId),
+          with: {
+            requestItems: { with: { component: true } },
+            user_userId: {
+              columns: { id: true, email: true, name: true, role: true },
             },
-          },
-          include: {
-            items: {
-              include: {
-                component: true,
-              },
-            },
-            targetFaculty: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                role: true,
-              },
+            user_targetFacultyId: {
+              columns: { id: true, email: true, name: true, role: true },
             },
           },
         });
 
-        return reply.code(201).send({ request: createdRequest });
+        if (!createdRequest) {
+          return reply.code(500).send({ error: 'failed to create request' });
+        }
+
+        const shaped = {
+          ...createdRequest,
+          items: createdRequest.requestItems,
+          user: createdRequest.user_userId,
+          targetFaculty: createdRequest.user_targetFacultyId,
+        };
+        return reply.code(201).send({ request: shaped });
       } catch (err) {
         app.log.error(err);
         return reply.code(500).send({ error: 'failed to create request' });
@@ -149,11 +166,16 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/faculty', { preHandler: requireAuth }, async (_, reply) => {
     try {
-      const faculty = await prisma.user.findMany({
-        where: { role: UserRole.FACULTY },
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, email: true, name: true, role: true },
-      });
+      const faculty = await db
+        .select({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        })
+        .from(user)
+        .where(eq(user.role, UserRole.FACULTY))
+        .orderBy(desc(user.createdAt));
       return reply.send({ faculty });
     } catch (err) {
       app.log.error(err);
@@ -161,14 +183,14 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  app.get('/requests', { preHandler: requireAuth }, async (request, reply) => {
-    const user = request.user as { sub?: string; role?: UserRoleValue };
-    const currentUserId = user?.sub;
+  app.get('/requests', { preHandler: requireAuth }, async (req, reply) => {
+    const currentUser = req.user as { sub?: string; role?: UserRoleValue };
+    const currentUserId = currentUser?.sub;
     if (!currentUserId) {
       return reply.code(401).send({ error: 'invalid token' });
     }
 
-    const query = request.query as { userId?: string; status?: string };
+    const query = req.query as { userId?: string; status?: string };
     const requestedUserId = query?.userId?.trim();
     const status = query?.status?.trim();
 
@@ -185,9 +207,9 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
       where.status = status as RequestStatusValue;
     }
 
-    if (user?.role === UserRole.FACULTY) {
+    if (currentUser?.role === UserRole.FACULTY) {
       where.targetFacultyId = currentUserId;
-    } else if (isAdminOrTA(user?.role)) {
+    } else if (isAdminOrTA(currentUser?.role)) {
       if (requestedUserId) {
         where.userId = requestedUserId;
       }
@@ -196,33 +218,33 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const requests = await prisma.request.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          items: {
-            include: {
-              component: true,
-            },
+      const conditions = [];
+      if (where.userId) conditions.push(eq(request.userId, where.userId));
+      if (where.targetFacultyId)
+        conditions.push(eq(request.targetFacultyId, where.targetFacultyId));
+      if (where.status) conditions.push(eq(request.status, where.status));
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const rows = await db.query.request.findMany({
+        where: whereClause,
+        orderBy: desc(request.createdAt),
+        with: {
+          requestItems: { with: { component: true } },
+          user_userId: {
+            columns: { id: true, email: true, name: true, role: true },
           },
-          user: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              role: true,
-            },
-          },
-          targetFaculty: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              role: true,
-            },
+          user_targetFacultyId: {
+            columns: { id: true, email: true, name: true, role: true },
           },
         },
       });
+
+      const requests = rows.map((r) => ({
+        ...r,
+        items: r.requestItems,
+        user: r.user_userId,
+        targetFaculty: r.user_targetFacultyId,
+      }));
 
       return reply.send({ requests });
     } catch (err) {
@@ -234,10 +256,10 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
   app.put(
     '/requests/:id',
     { preHandler: requireAuth, schema: updateRequestStatusSchema },
-    async (request, reply) => {
-      const params = request.params as { id?: string };
+    async (req, reply) => {
+      const params = req.params as { id?: string };
       const id = params?.id;
-      const body = request.body as { status?: string };
+      const body = req.body as { status?: string };
 
       if (!id) {
         return reply.code(400).send({ error: 'request id is required' });
@@ -264,23 +286,18 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
           .send({ error: 'status can only be set to APPROVED, REJECTED, or FULFILLED' });
       }
 
-      const user = request.user as { sub?: string; role?: UserRoleValue };
-      const currentUserId = user?.sub;
+      const currentUser = req.user as { sub?: string; role?: UserRoleValue };
+      const currentUserId = currentUser?.sub;
       if (!currentUserId) {
         return reply.code(401).send({ error: 'invalid token' });
       }
 
       try {
-        const existingRequest = await prisma.request.findUnique({
-          where: { id },
-          include: {
-            items: {
-              include: {
-                component: true,
-              },
-            },
-          },
+        const [existingRow] = await db.query.request.findMany({
+          where: eq(request.id, id),
+          with: { requestItems: { with: { component: true } } },
         });
+        const existingRequest = existingRow;
 
         if (!existingRequest) {
           return reply.code(404).send({ error: 'request not found' });
@@ -293,49 +310,44 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
               .send({ error: 'request must be APPROVED before it can be FULFILLED' });
           }
 
-          if (user?.role === UserRole.FACULTY) {
+          if (currentUser?.role === UserRole.FACULTY) {
             if (existingRequest.targetFacultyId !== currentUserId) {
               return reply
                 .code(403)
                 .send({ error: 'forbidden: can only approve/reject requests targeting you' });
             }
-          } else if (!isAdminOrTA(user?.role)) {
+          } else if (!isAdminOrTA(currentUser?.role)) {
             return reply
               .code(403)
               .send({ error: 'forbidden: only faculty, admin, or TA can approve/reject requests' });
           }
 
-          await prisma.request.update({
-            where: { id },
-            data: { status: newStatus },
-          });
+          await db
+            .update(request)
+            .set({ status: newStatus, updatedAt: new Date().toISOString() })
+            .where(eq(request.id, id));
 
-          const updatedRequest = await prisma.request.findUnique({
-            where: { id },
-            include: {
-              items: {
-                include: {
-                  component: true,
-                },
+          const [updatedRow] = await db.query.request.findMany({
+            where: eq(request.id, id),
+            with: {
+              requestItems: { with: { component: true } },
+              user_userId: {
+                columns: { id: true, email: true, name: true, role: true },
               },
-              user: {
-                select: {
-                  id: true,
-                  email: true,
-                  name: true,
-                  role: true,
-                },
-              },
-              targetFaculty: {
-                select: {
-                  id: true,
-                  email: true,
-                  name: true,
-                  role: true,
-                },
+              user_targetFacultyId: {
+                columns: { id: true, email: true, name: true, role: true },
               },
             },
           });
+
+          const updatedRequest = updatedRow
+            ? {
+                ...updatedRow,
+                items: updatedRow.requestItems,
+                user: updatedRow.user_userId,
+                targetFaculty: updatedRow.user_targetFacultyId,
+              }
+            : null;
 
           return reply.send({ request: updatedRequest });
         } else if (existingRequest.status === RequestStatus.APPROVED) {
@@ -343,71 +355,68 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
             return reply.code(400).send({ error: 'approved request can only be set to FULFILLED' });
           }
 
-          if (!isAdminOrTA(user?.role)) {
+          if (!isAdminOrTA(currentUser?.role)) {
             return reply
               .code(403)
               .send({ error: 'forbidden: only admin or TA can fulfill requests' });
           }
 
           try {
-            await prisma.$transaction(async (tx) => {
-              for (const item of existingRequest.items) {
-                const result = await tx.component.updateMany({
-                  where: {
-                    id: item.componentId,
-                    availableQuantity: {
-                      gte: item.quantity,
-                    },
-                  },
-                  data: {
-                    availableQuantity: {
-                      decrement: item.quantity,
-                    },
-                  },
+            await db.transaction(async (tx) => {
+              for (const item of existingRequest.requestItems) {
+                const comp = await tx.query.component.findFirst({
+                  where: (c, { eq, and, gte }) =>
+                    and(eq(c.id, item.componentId), gte(c.availableQuantity, item.quantity)),
                 });
 
-                if (result.count === 0) {
-                  throw new Error(`INSUFFICIENT_QUANTITY:${item.component.name}:${item.quantity}`);
+                if (!comp || comp.availableQuantity < item.quantity) {
+                  throw new Error(
+                    `INSUFFICIENT_QUANTITY:${item.component?.name ?? 'unknown'}:${item.quantity}`,
+                  );
                 }
+
+                await tx
+                  .update(component)
+                  .set({
+                    availableQuantity: comp.availableQuantity - item.quantity,
+                    updatedAt: new Date().toISOString(),
+                  })
+                  .where(eq(component.id, item.componentId));
               }
 
-              await tx.request.update({
-                where: { id },
-                data: { status: newStatus },
-              });
+              await tx
+                .update(request)
+                .set({ status: newStatus, updatedAt: new Date().toISOString() })
+                .where(eq(request.id, id));
             });
 
-            const updatedRequest = await prisma.request.findUnique({
-              where: { id },
-              include: {
-                items: {
-                  include: {
-                    component: true,
-                  },
+            const [updatedRow] = await db.query.request.findMany({
+              where: eq(request.id, id),
+              with: {
+                requestItems: { with: { component: true } },
+                user_userId: {
+                  columns: { id: true, email: true, name: true, role: true },
                 },
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    name: true,
-                    role: true,
-                  },
-                },
-                targetFaculty: {
-                  select: {
-                    id: true,
-                    email: true,
-                    name: true,
-                    role: true,
-                  },
+                user_targetFacultyId: {
+                  columns: { id: true, email: true, name: true, role: true },
                 },
               },
             });
 
+            const updatedRequest = updatedRow
+              ? {
+                  ...updatedRow,
+                  items: updatedRow.requestItems,
+                  user: updatedRow.user_userId,
+                  targetFaculty: updatedRow.user_targetFacultyId,
+                }
+              : null;
+
             return reply.send({ request: updatedRequest });
           } catch (error) {
             if (error instanceof Error && error.message.startsWith('INSUFFICIENT_QUANTITY:')) {
-              const [, componentName] = error.message.split(':');
+              const parts = error.message.split(':');
+              const componentName = parts[1] ?? 'unknown';
               return reply.code(400).send({
                 error: `insufficient quantity for component "${componentName}"`,
               });
@@ -427,23 +436,23 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.delete('/requests/:id', { preHandler: requireAuth }, async (request, reply) => {
-    const params = request.params as { id?: string };
+  app.delete('/requests/:id', { preHandler: requireAuth }, async (req, reply) => {
+    const params = req.params as { id?: string };
     const id = params?.id;
 
     if (!id) {
       return reply.code(400).send({ error: 'request id is required' });
     }
 
-    const user = request.user as { sub?: string; role?: UserRoleValue };
-    const currentUserId = user?.sub;
+    const currentUser = req.user as { sub?: string; role?: UserRoleValue };
+    const currentUserId = currentUser?.sub;
     if (!currentUserId) {
       return reply.code(401).send({ error: 'invalid token' });
     }
 
     try {
-      const existingRequest = await prisma.request.findUnique({
-        where: { id },
+      const existingRequest = await db.query.request.findFirst({
+        where: (r, { eq }) => eq(r.id, id),
       });
 
       if (!existingRequest) {
@@ -451,7 +460,7 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const isOwner = existingRequest.userId === currentUserId;
-      const isPrivileged = isAdminOrTA(user?.role);
+      const isPrivileged = isAdminOrTA(currentUser?.role);
 
       if (!isOwner && !isPrivileged) {
         return reply.code(403).send({ error: 'forbidden: cannot delete this request' });
@@ -463,8 +472,8 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
           .send({ error: 'request can only be deleted when status is PENDING' });
       }
 
-      await prisma.requestItem.deleteMany({ where: { requestId: id } });
-      await prisma.request.delete({ where: { id } });
+      await db.delete(requestItem).where(eq(requestItem.requestId, id));
+      await db.delete(request).where(eq(request.id, id));
 
       return reply.code(204).send();
     } catch (err) {

@@ -1,9 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { prisma } from '../lib/prisma.js';
+import { eq, sql } from 'drizzle-orm';
+import { db } from '../drizzle/db.js';
+import { component, requestItem } from '../drizzle/schema.js';
+import type { InferSelectModel } from 'drizzle-orm';
 import { requireAuth, requireAdminOrTA } from '../middleware/auth.js';
 import { UserRole, categoryValues, locationValues, toLocationEnum } from '../utils/enums.js';
-import type { CategoryValue, UserRoleValue } from '../utils/enums.js';
-import type { LocationValue } from '../utils/enums.js';
+import type { CategoryValue, LocationValue, UserRoleValue } from '../utils/enums.js';
 
 const componentBodySchema = {
   type: 'object',
@@ -30,11 +32,11 @@ const updateComponentSchema = {
 const componentsRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', { preHandler: requireAuth }, async (request, reply) => {
     try {
-      const components = await prisma.component.findMany({
-        orderBy: { createdAt: 'desc' },
+      const components = await db.query.component.findMany({
+        orderBy: (components, { desc }) => [desc(components.createdAt)],
       });
       const lastModifiedMs = components.reduce(
-        (latestMs: number, c: { updatedAt?: Date; createdAt: Date }) => {
+        (latestMs: number, c: InferSelectModel<typeof component>) => {
           const currentMs = new Date(c.updatedAt ?? c.createdAt).getTime();
           return Math.max(latestMs, currentMs);
         },
@@ -76,12 +78,12 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const components = await prisma.component.findMany({
-        orderBy: { createdAt: 'desc' },
+      const components = await db.query.component.findMany({
+        orderBy: (components, { desc }) => [desc(components.createdAt)],
       });
 
       const csvHeader = 'Name,Description,Category,Location,Total Quantity,Available Quantity';
-      const csvRows = components.map((c: (typeof components)[number]) => {
+      const csvRows = components.map((c: InferSelectModel<typeof component>) => {
         const escapeCsv = (value: string | null | undefined) => {
           if (value == null) return '';
           const str = value.replace(/"/g, '""');
@@ -118,15 +120,15 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const component = await prisma.component.findUnique({
-        where: { id },
+      const found = await db.query.component.findFirst({
+        where: (component, { eq }) => eq(component.id, id),
       });
 
-      if (!component) {
+      if (!found) {
         return reply.code(404).send({ error: 'component not found' });
       }
 
-      return reply.send({ component });
+      return reply.send({ component: found });
     } catch (err) {
       app.log.error(err);
       return reply.code(500).send({ error: 'failed to fetch component' });
@@ -183,19 +185,28 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       try {
-        const component = await prisma.component.create({
-          data: {
+        const now = new Date().toISOString();
+        const [created] = await db
+          .insert(component)
+          .values({
+            id: crypto.randomUUID(),
             name,
             description: description || null,
             imageUrl: imageUrl || null,
-            totalQuantity,
-            availableQuantity: availableQuantity ? availableQuantity : totalQuantity,
+            totalQuantity: totalQuantity ?? 0,
+            availableQuantity: availableQuantity ?? totalQuantity ?? 0,
             category: category ? (category as CategoryValue) : null,
             location: location ? toLocationEnum(location) : null,
-          },
-        });
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
 
-        return reply.code(201).send({ component });
+        if (!created) {
+          return reply.code(500).send({ error: 'failed to create component' });
+        }
+
+        return reply.code(201).send({ component: created });
       } catch (err) {
         app.log.error(err);
         return reply.code(500).send({ error: 'failed to create component' });
@@ -261,8 +272,8 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       try {
-        const existingComponent = await prisma.component.findUnique({
-          where: { id },
+        const existingComponent = await db.query.component.findFirst({
+          where: (c, { eq }) => eq(c.id, id),
         });
 
         if (!existingComponent) {
@@ -285,26 +296,31 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
             .send({ error: 'availableQuantity cannot be greater than totalQuantity' });
         }
 
-        const component = await prisma.component.update({
-          where: { id },
-          data: {
-            ...(name !== undefined && { name }),
-            ...(description !== undefined && { description: description || null }),
-            ...(imageUrl !== undefined && { imageUrl: imageUrl || null }),
-            ...(totalQuantity !== undefined && { totalQuantity: nextTotalQuantity }),
-            ...((availableQuantity !== undefined || totalQuantity !== undefined) && {
-              availableQuantity: nextAvailableQuantity,
-            }),
-            ...(category !== undefined && {
-              category: category ? (category as CategoryValue) : null,
-            }),
-            ...(location !== undefined && {
-              location: location ? toLocationEnum(location) : null,
-            }),
-          },
-        });
+        const updateData: Record<string, unknown> = {};
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description || null;
+        if (imageUrl !== undefined) updateData.imageUrl = imageUrl || null;
+        if (totalQuantity !== undefined) updateData.totalQuantity = nextTotalQuantity;
+        if (availableQuantity !== undefined || totalQuantity !== undefined) {
+          updateData.availableQuantity = nextAvailableQuantity;
+        }
+        if (category !== undefined)
+          updateData.category = category ? (category as CategoryValue) : null;
+        if (location !== undefined)
+          updateData.location = location ? toLocationEnum(location) : null;
+        updateData.updatedAt = new Date().toISOString();
 
-        return reply.send({ component });
+        const [updated] = await db
+          .update(component)
+          .set(updateData as typeof component.$inferInsert)
+          .where(eq(component.id, id))
+          .returning();
+
+        if (!updated) {
+          return reply.code(500).send({ error: 'failed to update component' });
+        }
+
+        return reply.send({ component: updated });
       } catch (err) {
         app.log.error(err);
         return reply.code(500).send({ error: 'failed to update component' });
@@ -321,27 +337,26 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      const existingComponent = await prisma.component.findUnique({
-        where: { id },
+      const existing = await db.query.component.findFirst({
+        where: (c, { eq }) => eq(c.id, id),
       });
 
-      if (!existingComponent) {
+      if (!existing) {
         return reply.code(404).send({ error: 'component not found' });
       }
 
-      const usageCount = await prisma.requestItem.count({
-        where: { componentId: id },
-      });
+      const usageRows = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(requestItem)
+        .where(eq(requestItem.componentId, id));
 
-      if (usageCount > 0) {
+      if ((usageRows[0]?.count ?? 0) > 0) {
         return reply.code(400).send({
           error: 'component cannot be deleted because it is used in one or more requests',
         });
       }
 
-      await prisma.component.delete({
-        where: { id },
-      });
+      await db.delete(component).where(eq(component.id, id));
 
       return reply.code(204).send();
     } catch (err) {

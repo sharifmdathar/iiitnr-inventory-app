@@ -123,9 +123,9 @@ function main(): void {
     } catch {}
   }
   run(
-    'bunx prisma migrate deploy',
+    'bun run migrate',
     { ...process.env, DATABASE_URL: migrationUrl },
-    'Applying migrations (prisma migrate deploy)',
+    'Applying migrations (drizzle migrate)',
   );
 
   run(

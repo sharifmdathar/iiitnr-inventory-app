@@ -5,7 +5,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
-import { prisma } from './lib/prisma.js';
+import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
 
 export async function buildApp() {
@@ -116,7 +116,7 @@ export async function buildApp() {
 
   app.get('/health', async (_, reply) => {
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await pool.query('SELECT 1');
 
       return reply.code(200).send({ status: 'ok', db: 'up' });
     } catch (error) {
@@ -132,7 +132,7 @@ export async function buildApp() {
       return;
     }
 
-    await prisma.$disconnect();
+    await pool.end();
   });
 
   return app;

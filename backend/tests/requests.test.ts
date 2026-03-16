@@ -1,11 +1,21 @@
-import './setup.js';
+import './test-setup.js';
 
 import { describe, test, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { buildApp } from '../src/app.js';
-import { prisma } from '../src/lib/prisma.js';
-import { UserRole } from '@prisma/client';
+import {
+  createComponent,
+  createRequest,
+  createUser,
+  deleteAllData,
+  deleteAllRequests,
+  deleteComponents,
+  deleteUsers,
+  findComponentById,
+  findRequestById,
+  UserRole,
+} from './helpers.js';
 
 let app: Awaited<ReturnType<typeof buildApp>>;
 let adminToken: string;
@@ -24,70 +34,57 @@ const requestStatus = {
 beforeAll(async () => {
   app = await buildApp();
 
-  await prisma.requestItem.deleteMany({});
-  await prisma.request.deleteMany({});
+  await deleteAllData();
 
   const suffix = randomUUID();
-
   const { hash } = await import('bcryptjs');
   const passwordHash = await hash('password123', 12);
 
-  const adminUser = await prisma.user.create({
-    data: {
-      email: `admin_${suffix}@example.com`,
-      passwordHash,
-      name: 'Admin User',
-      role: UserRole.ADMIN,
-    },
+  const adminUser = await createUser({
+    email: `admin_${suffix}@example.com`,
+    passwordHash,
+    name: 'Admin User',
+    role: UserRole.ADMIN,
   });
   adminUserId = adminUser.id;
   adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1h' });
 
-  const studentUser = await prisma.user.create({
-    data: {
-      email: `student_${suffix}@example.com`,
-      passwordHash,
-      name: 'Student User',
-      role: UserRole.STUDENT,
-    },
+  const studentUser = await createUser({
+    email: `student_${suffix}@example.com`,
+    passwordHash,
+    name: 'Student User',
+    role: UserRole.STUDENT,
   });
   studentId = studentUser.id;
   studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1h' });
 
-  const facultyUser = await prisma.user.create({
-    data: {
-      email: `faculty_${suffix}@example.com`,
-      passwordHash,
-      name: 'Faculty User',
-      role: UserRole.FACULTY,
-    },
+  const facultyUser = await createUser({
+    email: `faculty_${suffix}@example.com`,
+    passwordHash,
+    name: 'Faculty User',
+    role: UserRole.FACULTY,
   });
   facultyId = facultyUser.id;
   facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1h' });
 });
 
 afterAll(async () => {
-  await prisma.requestItem.deleteMany({});
-  await prisma.request.deleteMany({});
+  await deleteAllRequests();
   const userIds = [adminUserId, studentId, facultyId, ...createdOtherUserIds].filter(Boolean);
-  if (userIds.length > 0) {
-    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
-  }
+  await deleteUsers(userIds);
   await app.close();
 });
 
 describe('Request API', () => {
   beforeEach(async () => {
-    await prisma.requestItem.deleteMany({});
-    await prisma.request.deleteMany({});
+    await deleteAllRequests();
     createdComponentIds = [];
   });
 
   afterEach(async () => {
-    await prisma.requestItem.deleteMany({});
-    await prisma.request.deleteMany({});
+    await deleteAllRequests();
     if (createdComponentIds.length > 0) {
-      await prisma.component.deleteMany({ where: { id: { in: createdComponentIds } } });
+      await deleteComponents(createdComponentIds);
     }
   });
 
@@ -145,8 +142,10 @@ describe('Request API', () => {
     });
 
     test('returns 400 when targetFacultyId is missing', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'Resistor', totalQuantity: 10, availableQuantity: 10 },
+      const component = await createComponent({
+        name: 'Resistor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(component.id);
 
@@ -164,8 +163,10 @@ describe('Request API', () => {
     });
 
     test('returns 400 when projectTitle is missing', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'Resistor', totalQuantity: 10, availableQuantity: 10 },
+      const component = await createComponent({
+        name: 'Resistor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(component.id);
 
@@ -183,8 +184,10 @@ describe('Request API', () => {
     });
 
     test('returns 400 when quantity is invalid', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'Resistor', totalQuantity: 10, availableQuantity: 10 },
+      const component = await createComponent({
+        name: 'Resistor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(component.id);
 
@@ -218,11 +221,15 @@ describe('Request API', () => {
     });
 
     test('creates a request with multiple items', async () => {
-      const item1 = await prisma.component.create({
-        data: { name: 'Arduino', totalQuantity: 5, availableQuantity: 5 },
+      const item1 = await createComponent({
+        name: 'Arduino',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
-      const item2 = await prisma.component.create({
-        data: { name: 'Breadboard', totalQuantity: 20, availableQuantity: 20 },
+      const item2 = await createComponent({
+        name: 'Breadboard',
+        totalQuantity: 20,
+        availableQuantity: 20,
       });
       createdComponentIds.push(item1.id, item2.id);
 
@@ -249,8 +256,10 @@ describe('Request API', () => {
     });
 
     test('creates a request with targetFacultyId', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Requested to Faculty', totalQuantity: 5, availableQuantity: 5 },
+      const item = await createComponent({
+        name: 'Requested to Faculty',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
       createdComponentIds.push(item.id);
 
@@ -274,8 +283,10 @@ describe('Request API', () => {
     });
 
     test('returns 400 for invalid targetFacultyId', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Invalid Faculty', totalQuantity: 5, availableQuantity: 5 },
+      const item = await createComponent({
+        name: 'Invalid Faculty',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
       createdComponentIds.push(item.id);
 
@@ -294,8 +305,10 @@ describe('Request API', () => {
     });
 
     test('creates a request with projectTitle', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'With Project', totalQuantity: 5, availableQuantity: 5 },
+      const item = await createComponent({
+        name: 'With Project',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
       createdComponentIds.push(item.id);
 
@@ -316,8 +329,10 @@ describe('Request API', () => {
     });
 
     test('returns 400 for duplicate componentId in request', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Duplicate Check', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Duplicate Check',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
@@ -342,8 +357,10 @@ describe('Request API', () => {
 
   describe('DELETE /requests/:id - Retract request', () => {
     test('student can delete own pending request', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'To Delete', totalQuantity: 5, availableQuantity: 5 },
+      const component = await createComponent({
+        name: 'To Delete',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
       createdComponentIds.push(component.id);
 
@@ -370,40 +387,36 @@ describe('Request API', () => {
       });
 
       assert.equal(deleteResponse.statusCode, 204);
-      const exists = await prisma.request.findUnique({ where: { id: createdId } });
+      const exists = await findRequestById(createdId);
       assert.equal(exists, null);
     });
 
     test('student cannot delete someone else request', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'Other User Component', totalQuantity: 5, availableQuantity: 5 },
+      const component = await createComponent({
+        name: 'Other User Component',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
       createdComponentIds.push(component.id);
 
-      const otherUser = await prisma.user.create({
-        data: {
-          email: `other_${Date.now()}@example.com`,
-          passwordHash: 'hash',
-          name: 'Other User',
-          role: UserRole.STUDENT,
-        },
+      const otherUser = await createUser({
+        email: `other_${Date.now()}@example.com`,
+        passwordHash: 'hash',
+        name: 'Other User',
+        role: UserRole.STUDENT,
       });
       createdOtherUserIds.push(otherUser.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: otherUser.id,
-          targetFacultyId: facultyId,
-          projectTitle: 'Other User Project',
-          items: {
-            create: [{ component: { connect: { id: component.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: otherUser.id,
+        targetFacultyId: facultyId,
+        projectTitle: 'Other User Project',
+        items: [{ componentId: component.id, quantity: 1 }],
       });
 
       const deleteResponse = await app.inject({
         method: 'DELETE',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${studentToken}` },
       });
 
@@ -411,31 +424,29 @@ describe('Request API', () => {
     });
 
     test('cannot delete non-pending request', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'Approved Component', totalQuantity: 5, availableQuantity: 5 },
+      const component = await createComponent({
+        name: 'Approved Component',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
       createdComponentIds.push(component.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Approved Component',
-          status: requestStatus.APPROVED,
-          items: {
-            create: [{ component: { connect: { id: component.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Approved Component',
+        status: requestStatus.APPROVED,
+        items: [{ componentId: component.id, quantity: 1 }],
       });
 
       const deleteResponse = await app.inject({
         method: 'DELETE',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${studentToken}` },
       });
 
       assert.equal(deleteResponse.statusCode, 400);
-      const stillExists = await prisma.request.findUnique({ where: { id: request.id } });
+      const stillExists = await findRequestById(req.id);
       assert.ok(stillExists);
     });
   });
@@ -451,41 +462,33 @@ describe('Request API', () => {
     });
 
     test('student only sees own requests even with userId filter', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const otherUser = await prisma.user.create({
-        data: {
-          email: `other_${Date.now()}@example.com`,
-          passwordHash: 'hash',
-          name: 'Other User',
-          role: UserRole.STUDENT,
-        },
+      const otherUser = await createUser({
+        email: `other_${Date.now()}@example.com`,
+        passwordHash: 'hash',
+        name: 'Other User',
+        role: UserRole.STUDENT,
       });
       createdOtherUserIds.push(otherUser.id);
 
-      await prisma.request.create({
-        data: {
-          userId: otherUser.id,
-          targetFacultyId: facultyId,
-          projectTitle: 'Other User Request',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      await createRequest({
+        userId: otherUser.id,
+        targetFacultyId: facultyId,
+        projectTitle: 'Other User Request',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
-      await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Student Request',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Student Request',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
@@ -503,32 +506,30 @@ describe('Request API', () => {
     });
 
     test('admin can filter by user and status', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Display', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Display',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Display Project',
-          status: requestStatus.APPROVED,
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Display Project',
+        status: requestStatus.APPROVED,
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'GET',
-        url: `/requests?userId=${studentId}&status=${requestStatus.APPROVED}`,
+        url: `/requests?userId=${studentId}&status=APPROVED`,
         headers: { authorization: `Bearer ${adminToken}` },
       });
 
       assert.equal(response.statusCode, 200);
       const body = response.json();
-      assert.ok(body.requests.some((req: { id: string }) => req.id === request.id));
+      assert.ok(body.requests.some((r: { id: string }) => r.id === req.id));
     });
 
     test('returns 400 for invalid status filter', async () => {
@@ -543,67 +544,51 @@ describe('Request API', () => {
     });
 
     test('faculty sees all requests targeting them', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const approvedRequest = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Approved Request',
-          status: 'APPROVED',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const approvedRequest = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Approved Request',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
-      const pendingRequest = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Pending Request',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const pendingRequest = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Pending Request',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
-      const rejectedRequest = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Rejected Request',
-          status: 'REJECTED',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const rejectedRequest = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Rejected Request',
+        status: 'REJECTED',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
-      const otherFaculty = await prisma.user.create({
-        data: {
-          email: `other_faculty_${Date.now()}@example.com`,
-          passwordHash: 'hash',
-          name: 'Other Faculty',
-          role: UserRole.FACULTY,
-        },
+      const otherFaculty = await createUser({
+        email: `other_faculty_${Date.now()}@example.com`,
+        passwordHash: 'hash',
+        name: 'Other Faculty',
+        role: UserRole.FACULTY,
       });
       createdOtherUserIds.push(otherFaculty.id);
 
-      const otherFacultyRequest = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: otherFaculty.id,
-          projectTitle: 'Other Faculty Request',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const otherFacultyRequest = await createRequest({
+        userId: studentId,
+        targetFacultyId: otherFaculty.id,
+        projectTitle: 'Other Faculty Request',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
@@ -677,26 +662,24 @@ describe('Request API', () => {
     });
 
     test('faculty can approve pending request targeting them', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Approve Test',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Approve Test',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${facultyToken}` },
         payload: { status: 'APPROVED' },
       });
@@ -704,30 +687,28 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.equal(body.request.status, 'APPROVED');
-      assert.equal(body.request.id, request.id);
+      assert.equal(body.request.id, req.id);
     });
 
     test('faculty can reject pending request targeting them', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Reject Test',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Reject Test',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${facultyToken}` },
         payload: { status: 'REJECTED' },
       });
@@ -735,40 +716,36 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.equal(body.request.status, 'REJECTED');
-      assert.equal(body.request.id, request.id);
+      assert.equal(body.request.id, req.id);
     });
 
     test('faculty cannot approve/reject request not targeting them', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const otherFaculty = await prisma.user.create({
-        data: {
-          email: `other_faculty_${Date.now()}@example.com`,
-          passwordHash: 'hash',
-          name: 'Other Faculty',
-          role: UserRole.FACULTY,
-        },
+      const otherFaculty = await createUser({
+        email: `other_faculty_${Date.now()}@example.com`,
+        passwordHash: 'hash',
+        name: 'Other Faculty',
+        role: UserRole.FACULTY,
       });
       createdOtherUserIds.push(otherFaculty.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: otherFaculty.id,
-          projectTitle: 'Other Faculty Approve Test',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: otherFaculty.id,
+        projectTitle: 'Other Faculty Approve Test',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${facultyToken}` },
         payload: { status: 'APPROVED' },
       });
@@ -777,26 +754,24 @@ describe('Request API', () => {
     });
 
     test('cannot update non-pending request', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Cannot Update Non-Pending',
-          status: 'APPROVED',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Cannot Update Non-Pending',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${facultyToken}` },
         payload: { status: 'REJECTED' },
       });
@@ -805,26 +780,24 @@ describe('Request API', () => {
     });
 
     test('admin can approve/reject any pending request', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Admin Approve Test',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Admin Approve Test',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
         payload: { status: 'APPROVED' },
       });
@@ -835,26 +808,24 @@ describe('Request API', () => {
     });
 
     test('student cannot approve/reject requests', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Student Approve Test',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Student Approve Test',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${studentToken}` },
         payload: { status: 'APPROVED' },
       });
@@ -863,26 +834,24 @@ describe('Request API', () => {
     });
 
     test('FULFILLED cannot be set directly from PENDING', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Fulfilled Test',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Fulfilled Test',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
         payload: { status: 'FULFILLED' },
       });
@@ -892,26 +861,24 @@ describe('Request API', () => {
     });
 
     test('FULFILLED requires Admin or TA role', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Fulfilled Test',
-          status: 'APPROVED',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Fulfilled Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${facultyToken}` },
         payload: { status: 'FULFILLED' },
       });
@@ -920,56 +887,52 @@ describe('Request API', () => {
     });
 
     test('successful FULFILLED decrements availableQuantity', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Fulfilled Incremental Test',
-          status: 'APPROVED',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 3 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Fulfilled Incremental Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 3 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
         payload: { status: 'FULFILLED' },
       });
 
       assert.equal(response.statusCode, 200);
-      const updatedComponent = await prisma.component.findUnique({ where: { id: item.id } });
+      const updatedComponent = await findComponentById(item.id);
       assert.equal(updatedComponent?.availableQuantity, 7);
     });
 
     test('returns 400 for insufficient quantity during FULFILLED', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 2 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 2,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Insufficient Test',
-          status: 'APPROVED',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 5 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Insufficient Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 5 }],
       });
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
         payload: { status: 'FULFILLED' },
       });
@@ -981,31 +944,29 @@ describe('Request API', () => {
 
   describe('DELETE /requests/:id - Retract/Delete request', () => {
     test('admin can delete any pending request', async () => {
-      const item = await prisma.component.create({
-        data: { name: 'Sensor', totalQuantity: 10, availableQuantity: 10 },
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
       createdComponentIds.push(item.id);
 
-      const request = await prisma.request.create({
-        data: {
-          userId: studentId,
-          targetFacultyId: facultyId,
-          projectTitle: 'Admin Delete Test',
-          status: 'PENDING',
-          items: {
-            create: [{ component: { connect: { id: item.id } }, quantity: 1 }],
-          },
-        },
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Admin Delete Test',
+        status: 'PENDING',
+        items: [{ componentId: item.id, quantity: 1 }],
       });
 
       const response = await app.inject({
         method: 'DELETE',
-        url: `/requests/${request.id}`,
+        url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
       });
 
       assert.equal(response.statusCode, 204);
-      const exists = await prisma.request.findUnique({ where: { id: request.id } });
+      const exists = await findRequestById(req.id);
       assert.equal(exists, null);
     });
   });

@@ -1,7 +1,9 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { compare, hash } from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
-import { prisma } from '../lib/prisma.js';
+import { eq } from 'drizzle-orm';
+import { db } from '../drizzle/db.js';
+import { user } from '../drizzle/schema.js';
 import { UserRole } from '../utils/enums.js';
 
 function getGoogleClientIds(): { primary: string; all: string[] } | null {
@@ -70,34 +72,34 @@ async function findOrCreateGoogleUser(
   name: string | null,
   imageUrl: string | null,
 ) {
-  const userSelect = {
-    id: true,
-    email: true,
-    name: true,
-    imageUrl: true,
-    role: true,
-    googleId: true,
-  } as const;
-
-  const existingUser = await prisma.user.findFirst({
-    where: {
-      OR: [{ googleId }, { email }],
-    },
-    select: userSelect,
+  const existingUser = await db.query.user.findFirst({
+    columns: { id: true, email: true, name: true, imageUrl: true, role: true, googleId: true },
+    where: (u, { eq, or }) => or(eq(u.googleId, googleId), eq(u.email, email)),
   });
 
   if (!existingUser) {
-    const createdUser = await prisma.user.create({
-      data: {
+    const now = new Date().toISOString();
+    const [created] = await db
+      .insert(user)
+      .values({
+        id: crypto.randomUUID(),
         email,
         name,
         imageUrl,
         googleId,
         role: UserRole.STUDENT,
-      },
-      select: userSelect,
-    });
-    return createdUser;
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        imageUrl: user.imageUrl,
+        role: user.role,
+        googleId: user.googleId,
+      });
+    return created!;
   }
 
   const shouldUpdateProfile =
@@ -106,16 +108,23 @@ async function findOrCreateGoogleUser(
     (imageUrl != null && existingUser.imageUrl !== imageUrl);
 
   if (shouldUpdateProfile) {
-    const updatedUser = await prisma.user.update({
-      where: { id: existingUser.id },
-      data: {
+    const [updated] = await db
+      .update(user)
+      .set({
         googleId: existingUser.googleId || googleId,
         name: name ?? existingUser.name,
         imageUrl: imageUrl ?? existingUser.imageUrl,
-      },
-      select: userSelect,
-    });
-    return updatedUser;
+      })
+      .where(eq(user.id, existingUser.id))
+      .returning({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        imageUrl: user.imageUrl,
+        role: user.role,
+        googleId: user.googleId,
+      });
+    return updated!;
   }
 
   return existingUser;
@@ -206,26 +215,34 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       const passwordHash = await hash(password, 12);
 
       try {
-        const user = await prisma.user.create({
-          data: {
+        const now = new Date().toISOString();
+        const [created] = await db
+          .insert(user)
+          .values({
+            id: crypto.randomUUID(),
             email,
             name,
             passwordHash,
             role: UserRole.PENDING,
-          },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            imageUrl: true,
-            role: true,
-            createdAt: true,
-          },
-        });
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            imageUrl: user.imageUrl,
+            role: user.role,
+            createdAt: user.createdAt,
+          });
 
-        const token = app.jwt.sign({ sub: user.id, role: user.role });
+        if (!created) {
+          return reply.code(500).send({ error: 'failed to create user' });
+        }
 
-        return reply.code(201).send({ user, token });
+        const token = app.jwt.sign({ sub: created.id, role: created.role });
+
+        return reply.code(201).send({ user: created, token });
       } catch (err) {
         app.log.error(err);
         return reply.code(400).send({ error: 'email already in use' });
@@ -253,9 +270,8 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(400).send({ error: 'email and password are required' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { email },
-        select: {
+      const found = await db.query.user.findFirst({
+        columns: {
           id: true,
           email: true,
           name: true,
@@ -263,34 +279,35 @@ const authRoutes: FastifyPluginAsync = async (app) => {
           role: true,
           passwordHash: true,
         },
+        where: (u, { eq }) => eq(u.email, email),
       });
 
-      if (!user) {
+      if (!found) {
         return reply.code(401).send({ error: 'invalid credentials' });
       }
 
-      if (!user.passwordHash) {
+      if (!found.passwordHash) {
         return reply.code(401).send({ error: 'this account uses Google Sign-In' });
       }
 
-      const matches = await compare(password, user.passwordHash);
+      const matches = await compare(password, found.passwordHash);
       if (!matches) {
         return reply.code(401).send({ error: 'invalid credentials' });
       }
 
-      if (user.role === UserRole.PENDING) {
+      if (found.role === UserRole.PENDING) {
         return reply.code(403).send({ error: 'account pending approval by admin' });
       }
 
-      const token = app.jwt.sign({ sub: user.id, role: user.role });
+      const token = app.jwt.sign({ sub: found.id, role: found.role });
 
       return reply.send({
         user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          imageUrl: user.imageUrl,
-          role: user.role,
+          id: found.id,
+          email: found.email,
+          name: found.name,
+          imageUrl: found.imageUrl,
+          role: found.role,
         },
         token,
       });
@@ -310,22 +327,16 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(401).send({ error: 'invalid token' });
       }
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          imageUrl: true,
-          role: true,
-        },
+      const found = await db.query.user.findFirst({
+        columns: { id: true, email: true, name: true, imageUrl: true, role: true },
+        where: (u, { eq }) => eq(u.id, userId),
       });
 
-      if (!user) {
+      if (!found) {
         return reply.code(401).send({ error: 'invalid token' });
       }
 
-      return reply.send({ user });
+      return reply.send({ user: found });
     },
   );
 

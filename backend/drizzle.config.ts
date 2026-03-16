@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { defineConfig } from 'prisma/config';
+import { defineConfig } from 'drizzle-kit';
 
 const nodeEnv = process.env.NODE_ENV;
 const isTest = nodeEnv === 'test';
@@ -11,14 +11,18 @@ const databaseUrl = isTest
 if (!databaseUrl) {
   throw new Error(
     isTest
-      ? 'TEST_DATABASE_URL or DATABASE_URL is required for Prisma.'
-      : 'DATABASE_URL is required for Prisma.',
+      ? 'TEST_DATABASE_URL or DATABASE_URL is required for Drizzle.'
+      : 'DATABASE_URL is required for Drizzle.',
   );
 }
 
 export default defineConfig({
-  schema: 'prisma/schema.prisma',
-  datasource: {
+  dialect: 'postgresql',
+  out: './src/drizzle',
+  schema: './src/drizzle/schema.ts',
+  dbCredentials: {
     url: databaseUrl,
   },
+  verbose: true,
+  strict: true,
 });

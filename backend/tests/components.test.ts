@@ -1,10 +1,21 @@
-import './setup.js';
+import './test-setup.js';
 
 import { describe, test, beforeAll, afterAll } from 'bun:test';
 import assert from 'node:assert/strict';
 import { buildApp } from '../src/app.js';
-import { prisma } from '../src/lib/prisma.js';
-import { UserRole, ComponentCategory, Location } from '@prisma/client';
+import {
+  createComponent,
+  createUser,
+  createRequest,
+  deleteAllData,
+  deleteAllRequests,
+  deleteComponents,
+  deleteUsers,
+  findComponentById,
+  ComponentCategory,
+  Location,
+  UserRole,
+} from './helpers.js';
 
 let app: Awaited<ReturnType<typeof buildApp>>;
 let adminToken: string;
@@ -20,73 +31,51 @@ let facultyUserId: string;
 beforeAll(async () => {
   app = await buildApp();
 
-  await prisma.requestItem.deleteMany({});
-  await prisma.request.deleteMany({});
-  await prisma.component.deleteMany({});
+  await deleteAllData();
 
-  // Create test users with different roles
-  const adminEmail = `admin_${Date.now()}@example.com`;
-  const taEmail = `ta_${Date.now()}@example.com`;
-  const studentEmail = `student_${Date.now()}@example.com`;
-  const facultyEmail = `faculty_${Date.now()}@example.com`;
-
-  // Import hash for password hashing
   const { hash } = await import('bcryptjs');
   const passwordHash = await hash('password123', 12);
 
-  // Create ADMIN user directly in database (since registration blocks ADMIN role)
-  const adminUser = await prisma.user.create({
-    data: {
-      email: adminEmail,
-      passwordHash,
-      name: 'Admin User',
-      role: UserRole.ADMIN,
-    },
+  const adminUser = await createUser({
+    email: `admin_${Date.now()}@example.com`,
+    passwordHash,
+    name: 'Admin User',
+    role: UserRole.ADMIN,
   });
   adminUserId = adminUser.id;
   adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1h' });
 
-  const taUser = await prisma.user.create({
-    data: {
-      email: taEmail,
-      passwordHash,
-      name: 'TA User',
-      role: UserRole.TA,
-    },
+  const taUser = await createUser({
+    email: `ta_${Date.now()}@example.com`,
+    passwordHash,
+    name: 'TA User',
+    role: UserRole.TA,
   });
   taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1h' });
   taUserId = taUser.id;
 
-  const studentUser = await prisma.user.create({
-    data: {
-      email: studentEmail,
-      passwordHash,
-      name: 'Student User',
-      role: UserRole.STUDENT,
-    },
+  const studentUser = await createUser({
+    email: `student_${Date.now()}@example.com`,
+    passwordHash,
+    name: 'Student User',
+    role: UserRole.STUDENT,
   });
   studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1h' });
   studentUserId = studentUser.id;
 
-  const facultyUser = await prisma.user.create({
-    data: {
-      email: facultyEmail,
-      passwordHash,
-      name: 'Faculty User',
-      role: UserRole.FACULTY,
-    },
+  const facultyUser = await createUser({
+    email: `faculty_${Date.now()}@example.com`,
+    passwordHash,
+    name: 'Faculty User',
+    role: UserRole.FACULTY,
   });
   facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1h' });
   facultyUserId = facultyUser.id;
 });
 
 afterAll(async () => {
-  // Clean up test data
-  await prisma.component.deleteMany({});
-  const userIds = [adminUserId, taUserId, studentUserId, facultyUserId].filter(Boolean);
-  if (userIds.length > 0) {
-    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
-  }
+  await deleteAllData();
+  await deleteUsers([adminUserId, taUserId, studentUserId, facultyUserId].filter(Boolean));
   await app.close();
 });
 
@@ -138,26 +127,22 @@ describe('Component CRUD API', () => {
     });
 
     test('returns 200 with components (TA)', async () => {
-      const component1 = await prisma.component.create({
-        data: {
-          name: 'Resistor 10k',
-          description: '10k ohm resistor',
-          totalQuantity: 50,
-          availableQuantity: 50,
-          category: ComponentCategory.Sensors,
-          location: Location.IoT_Lab,
-        },
+      const component1 = await createComponent({
+        name: 'Resistor 10k',
+        description: '10k ohm resistor',
+        totalQuantity: 50,
+        availableQuantity: 50,
+        category: ComponentCategory.Sensors,
+        location: Location.IoT_Lab,
       });
 
-      const component2 = await prisma.component.create({
-        data: {
-          name: 'Arduino Uno',
-          description: 'Arduino microcontroller',
-          totalQuantity: 10,
-          availableQuantity: 10,
-          category: ComponentCategory.Microcontrollers,
-          location: Location.Robo_Lab,
-        },
+      const component2 = await createComponent({
+        name: 'Arduino Uno',
+        description: 'Arduino microcontroller',
+        totalQuantity: 10,
+        availableQuantity: 10,
+        category: ComponentCategory.Microcontrollers,
+        location: Location.Robo_Lab,
       });
 
       const response = await app.inject({
@@ -177,21 +162,19 @@ describe('Component CRUD API', () => {
       assert.equal(body.components[0].id, component2.id);
       assert.equal(body.components[1].id, component1.id);
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
 
     test('returns 304 Not Modified when If-Modified-Since is up to date (TA)', async () => {
-      await prisma.component.deleteMany({});
+      await deleteAllData();
 
-      await prisma.component.create({
-        data: {
-          name: 'Conditional GET Component',
-          description: 'For If-Modified-Since testing',
-          totalQuantity: 5,
-          availableQuantity: 5,
-          category: ComponentCategory.Sensors,
-          location: Location.IoT_Lab,
-        },
+      await createComponent({
+        name: 'Conditional GET Component',
+        description: 'For If-Modified-Since testing',
+        totalQuantity: 5,
+        availableQuantity: 5,
+        category: ComponentCategory.Sensors,
+        location: Location.IoT_Lab,
       });
 
       const firstResponse = await app.inject({
@@ -217,7 +200,7 @@ describe('Component CRUD API', () => {
 
       assert.equal(secondResponse.statusCode, 304);
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
 
     describe('GET /components/export/csv', () => {
@@ -239,14 +222,12 @@ describe('Component CRUD API', () => {
       });
 
       test('returns 200 and CSV content for ADMIN', async () => {
-        await prisma.component.create({
-          data: {
-            name: 'CSV Component',
-            totalQuantity: 10,
-            availableQuantity: 10,
-            category: ComponentCategory.Sensors,
-            location: Location.IoT_Lab,
-          },
+        await createComponent({
+          name: 'CSV Component',
+          totalQuantity: 10,
+          availableQuantity: 10,
+          category: ComponentCategory.Sensors,
+          location: Location.IoT_Lab,
         });
 
         const response = await app.inject({
@@ -284,13 +265,11 @@ describe('Component CRUD API', () => {
     });
 
     test('returns component by id (STUDENT)', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Student View Component',
-          description: 'Visible to all roles',
-          totalQuantity: 3,
-          availableQuantity: 3,
-        },
+      const component = await createComponent({
+        name: 'Student View Component',
+        description: 'Visible to all roles',
+        totalQuantity: 3,
+        availableQuantity: 3,
       });
 
       const response = await app.inject({
@@ -305,7 +284,7 @@ describe('Component CRUD API', () => {
       const body = response.json();
       assert.equal(body.component.id, component.id);
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
 
     test('returns 404 for non-existent component', async () => {
@@ -323,15 +302,13 @@ describe('Component CRUD API', () => {
     });
 
     test('returns component by id (ADMIN)', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Test Component',
-          description: 'Test description',
-          totalQuantity: 5,
-          availableQuantity: 5,
-          category: ComponentCategory.Actuators,
-          location: Location.VLSI_Lab,
-        },
+      const component = await createComponent({
+        name: 'Test Component',
+        description: 'Test description',
+        totalQuantity: 5,
+        availableQuantity: 5,
+        category: ComponentCategory.Actuators,
+        location: Location.VLSI_Lab,
       });
 
       const response = await app.inject({
@@ -352,7 +329,7 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.category, ComponentCategory.Actuators);
       assert.equal(body.component.location, Location.VLSI_Lab);
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
   });
 
@@ -449,7 +426,7 @@ describe('Component CRUD API', () => {
       assert.ok(body.component.createdAt);
       assert.ok(body.component.updatedAt);
 
-      await prisma.component.deleteMany({ where: { id: body.component.id } });
+      await deleteComponents([body.component.id]);
     });
 
     test('returns 400 for invalid category', async () => {
@@ -504,7 +481,7 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.category, null);
       assert.equal(body.component.location, null);
 
-      await prisma.component.deleteMany({ where: { id: body.component.id } });
+      await deleteComponents([body.component.id]);
     });
   });
 
@@ -554,12 +531,10 @@ describe('Component CRUD API', () => {
     });
 
     test('returns 400 when quantity is negative', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Test Component',
-          totalQuantity: 10,
-          availableQuantity: 10,
-        },
+      const component = await createComponent({
+        name: 'Test Component',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
 
       const response = await app.inject({
@@ -577,12 +552,14 @@ describe('Component CRUD API', () => {
       const body = response.json();
       assert.ok(body.error.includes('totalQuantity'));
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
 
     test('returns 400 when availableQuantity > totalQuantity', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'Quant Test', totalQuantity: 10, availableQuantity: 10 },
+      const component = await createComponent({
+        name: 'Quant Test',
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
 
       const response = await app.inject({
@@ -596,19 +573,17 @@ describe('Component CRUD API', () => {
 
       assert.equal(response.statusCode, 400);
       assert.ok(response.json().error.includes('cannot be greater than'));
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
 
     test('updates component partially (TA)', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Original Name',
-          description: 'Original description',
-          totalQuantity: 10,
-          availableQuantity: 10,
-          category: ComponentCategory.Sensors,
-          location: Location.IoT_Lab,
-        },
+      const component = await createComponent({
+        name: 'Original Name',
+        description: 'Original description',
+        totalQuantity: 10,
+        availableQuantity: 10,
+        category: ComponentCategory.Sensors,
+        location: Location.IoT_Lab,
       });
 
       const response = await app.inject({
@@ -633,19 +608,17 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.category, ComponentCategory.Sensors); // unchanged
       assert.equal(body.component.location, Location.IoT_Lab); // unchanged
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
 
     test('updates all fields (ADMIN)', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Original Name',
-          description: 'Original description',
-          totalQuantity: 10,
-          availableQuantity: 10,
-          category: ComponentCategory.Sensors,
-          location: Location.IoT_Lab,
-        },
+      const component = await createComponent({
+        name: 'Original Name',
+        description: 'Original description',
+        totalQuantity: 10,
+        availableQuantity: 10,
+        category: ComponentCategory.Sensors,
+        location: Location.IoT_Lab,
       });
 
       const response = await app.inject({
@@ -672,19 +645,17 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.category, ComponentCategory.Actuators);
       assert.equal(body.component.location, Location.Robo_Lab);
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
 
     test('can set optional fields to null (TA)', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Test Component',
-          description: 'Has description',
-          category: ComponentCategory.Microcontrollers,
-          location: Location.VLSI_Lab,
-          totalQuantity: 10,
-          availableQuantity: 10,
-        },
+      const component = await createComponent({
+        name: 'Test Component',
+        description: 'Has description',
+        category: ComponentCategory.Microcontrollers,
+        location: Location.VLSI_Lab,
+        totalQuantity: 10,
+        availableQuantity: 10,
       });
 
       const response = await app.inject({
@@ -706,7 +677,7 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.category, null);
       assert.equal(body.component.location, null);
 
-      await prisma.component.deleteMany({});
+      await deleteAllData();
     });
   });
 
@@ -747,12 +718,10 @@ describe('Component CRUD API', () => {
     });
 
     test('deletes component successfully (ADMIN)', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Component to Delete',
-          totalQuantity: 5,
-          availableQuantity: 5,
-        },
+      const component = await createComponent({
+        name: 'Component to Delete',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
 
       const response = await app.inject({
@@ -766,19 +735,15 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 204);
 
       // Verify component is deleted
-      const deletedComponent = await prisma.component.findUnique({
-        where: { id: component.id },
-      });
+      const deletedComponent = await findComponentById(component.id);
       assert.equal(deletedComponent, null);
     });
 
     test('deletes component successfully (TA)', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Component to Delete',
-          totalQuantity: 5,
-          availableQuantity: 5,
-        },
+      const component = await createComponent({
+        name: 'Component to Delete',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
 
       const response = await app.inject({
@@ -791,19 +756,15 @@ describe('Component CRUD API', () => {
 
       assert.equal(response.statusCode, 204);
 
-      const deletedComponent = await prisma.component.findUnique({
-        where: { id: component.id },
-      });
+      const deletedComponent = await findComponentById(component.id);
       assert.equal(deletedComponent, null);
     });
 
     test('DELETE request with form-urlencoded content-type is accepted', async () => {
-      const component = await prisma.component.create({
-        data: {
-          name: 'Component to Delete with Form',
-          totalQuantity: 5,
-          availableQuantity: 5,
-        },
+      const component = await createComponent({
+        name: 'Component to Delete with Form',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
 
       const response = await app.inject({
@@ -819,27 +780,22 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 204);
 
       // Verify component is deleted
-      const deletedComponent = await prisma.component.findUnique({
-        where: { id: component.id },
-      });
+      const deletedComponent = await findComponentById(component.id);
       assert.equal(deletedComponent, null);
     });
 
     test('returns 400 when component is in use', async () => {
-      const component = await prisma.component.create({
-        data: { name: 'In Use Component', totalQuantity: 5, availableQuantity: 5 },
+      const component = await createComponent({
+        name: 'In Use Component',
+        totalQuantity: 5,
+        availableQuantity: 5,
       });
 
-      // Create a request using this component
-      await prisma.request.create({
-        data: {
-          userId: adminUserId,
-          targetFacultyId: facultyUserId,
-          projectTitle: 'Usage Test',
-          items: {
-            create: [{ component: { connect: { id: component.id } }, quantity: 1 }],
-          },
-        },
+      await createRequest({
+        userId: adminUserId,
+        targetFacultyId: facultyUserId,
+        projectTitle: 'Usage Test',
+        items: [{ componentId: component.id, quantity: 1 }],
       });
 
       const response = await app.inject({
@@ -851,9 +807,8 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 400);
       assert.ok(response.json().error.includes('used in one or more requests'));
 
-      await prisma.requestItem.deleteMany({});
-      await prisma.request.deleteMany({});
-      await prisma.component.deleteMany({});
+      await deleteAllRequests();
+      await deleteAllData();
     });
   });
 
