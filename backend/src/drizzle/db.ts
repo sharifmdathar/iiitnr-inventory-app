@@ -6,6 +6,7 @@ import {
   requestItemRelations,
   requestRelations,
   userRelations,
+  auditLogRelations,
 } from './relations';
 
 const isTest = process.env.NODE_ENV === 'test';
@@ -32,5 +33,6 @@ export const db = drizzle(pool, {
     userRelations,
     requestItemRelations,
     componentRelations,
+    auditLogRelations,
   },
 });

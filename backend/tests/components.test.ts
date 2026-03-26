@@ -459,6 +459,70 @@ describe('Component CRUD API', () => {
       assert.ok(response.json().error.includes('invalid location'));
     });
 
+    test('returns 400 for invalid imageUrl - javascript protocol', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/components',
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: 'Invalid URL Component',
+          imageUrl: 'javascript:alert(1)',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('imageUrl must be a valid HTTP or HTTPS URL'));
+    });
+
+    test('returns 400 for invalid imageUrl - data protocol', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/components',
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: 'Invalid URL Component',
+          imageUrl: 'data:image/png;base64,abc123',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('imageUrl must be a valid HTTP or HTTPS URL'));
+    });
+
+    test('returns 400 for invalid imageUrl - not a URL', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/components',
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: 'Invalid URL Component',
+          imageUrl: 'not-a-valid-url',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('imageUrl must be a valid HTTP or HTTPS URL'));
+    });
+
+    test('creates component with valid imageUrl (HTTPS)', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/components',
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          name: 'Component with Image',
+          imageUrl: 'https://example.com/image.png',
+          totalQuantity: 10,
+        },
+      });
+
+      assert.equal(response.statusCode, 201);
+      const body = response.json();
+      assert.equal(body.component.imageUrl, 'https://example.com/image.png');
+
+      await deleteComponents([body.component.id]);
+    });
+
     test('creates component with minimal fields (ADMIN)', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -676,6 +740,75 @@ describe('Component CRUD API', () => {
       assert.equal(body.component.description, null);
       assert.equal(body.component.category, null);
       assert.equal(body.component.location, null);
+
+      await deleteAllData();
+    });
+
+    test('returns 400 for invalid imageUrl on update - javascript protocol', async () => {
+      const component = await createComponent({
+        name: 'Test Component',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/components/${component.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          imageUrl: 'javascript:alert(document.cookie)',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('imageUrl must be a valid HTTP or HTTPS URL'));
+
+      await deleteAllData();
+    });
+
+    test('returns 400 for invalid imageUrl on update - file protocol', async () => {
+      const component = await createComponent({
+        name: 'Test Component',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/components/${component.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          imageUrl: 'file:///etc/passwd',
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('imageUrl must be a valid HTTP or HTTPS URL'));
+
+      await deleteAllData();
+    });
+
+    test('updates imageUrl with valid HTTPS URL', async () => {
+      const component = await createComponent({
+        name: 'Test Component',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/components/${component.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          imageUrl: 'https://cdn.example.com/components/arduino.jpg',
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      assert.equal(
+        response.json().component.imageUrl,
+        'https://cdn.example.com/components/arduino.jpg',
+      );
 
       await deleteAllData();
     });

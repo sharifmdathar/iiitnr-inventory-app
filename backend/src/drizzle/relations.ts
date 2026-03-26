@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm/relations';
-import { user, request, component, requestItem } from './schema';
+import { user, request, component, requestItem, auditLog } from './schema';
 
 export const requestRelations = relations(request, ({ one, many }) => ({
   user_targetFacultyId: one(user, {
@@ -22,6 +22,7 @@ export const userRelations = relations(user, ({ many }) => ({
   requests_userId: many(request, {
     relationName: 'request_userId_user_id',
   }),
+  auditLogs: many(auditLog),
 }));
 
 export const requestItemRelations = relations(requestItem, ({ one }) => ({
@@ -37,4 +38,11 @@ export const requestItemRelations = relations(requestItem, ({ one }) => ({
 
 export const componentRelations = relations(component, ({ many }) => ({
   requestItems: many(requestItem),
+}));
+
+export const auditLogRelations = relations(auditLog, ({ one }) => ({
+  user: one(user, {
+    fields: [auditLog.userId],
+    references: [user.id],
+  }),
 }));

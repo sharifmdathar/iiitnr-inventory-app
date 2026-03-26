@@ -151,3 +151,51 @@ export const component = pgTable('Component', {
     .notNull(),
   updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
 });
+
+export const auditActionType = pgEnum('AuditActionType', [
+  'CREATE',
+  'UPDATE',
+  'DELETE',
+  'LOGIN',
+  'LOGOUT',
+  'REQUEST_STATUS_CHANGE',
+  'INVENTORY_ADJUST',
+]);
+
+export const auditLog = pgTable(
+  'AuditLog',
+  {
+    id: text().primaryKey().notNull(),
+    userId: text(),
+    action: auditActionType().notNull(),
+    entityType: text(),
+    entityId: text(),
+    oldValues: text(),
+    newValues: text(),
+    ipAddress: varchar({ length: 45 }),
+    userAgent: text(),
+    metadata: text(),
+    createdAt: timestamp({ precision: 3, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index('AuditLog_userId_idx').using('btree', table.userId.asc().nullsLast().op('text_ops')),
+    index('AuditLog_entityType_idx').using(
+      'btree',
+      table.entityType.asc().nullsLast().op('text_ops'),
+    ),
+    index('AuditLog_entityId_idx').using('btree', table.entityId.asc().nullsLast().op('text_ops')),
+    index('AuditLog_createdAt_idx').using(
+      'btree',
+      table.createdAt.asc().nullsLast().op('timestamp_ops'),
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'AuditLog_userId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+);

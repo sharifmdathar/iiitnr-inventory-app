@@ -1,10 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { component, request, requestItem, user } from '../drizzle/schema.js';
 import { requireAuth, isAdminOrTA } from '../middleware/auth.js';
-import { RequestStatus, requestStatusValues, UserRole } from '../utils/enums.js';
+import { RequestStatus, requestStatusValues, UserRole, AuditActionType } from '../utils/enums.js';
 import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
+import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
 
 const createRequestSchema = {
   body: {
@@ -156,6 +157,18 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
           user: createdRequest.user_userId,
           targetFaculty: createdRequest.user_targetFacultyId,
         };
+
+        await logAudit(
+          {
+            userId: getUserIdFromRequest(req),
+            action: AuditActionType.CREATE,
+            entityType: 'Request',
+            entityId: requestId,
+            newValues: shaped as Record<string, unknown>,
+          },
+          req,
+        );
+
         return reply.code(201).send({ request: shaped });
       } catch (err) {
         app.log.error(err);
@@ -349,6 +362,18 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
               }
             : null;
 
+          await logAudit(
+            {
+              userId: getUserIdFromRequest(req),
+              action: AuditActionType.REQUEST_STATUS_CHANGE,
+              entityType: 'Request',
+              entityId: id,
+              oldValues: { status: existingRequest.status },
+              newValues: { status: newStatus },
+            },
+            req,
+          );
+
           return reply.send({ request: updatedRequest });
         } else if (existingRequest.status === RequestStatus.APPROVED) {
           if (newStatus !== RequestStatus.FULFILLED) {
@@ -364,21 +389,23 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
           try {
             await db.transaction(async (tx) => {
               for (const item of existingRequest.requestItems) {
-                const comp = await tx.query.component.findFirst({
-                  where: (c, { eq, and, gte }) =>
-                    and(eq(c.id, item.componentId), gte(c.availableQuantity, item.quantity)),
-                });
+                const lockResult = await tx.execute(
+                  sql`SELECT "id", "name", "availableQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
+                );
+                const lockedComp = lockResult.rows[0] as
+                  | { id: string; name: string; availableQuantity: number }
+                  | undefined;
 
-                if (!comp || comp.availableQuantity < item.quantity) {
+                if (!lockedComp || lockedComp.availableQuantity < item.quantity) {
                   throw new Error(
-                    `INSUFFICIENT_QUANTITY:${item.component?.name ?? 'unknown'}:${item.quantity}`,
+                    `INSUFFICIENT_QUANTITY:${lockedComp?.name ?? item.component?.name ?? 'unknown'}:${item.quantity}`,
                   );
                 }
 
                 await tx
                   .update(component)
                   .set({
-                    availableQuantity: comp.availableQuantity - item.quantity,
+                    availableQuantity: lockedComp.availableQuantity - item.quantity,
                     updatedAt: new Date().toISOString(),
                   })
                   .where(eq(component.id, item.componentId));
@@ -411,6 +438,18 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
                   targetFaculty: updatedRow.user_targetFacultyId,
                 }
               : null;
+
+            await logAudit(
+              {
+                userId: getUserIdFromRequest(req),
+                action: AuditActionType.REQUEST_STATUS_CHANGE,
+                entityType: 'Request',
+                entityId: id,
+                oldValues: { status: existingRequest.status },
+                newValues: { status: newStatus, fulfilledItems: existingRequest.requestItems },
+              },
+              req,
+            );
 
             return reply.send({ request: updatedRequest });
           } catch (error) {
@@ -474,6 +513,17 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
 
       await db.delete(requestItem).where(eq(requestItem.requestId, id));
       await db.delete(request).where(eq(request.id, id));
+
+      await logAudit(
+        {
+          userId: getUserIdFromRequest(req),
+          action: AuditActionType.DELETE,
+          entityType: 'Request',
+          entityId: id,
+          oldValues: { status: existingRequest.status, userId: existingRequest.userId },
+        },
+        req,
+      );
 
       return reply.code(204).send();
     } catch (err) {

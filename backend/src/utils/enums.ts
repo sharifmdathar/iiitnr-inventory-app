@@ -28,10 +28,21 @@ export const Location = {
   VLSI_Lab: 'VLSI_Lab',
 } as const;
 
+export const AuditActionType = {
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE',
+  DELETE: 'DELETE',
+  LOGIN: 'LOGIN',
+  LOGOUT: 'LOGOUT',
+  REQUEST_STATUS_CHANGE: 'REQUEST_STATUS_CHANGE',
+  INVENTORY_ADJUST: 'INVENTORY_ADJUST',
+} as const;
+
 export type UserRoleValue = (typeof UserRole)[keyof typeof UserRole];
 export type RequestStatusValue = (typeof RequestStatus)[keyof typeof RequestStatus];
 export type CategoryValue = (typeof ComponentCategory)[keyof typeof ComponentCategory];
 export type LocationValue = (typeof Location)[keyof typeof Location];
+export type AuditActionTypeValue = (typeof AuditActionType)[keyof typeof AuditActionType];
 
 export const requestStatusValues = Object.values(RequestStatus);
 export const categoryValues = Object.values(ComponentCategory);

@@ -4,8 +4,16 @@ import { db } from '../drizzle/db.js';
 import { component, requestItem } from '../drizzle/schema.js';
 import type { InferSelectModel } from 'drizzle-orm';
 import { requireAuth, requireAdminOrTA } from '../middleware/auth.js';
-import { UserRole, categoryValues, locationValues, toLocationEnum } from '../utils/enums.js';
+import {
+  UserRole,
+  categoryValues,
+  locationValues,
+  toLocationEnum,
+  AuditActionType,
+} from '../utils/enums.js';
 import type { CategoryValue, LocationValue, UserRoleValue } from '../utils/enums.js';
+import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
+import { isValidHttpUrl } from '../utils/validation.js';
 
 const componentBodySchema = {
   type: 'object',
@@ -184,6 +192,10 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
           .send({ error: `invalid location. Must be one of ${locationValues.join(', ')}` });
       }
 
+      if (imageUrl && !isValidHttpUrl(imageUrl)) {
+        return reply.code(400).send({ error: 'imageUrl must be a valid HTTP or HTTPS URL' });
+      }
+
       try {
         const now = new Date().toISOString();
         const [created] = await db
@@ -205,6 +217,17 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
         if (!created) {
           return reply.code(500).send({ error: 'failed to create component' });
         }
+
+        await logAudit(
+          {
+            userId: getUserIdFromRequest(request),
+            action: AuditActionType.CREATE,
+            entityType: 'Component',
+            entityId: created.id,
+            newValues: created as Record<string, unknown>,
+          },
+          request,
+        );
 
         return reply.code(201).send({ component: created });
       } catch (err) {
@@ -271,6 +294,12 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
+      if (imageUrl !== undefined && imageUrl !== null && imageUrl !== '') {
+        if (!isValidHttpUrl(imageUrl)) {
+          return reply.code(400).send({ error: 'imageUrl must be a valid HTTP or HTTPS URL' });
+        }
+      }
+
       try {
         const existingComponent = await db.query.component.findFirst({
           where: (c, { eq }) => eq(c.id, id),
@@ -320,6 +349,18 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
           return reply.code(500).send({ error: 'failed to update component' });
         }
 
+        await logAudit(
+          {
+            userId: getUserIdFromRequest(request),
+            action: AuditActionType.UPDATE,
+            entityType: 'Component',
+            entityId: updated.id,
+            oldValues: existingComponent as Record<string, unknown>,
+            newValues: updated as Record<string, unknown>,
+          },
+          request,
+        );
+
         return reply.send({ component: updated });
       } catch (err) {
         app.log.error(err);
@@ -357,6 +398,17 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
       }
 
       await db.delete(component).where(eq(component.id, id));
+
+      await logAudit(
+        {
+          userId: getUserIdFromRequest(request),
+          action: AuditActionType.DELETE,
+          entityType: 'Component',
+          entityId: id,
+          oldValues: existing as Record<string, unknown>,
+        },
+        request,
+      );
 
       return reply.code(204).send();
     } catch (err) {

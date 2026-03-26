@@ -4,7 +4,8 @@ import { OAuth2Client } from 'google-auth-library';
 import { eq } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { user } from '../drizzle/schema.js';
-import { UserRole } from '../utils/enums.js';
+import { UserRole, AuditActionType } from '../utils/enums.js';
+import { logAudit } from '../utils/audit.js';
 
 function getGoogleClientIds(): { primary: string; all: string[] } | null {
   const primaryClientId = process.env.GOOGLE_CLIENT_ID;
@@ -301,6 +302,15 @@ const authRoutes: FastifyPluginAsync = async (app) => {
 
       const token = app.jwt.sign({ sub: found.id, role: found.role });
 
+      await logAudit(
+        {
+          userId: found.id,
+          action: AuditActionType.LOGIN,
+          metadata: { method: 'password' },
+        },
+        request,
+      );
+
       return reply.send({
         user: {
           id: found.id,
@@ -387,17 +397,26 @@ const authRoutes: FastifyPluginAsync = async (app) => {
 
         const name = payload.name || null;
         const imageUrl = payload.imageUrl || null;
-        const user = await findOrCreateGoogleUser(payload.sub, payload.email, name, imageUrl);
+        const googleUser = await findOrCreateGoogleUser(payload.sub, payload.email, name, imageUrl);
 
-        const token = app.jwt.sign({ sub: user.id, role: user.role });
+        const token = app.jwt.sign({ sub: googleUser.id, role: googleUser.role });
+
+        await logAudit(
+          {
+            userId: googleUser.id,
+            action: AuditActionType.LOGIN,
+            metadata: { method: 'google' },
+          },
+          request,
+        );
 
         return reply.send({
           user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            imageUrl: user.imageUrl,
-            role: user.role,
+            id: googleUser.id,
+            email: googleUser.email,
+            name: googleUser.name,
+            imageUrl: googleUser.imageUrl,
+            role: googleUser.role,
           },
           token,
         });
