@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class DefaultComponentsCache(
-    private val database: AppDatabase,
+    database: AppDatabase,
 ) : ComponentsCache {
     private val queries = database.appDatabaseQueries
 

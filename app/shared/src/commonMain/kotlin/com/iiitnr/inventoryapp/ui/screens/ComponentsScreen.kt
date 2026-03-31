@@ -39,6 +39,8 @@ import com.iiitnr.inventoryapp.ui.components.components.CartFAB
 import com.iiitnr.inventoryapp.ui.components.components.ComponentDialog
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsContent
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsTopBar
+import io.ktor.client.plugins.ResponseException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -188,17 +190,15 @@ fun ComponentsScreen(
                 }
             } catch (e: Exception) {
                 if (!pollingMode) {
+                    val isAuthError =
+                        e is ResponseException &&
+                            e.response.status == HttpStatusCode.Unauthorized
+                    if (isAuthError) return@launch
+
                     val hasCachedData = components.isNotEmpty()
                     if (!hasCachedData) {
                         errorMessage =
                             when {
-                                e.message?.contains(
-                                    "401",
-                                ) == true ||
-                                    e.message?.contains(
-                                        "Unauthorized",
-                                    ) == true -> "Session expired. Please login again."
-
                                 e.message?.contains(
                                     "Network",
                                 ) == true ||

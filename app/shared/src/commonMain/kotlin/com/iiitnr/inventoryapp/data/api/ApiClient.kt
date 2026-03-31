@@ -2,8 +2,10 @@ package com.iiitnr.inventoryapp.data.api
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
@@ -25,6 +27,16 @@ object ApiClient {
                         encodeDefaults = false
                     },
                 )
+            }
+            expectSuccess = true
+            HttpResponseValidator {
+                handleResponseExceptionWithRequest { exception, _ ->
+                    if (exception is io.ktor.client.plugins.ResponseException &&
+                        exception.response.status == HttpStatusCode.Unauthorized
+                    ) {
+                        AuthEventManager.emit(AuthEvent.Unauthorized)
+                    }
+                }
             }
         }
 

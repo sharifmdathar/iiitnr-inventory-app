@@ -111,13 +111,13 @@ fun RequestsScreen(
                 }
             } catch (e: Exception) {
                 if (!pollingMode) {
+                    val isAuthError =
+                        e is io.ktor.client.plugins.ResponseException &&
+                            e.response.status == io.ktor.http.HttpStatusCode.Unauthorized
+                    if (isAuthError) return@launch
+
                     errorMessage =
                         when {
-                            e.message?.contains(
-                                "401",
-                            ) == true ||
-                                e.message?.contains("Unauthorized") == true -> "Session expired. Please login again."
-
                             e.message?.contains(
                                 "Network",
                             ) == true ||

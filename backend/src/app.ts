@@ -80,7 +80,7 @@ export async function buildApp() {
   await app.register(jwt, {
     secret: jwtSecret,
     sign: {
-      expiresIn: '24h',
+      expiresIn: '7d',
     },
   });
 
@@ -112,10 +112,15 @@ export async function buildApp() {
       return;
     }
 
-    request.log.error(error);
+    const err = error as { statusCode?: number; code?: string; message?: string };
+    const statusCode =
+      err.statusCode && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
 
-    const err = error as { statusCode: number; message?: string };
-    const statusCode = err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500;
+    if (statusCode >= 500) {
+      request.log.error(error);
+    } else {
+      request.log.warn({ code: err.code, statusCode }, err.message);
+    }
 
     void reply.code(statusCode).send({
       error: err.message ?? (statusCode === 500 ? 'Internal Server Error' : 'Request failed'),
