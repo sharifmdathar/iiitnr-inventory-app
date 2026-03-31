@@ -43,13 +43,11 @@ async function getAuditLogs(filters: { userId?: string; entityType?: string; ent
 beforeAll(async () => {
   app = await buildApp();
 
-  await deleteAllData();
-
   const { hash } = await import('bcryptjs');
   const passwordHash = await hash('password123', 12);
 
   const adminUser = await createUser({
-    email: `admin_audit_${Date.now()}@example.com`,
+    email: `admin_audit_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'Admin User',
     role: UserRole.ADMIN,
@@ -58,7 +56,7 @@ beforeAll(async () => {
   adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1h' });
 
   const taUser = await createUser({
-    email: `ta_audit_${Date.now()}@example.com`,
+    email: `ta_audit_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'TA User',
     role: UserRole.TA,
@@ -67,7 +65,7 @@ beforeAll(async () => {
   taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1h' });
 
   const studentUser = await createUser({
-    email: `student_audit_${Date.now()}@example.com`,
+    email: `student_audit_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'Student User',
     role: UserRole.STUDENT,
@@ -76,7 +74,7 @@ beforeAll(async () => {
   studentToken = app.jwt.sign({ sub: studentUser.id, role: studentUser.role }, { expiresIn: '1h' });
 
   const facultyUser = await createUser({
-    email: `faculty_audit_${Date.now()}@example.com`,
+    email: `faculty_audit_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'Faculty User',
     role: UserRole.FACULTY,
@@ -200,7 +198,7 @@ describe('Audit Logging', () => {
       const { hash } = await import('bcryptjs');
       const passwordHash = await hash('testpass123', 12);
       const testUser = await createUser({
-        email: `logintest_${Date.now()}@example.com`,
+        email: `logintest_${crypto.randomUUID()}@example.com`,
         passwordHash,
         name: 'Login Test User',
         role: UserRole.ADMIN,

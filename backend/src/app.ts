@@ -79,6 +79,9 @@ export async function buildApp() {
 
   await app.register(jwt, {
     secret: jwtSecret,
+    sign: {
+      expiresIn: '24h',
+    },
   });
 
   app.setSchemaErrorFormatter((errors) => {
@@ -93,6 +96,15 @@ export async function buildApp() {
     }
     return new Error(first?.message ?? 'Validation error');
   });
+
+  if (isProd) {
+    app.addHook('onRequest', async (request, reply) => {
+      if (request.headers['x-forwarded-proto'] === 'http') {
+        const host = request.headers.host;
+        return reply.code(301).redirect(`https://${host ?? ''}${request.url}`);
+      }
+    });
+  }
 
   app.setErrorHandler((error, request, reply) => {
     if (reply.raw.headersSent || reply.sent) {

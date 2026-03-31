@@ -1,6 +1,6 @@
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '../src/drizzle/db.js';
-import { component, request, requestItem, user } from '../src/drizzle/schema.js';
+import { auditLog, component, request, requestItem, user } from '../src/drizzle/schema.js';
 import type { RequestStatusValue } from '../src/utils/enums.js';
 import { ComponentCategory, Location, UserRole } from '../src/utils/enums.js';
 
@@ -89,6 +89,7 @@ export async function createRequest(data: {
 }
 
 export async function deleteAllData() {
+  await db.delete(auditLog);
   await db.delete(requestItem);
   await db.delete(request);
   await db.delete(component);
@@ -96,6 +97,7 @@ export async function deleteAllData() {
 
 export async function deleteUsers(ids: string[]) {
   if (ids.length > 0) {
+    await db.delete(auditLog).where(inArray(auditLog.userId, ids));
     await db.delete(user).where(inArray(user.id, ids));
   }
 }

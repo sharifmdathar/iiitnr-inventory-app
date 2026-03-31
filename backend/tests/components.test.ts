@@ -31,13 +31,11 @@ let facultyUserId: string;
 beforeAll(async () => {
   app = await buildApp();
 
-  await deleteAllData();
-
   const { hash } = await import('bcryptjs');
   const passwordHash = await hash('password123', 12);
 
   const adminUser = await createUser({
-    email: `admin_${Date.now()}@example.com`,
+    email: `admin_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'Admin User',
     role: UserRole.ADMIN,
@@ -46,7 +44,7 @@ beforeAll(async () => {
   adminToken = app.jwt.sign({ sub: adminUser.id, role: adminUser.role }, { expiresIn: '1h' });
 
   const taUser = await createUser({
-    email: `ta_${Date.now()}@example.com`,
+    email: `ta_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'TA User',
     role: UserRole.TA,
@@ -55,7 +53,7 @@ beforeAll(async () => {
   taUserId = taUser.id;
 
   const studentUser = await createUser({
-    email: `student_${Date.now()}@example.com`,
+    email: `student_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'Student User',
     role: UserRole.STUDENT,
@@ -64,7 +62,7 @@ beforeAll(async () => {
   studentUserId = studentUser.id;
 
   const facultyUser = await createUser({
-    email: `faculty_${Date.now()}@example.com`,
+    email: `faculty_${crypto.randomUUID()}@example.com`,
     passwordHash,
     name: 'Faculty User',
     role: UserRole.FACULTY,
@@ -74,7 +72,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await deleteAllData();
   await deleteUsers([adminUserId, taUserId, studentUserId, facultyUserId].filter(Boolean));
   await app.close();
 });
@@ -162,13 +159,12 @@ describe('Component CRUD API', () => {
       assert.equal(body.components[0].id, component2.id);
       assert.equal(body.components[1].id, component1.id);
 
-      await deleteAllData();
+      // Clean up created components
+      await deleteComponents([component1.id, component2.id]);
     });
 
     test('returns 304 Not Modified when If-Modified-Since is up to date (TA)', async () => {
-      await deleteAllData();
-
-      await createComponent({
+      const comp = await createComponent({
         name: 'Conditional GET Component',
         description: 'For If-Modified-Since testing',
         totalQuantity: 5,
@@ -200,7 +196,7 @@ describe('Component CRUD API', () => {
 
       assert.equal(secondResponse.statusCode, 304);
 
-      await deleteAllData();
+      await deleteComponents([comp.id]);
     });
 
     describe('GET /components/export/csv', () => {

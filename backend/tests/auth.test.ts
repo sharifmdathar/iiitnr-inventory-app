@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { inArray } from 'drizzle-orm';
 import { buildApp } from '../src/app.js';
 import { db } from '../src/drizzle/db.js';
-import { user } from '../src/drizzle/schema.js';
+import { user, auditLog } from '../src/drizzle/schema.js';
 
 let app: Awaited<ReturnType<typeof buildApp>>;
 const createdUserIds: string[] = [];
@@ -16,6 +16,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (createdUserIds.length > 0) {
+    await db.delete(auditLog).where(inArray(auditLog.userId, createdUserIds));
     await db.delete(user).where(inArray(user.id, createdUserIds));
   }
   await app.close();
@@ -23,7 +24,7 @@ afterAll(async () => {
 
 describe('Authentication API', () => {
   test('registers a user but gets 403 when trying to log in', async () => {
-    const email = `user_${Date.now()}@example.com`;
+    const email = `user_${crypto.randomUUID()}@example.com`;
     const password = 'password123';
 
     const registerResponse = await app.inject({
@@ -73,7 +74,7 @@ describe('Authentication API', () => {
         method: 'POST',
         url: '/auth/register',
         payload: {
-          email: `short_${Date.now()}@example.com`,
+          email: `short_${crypto.randomUUID()}@example.com`,
           password: 'short',
           name: 'Short Pass',
         },
@@ -84,10 +85,11 @@ describe('Authentication API', () => {
     });
 
     test('returns 400 when email is already in use', async () => {
-      const email = `duplicate_${Date.now()}@example.com`;
+      const email = `duplicate_${crypto.randomUUID()}@example.com`;
       const now = new Date().toISOString();
+      const userId = crypto.randomUUID();
       await db.insert(user).values({
-        id: crypto.randomUUID(),
+        id: userId,
         email,
         passwordHash: 'hash',
         name: 'Existing User',
@@ -95,6 +97,7 @@ describe('Authentication API', () => {
         createdAt: now,
         updatedAt: now,
       });
+      createdUserIds.push(userId);
 
       const response = await app.inject({
         method: 'POST',
@@ -137,7 +140,7 @@ describe('Authentication API', () => {
     });
 
     test('returns 401 for incorrect password', async () => {
-      const email = `wrongpass_${Date.now()}@example.com`;
+      const email = `wrongpass_${crypto.randomUUID()}@example.com`;
       const { hash } = await import('bcryptjs');
       const passwordHash = await hash('correctpassword', 12);
       const now = new Date().toISOString();
@@ -169,7 +172,7 @@ describe('Authentication API', () => {
     });
 
     test('returns 401 for Google-only account', async () => {
-      const email = `googleonly_${Date.now()}@example.com`;
+      const email = `googleonly_${crypto.randomUUID()}@example.com`;
       const now = new Date().toISOString();
       const [created] = await db
         .insert(user)
@@ -210,7 +213,7 @@ describe('Authentication API', () => {
     });
 
     test('returns user for valid token', async () => {
-      const email = `me_${Date.now()}@example.com`;
+      const email = `me_${crypto.randomUUID()}@example.com`;
       const now = new Date().toISOString();
       const [created] = await db
         .insert(user)

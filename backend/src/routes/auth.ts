@@ -201,12 +201,20 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         name?: string;
       };
 
-      const email = body?.email?.trim();
+      const email = body?.email?.trim().toLowerCase();
       const password = body?.password;
       const name = body?.name?.trim();
 
       if (!email || !password) {
         return reply.code(400).send({ error: 'email and password are required' });
+      }
+
+      const existing = await db.query.user.findFirst({
+        where: (u, { eq }) => eq(u.email, email),
+      });
+
+      if (existing) {
+        return reply.code(400).send({ error: 'email already in use' });
       }
 
       if (password.length < 8) {
@@ -264,7 +272,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       const body = request.body as { email?: string; password?: string };
-      const email = body?.email?.trim();
+      const email = body?.email?.trim().toLowerCase();
       const password = body?.password;
 
       if (!email || !password) {

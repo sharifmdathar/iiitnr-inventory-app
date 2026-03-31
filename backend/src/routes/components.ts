@@ -43,35 +43,44 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
       const components = await db.query.component.findMany({
         orderBy: (components, { desc }) => [desc(components.createdAt)],
       });
-      const lastModifiedMs = components.reduce(
-        (latestMs: number, c: InferSelectModel<typeof component>) => {
-          const currentMs = new Date(c.updatedAt ?? c.createdAt).getTime();
-          return Math.max(latestMs, currentMs);
-        },
-        0,
-      );
+      if (components.length === 0) return reply.code(204).send();
 
-      if (lastModifiedMs === 0) return reply.code(204).send();
+      // Find latest updatedAt/createdAt using string comparison (ISO format sorts lexicographically)
+      let latestDateStr = '';
+      for (const c of components) {
+        const dateStr = (c.updatedAt ?? c.createdAt) as string;
+        if (dateStr > latestDateStr) {
+          latestDateStr = dateStr;
+        }
+      }
 
-      const lastModifiedDate = new Date(lastModifiedMs);
-      lastModifiedDate.setMilliseconds(0);
+      if (!latestDateStr) {
+        return reply.send({ components });
+      }
+
+      const isoStr = latestDateStr.includes('T') ? latestDateStr : latestDateStr.replace(' ', 'T');
+      const lastModifiedDate = new Date(isoStr.endsWith('Z') ? isoStr : isoStr + 'Z');
+      const lastModifiedHeader = lastModifiedDate.toUTCString();
 
       const modifiedSinceHeader = request.headers['if-modified-since'];
       if (modifiedSinceHeader) {
-        const modifiedSinceDate = new Date(modifiedSinceHeader);
+        const clientDate = new Date(modifiedSinceHeader);
+        const clientIso = clientDate.toISOString();
+        const serverSec = isoStr.substring(0, 19);
+        const clientSec = clientIso.substring(0, 19);
 
-        if (!Number.isNaN(modifiedSinceDate.getTime()) && modifiedSinceDate >= lastModifiedDate) {
+        if (clientSec >= serverSec) {
           return reply.code(304).send();
         }
       }
       return reply
         .headers({
-          'Last-Modified': lastModifiedDate.toUTCString(),
+          'Last-Modified': lastModifiedHeader,
           'Cache-Control': 'private, max-age=0, must-revalidate',
         })
         .send({
           components,
-          lastModified: lastModifiedDate.toUTCString(),
+          lastModified: lastModifiedHeader,
         });
     } catch (err) {
       app.log.error(err);

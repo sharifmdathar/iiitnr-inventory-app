@@ -24,7 +24,7 @@ if (isTest && !process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
   console.warn('⚠️  WARNING: Tests using DATABASE_URL instead of TEST_DATABASE_URL!');
 }
 
-export const pool = new Pool({ connectionString: databaseUrl });
+export const pool = new Pool({ connectionString: databaseUrl, max: 20 });
 
 export const db = drizzle(pool, {
   schema: {

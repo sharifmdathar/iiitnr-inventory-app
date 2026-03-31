@@ -34,8 +34,6 @@ const requestStatus = {
 beforeAll(async () => {
   app = await buildApp();
 
-  await deleteAllData();
-
   const suffix = randomUUID();
   const { hash } = await import('bcryptjs');
   const passwordHash = await hash('password123', 12);
@@ -400,7 +398,7 @@ describe('Request API', () => {
       createdComponentIds.push(component.id);
 
       const otherUser = await createUser({
-        email: `other_${Date.now()}@example.com`,
+        email: `other_${crypto.randomUUID()}@example.com`,
         passwordHash: 'hash',
         name: 'Other User',
         role: UserRole.STUDENT,
@@ -470,7 +468,7 @@ describe('Request API', () => {
       createdComponentIds.push(item.id);
 
       const otherUser = await createUser({
-        email: `other_${Date.now()}@example.com`,
+        email: `other_${crypto.randomUUID()}@example.com`,
         passwordHash: 'hash',
         name: 'Other User',
         role: UserRole.STUDENT,
@@ -576,7 +574,7 @@ describe('Request API', () => {
       });
 
       const otherFaculty = await createUser({
-        email: `other_faculty_${Date.now()}@example.com`,
+        email: `other_faculty_${crypto.randomUUID()}@example.com`,
         passwordHash: 'hash',
         name: 'Other Faculty',
         role: UserRole.FACULTY,
@@ -728,7 +726,7 @@ describe('Request API', () => {
       createdComponentIds.push(item.id);
 
       const otherFaculty = await createUser({
-        email: `other_faculty_${Date.now()}@example.com`,
+        email: `other_faculty_${crypto.randomUUID()}@example.com`,
         passwordHash: 'hash',
         name: 'Other Faculty',
         role: UserRole.FACULTY,

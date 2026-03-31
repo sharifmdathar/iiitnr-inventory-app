@@ -1,4 +1,5 @@
 import type { FastifyRequest } from 'fastify';
+import { filterXSS } from 'xss';
 
 export function isValidHttpUrl(urlString: string): boolean {
   try {
@@ -11,7 +12,7 @@ export function isValidHttpUrl(urlString: string): boolean {
 
 export function sanitizeString(input: string | null | undefined): string | undefined {
   if (input == null) return undefined;
-  return input.trim().slice(0, 2000);
+  return filterXSS(input.trim().slice(0, 2000));
 }
 
 export function getClientInfo(request: FastifyRequest): { ip: string; userAgent?: string } {
