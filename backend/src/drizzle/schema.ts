@@ -75,6 +75,10 @@ export const request = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
+    returnDueAt: timestamp({ precision: 3, mode: 'string' }),
+    returnedAt: timestamp({ precision: 3, mode: 'string' }),
+    fulfilledAt: timestamp({ precision: 3, mode: 'string' }),
+    receivedByUserId: text(),
   },
   (table) => [
     index('Request_targetFacultyId_idx').using(

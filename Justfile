@@ -12,6 +12,9 @@ dev:
 db-up:
     cd backend && podman compose -f compose.db.yaml --profile test up -d
 
+db-down:
+    cd backend && podman compose -f compose.db.yaml --profile test down
+
 up:
     cd backend && podman compose up -d
 

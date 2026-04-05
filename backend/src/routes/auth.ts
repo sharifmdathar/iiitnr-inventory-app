@@ -100,7 +100,8 @@ async function findOrCreateGoogleUser(
         role: user.role,
         googleId: user.googleId,
       });
-    return created!;
+    if (!created) throw new Error('User creation failed');
+    return created;
   }
 
   const shouldUpdateProfile =
@@ -125,7 +126,8 @@ async function findOrCreateGoogleUser(
         role: user.role,
         googleId: user.googleId,
       });
-    return updated!;
+    if (!updated) throw new Error('User update failed');
+    return updated;
   }
 
   return existingUser;

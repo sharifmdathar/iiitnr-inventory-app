@@ -855,7 +855,7 @@ describe('Request API', () => {
       });
 
       assert.equal(response.statusCode, 400);
-      assert.ok(response.json().error.includes('must be APPROVED before'));
+      assert.ok(response.json().error.includes('PENDING requests can only be'));
     });
 
     test('FULFILLED requires Admin or TA role', async () => {

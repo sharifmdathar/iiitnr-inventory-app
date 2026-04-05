@@ -111,12 +111,14 @@ describe('Audit Logging', () => {
       // Check audit log was created
       const logs = await getAuditLogs({ entityType: 'Component', entityId: created.id });
       assert.equal(logs.length, 1);
-      assert.equal(logs[0].action, AuditActionType.CREATE);
-      assert.equal(logs[0].userId, adminUserId);
-      assert.equal(logs[0].entityType, 'Component');
-      assert.equal(logs[0].entityId, created.id);
-      assert.ok(logs[0].newValues);
-      const newValues = JSON.parse(logs[0].newValues!);
+      const log = logs[0];
+      if (!log) throw new Error('Log not found');
+      assert.equal(log.action, AuditActionType.CREATE);
+      assert.equal(log.userId, adminUserId);
+      assert.equal(log.entityType, 'Component');
+      assert.equal(log.entityId, created.id);
+      assert.ok(log.newValues);
+      const newValues = JSON.parse(log.newValues as string);
       assert.equal(newValues.name, 'Audit Test Component');
 
       await db.delete(auditLog).where(eq(auditLog.entityId, created.id));
@@ -149,12 +151,13 @@ describe('Audit Logging', () => {
       const logs = await getAuditLogs({ entityType: 'Component', entityId: component.id });
       const updateLog = logs.find((l) => l.action === AuditActionType.UPDATE);
       assert.ok(updateLog, 'UPDATE audit log should exist');
-      assert.equal(updateLog!.userId, taUserId);
-      assert.ok(updateLog!.oldValues);
-      assert.ok(updateLog!.newValues);
+      if (!updateLog) throw new Error('Log not found');
+      assert.equal(updateLog.userId, taUserId);
+      assert.ok(updateLog.oldValues);
+      assert.ok(updateLog.newValues);
 
-      const oldValues = JSON.parse(updateLog!.oldValues!);
-      const newValues = JSON.parse(updateLog!.newValues!);
+      const oldValues = JSON.parse(updateLog.oldValues as string);
+      const newValues = JSON.parse(updateLog.newValues as string);
       assert.equal(oldValues.name, 'Component to Update');
       assert.equal(newValues.name, 'Updated Component Name');
       assert.equal(oldValues.totalQuantity, 5);
@@ -182,11 +185,12 @@ describe('Audit Logging', () => {
       const logs = await getAuditLogs({ entityType: 'Component', entityId: component.id });
       const deleteLog = logs.find((l) => l.action === AuditActionType.DELETE);
       assert.ok(deleteLog, 'DELETE audit log should exist');
-      assert.equal(deleteLog!.userId, adminUserId);
-      assert.equal(deleteLog!.entityType, 'Component');
-      assert.equal(deleteLog!.entityId, component.id);
-      assert.ok(deleteLog!.oldValues);
-      const oldValues = JSON.parse(deleteLog!.oldValues!);
+      if (!deleteLog) throw new Error('Log not found');
+      assert.equal(deleteLog.userId, adminUserId);
+      assert.equal(deleteLog.entityType, 'Component');
+      assert.equal(deleteLog.entityId, component.id);
+      assert.ok(deleteLog.oldValues);
+      const oldValues = JSON.parse(deleteLog.oldValues as string);
       assert.equal(oldValues.name, 'Component to Delete');
 
       await deleteAllData();
@@ -222,9 +226,11 @@ describe('Audit Logging', () => {
         .where(and(eq(auditLog.userId, testUser.id), eq(auditLog.action, AuditActionType.LOGIN)));
 
       assert.equal(logs.length, 1);
-      assert.equal(logs[0].action, AuditActionType.LOGIN);
-      assert.ok(logs[0].metadata);
-      const metadata = JSON.parse(logs[0].metadata!);
+      const log = logs[0];
+      if (!log) throw new Error('Log not found');
+      assert.equal(log.action, AuditActionType.LOGIN);
+      assert.ok(log.metadata);
+      const metadata = JSON.parse(log.metadata as string);
       assert.equal(metadata.method, 'password');
 
       await db.delete(auditLog).where(eq(auditLog.userId, testUser.id));
@@ -253,8 +259,9 @@ describe('Audit Logging', () => {
       const logs = await getAuditLogs({ entityType: 'Component', entityId: component.id });
       const deleteLog = logs.find((l) => l.action === AuditActionType.DELETE);
       assert.ok(deleteLog, 'DELETE audit log should exist');
-      assert.ok(deleteLog!.ipAddress, 'IP address should be captured');
-      assert.equal(deleteLog!.userAgent, 'Test-Agent/1.0');
+      if (!deleteLog) throw new Error('Log not found');
+      assert.ok(deleteLog.ipAddress, 'IP address should be captured');
+      assert.equal(deleteLog.userAgent, 'Test-Agent/1.0');
 
       await deleteAllData();
     });
@@ -285,11 +292,13 @@ describe('Audit Logging', () => {
       // Check audit log was created
       const logs = await getAuditLogs({ entityType: 'Request', entityId: createdRequest.id });
       assert.equal(logs.length, 1);
-      assert.equal(logs[0].action, AuditActionType.CREATE);
-      assert.equal(logs[0].userId, studentUserId);
-      assert.equal(logs[0].entityType, 'Request');
-      assert.ok(logs[0].newValues);
-      const newValues = JSON.parse(logs[0].newValues!);
+      const log = logs[0];
+      if (!log) throw new Error('Log not found');
+      assert.equal(log.action, AuditActionType.CREATE);
+      assert.equal(log.userId, studentUserId);
+      assert.equal(log.entityType, 'Request');
+      assert.ok(log.newValues);
+      const newValues = JSON.parse(log.newValues as string);
       assert.equal(newValues.projectTitle, 'Audit Test Project');
 
       await deleteAllData();
@@ -327,9 +336,10 @@ describe('Audit Logging', () => {
       const logs = await getAuditLogs({ entityType: 'Request', entityId: createdRequest.id });
       const deleteLog = logs.find((l) => l.action === AuditActionType.DELETE);
       assert.ok(deleteLog, 'DELETE audit log should exist');
-      assert.equal(deleteLog!.userId, studentUserId);
-      assert.ok(deleteLog!.oldValues);
-      const oldValues = JSON.parse(deleteLog!.oldValues!);
+      if (!deleteLog) throw new Error('Log not found');
+      assert.equal(deleteLog.userId, studentUserId);
+      assert.ok(deleteLog.oldValues);
+      const oldValues = JSON.parse(deleteLog.oldValues as string);
       assert.equal(oldValues.status, 'PENDING');
 
       await deleteAllData();
