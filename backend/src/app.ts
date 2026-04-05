@@ -112,11 +112,20 @@ function formatSchemaError(
   return new Error(first?.message ?? 'Validation error');
 }
 
+function isLoopbackSocket(request: FastifyRequest): boolean {
+  const addr = request.socket.remoteAddress;
+  return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1';
+}
+
 function handleHttpsRedirect(request: FastifyRequest, reply: FastifyReply) {
+  if (isLoopbackSocket(request)) {
+    return undefined;
+  }
   if (request.headers['x-forwarded-proto'] === 'http') {
     const host = request.headers.host;
     return reply.code(301).redirect(`https://${host ?? ''}${request.url}`);
   }
+  return undefined;
 }
 
 function handleError(error: Error, request: FastifyRequest, reply: FastifyReply) {
@@ -136,7 +145,7 @@ function handleError(error: Error, request: FastifyRequest, reply: FastifyReply)
 
   const message = err.message ?? (statusCode === 500 ? 'Internal Server Error' : 'Request failed');
 
-  void reply.code(statusCode).send({ error: message });
+  reply.code(statusCode).send({ error: message });
 }
 
 function isValidHttpErrorCode(code: number | undefined): code is number {

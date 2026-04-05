@@ -83,25 +83,31 @@ compose.desktop {
             }
 
             packageName = "IIITNR Inventory App"
-            packageVersion = "1.13.4"
+            packageVersion = "1.14.0"
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"
             includeAllModules = true
 
+            val appIconPng = project(":android").file("src/main/ic_launcher-playstore.png")
+
             windows {
-                val icon = project.file("icon.ico")
-                if (icon.exists()) {
-                    iconFile.set(icon)
+                when {
+                    appIconPng.exists() -> iconFile.set(appIconPng)
+                    else -> {
+                        val ico = project.file("icon.ico")
+                        if (ico.exists()) {
+                            iconFile.set(ico)
+                        }
+                    }
                 }
                 menu = true
                 shortcut = true
             }
 
             linux {
-                val icon = project.file("icon.png")
-                if (icon.exists()) {
-                    iconFile.set(icon)
+                if (appIconPng.exists()) {
+                    iconFile.set(appIconPng)
                 }
             }
         }

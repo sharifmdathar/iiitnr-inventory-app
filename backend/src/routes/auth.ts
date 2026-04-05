@@ -1,10 +1,11 @@
-import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastify';
 import { compare, hash } from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { eq } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { user } from '../drizzle/schema.js';
 import { UserRole, AuditActionType } from '../utils/enums.js';
+import type { UserRoleValue } from '../utils/enums.js';
 import { logAudit } from '../utils/audit.js';
 
 interface RegisterBody {
@@ -206,14 +207,14 @@ function parseGoogleAuthError(err: unknown): ValidationError {
   return { code: 400, message: 'Google Sign-In failed. Please try again.' };
 }
 
-async function findUserByEmail(email: string) {
+function findUserByEmail(email: string) {
   return db.query.user.findFirst({
     columns: { id: true, email: true, name: true, imageUrl: true, role: true, passwordHash: true },
     where: (u, { eq }) => eq(u.email, email),
   });
 }
 
-async function findUserById(id: string) {
+function findUserById(id: string) {
   return db.query.user.findFirst({
     columns: { id: true, email: true, name: true, imageUrl: true, role: true },
     where: (u, { eq }) => eq(u.id, id),
@@ -226,7 +227,7 @@ async function createUser(data: {
   passwordHash?: string;
   googleId?: string;
   imageUrl?: string | null;
-  role: string;
+  role: UserRoleValue;
 }) {
   const now = new Date().toISOString();
 
@@ -464,7 +465,7 @@ async function handleGoogleAuth(
   }
 }
 
-const authRoutes: FastifyPluginAsync = async (app) => {
+const authRoutes: FastifyPluginCallback = (app, _opts, done) => {
   app.post(
     '/register',
     {
@@ -501,6 +502,8 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     },
     (req, reply) => handleGoogleAuth(app, req, reply),
   );
+
+  done();
 };
 
 export default authRoutes;

@@ -20,6 +20,8 @@ data class Request(
     val status: String,
     val createdAt: String,
     val updatedAt: String,
+    val fulfilledAt: String? = null,
+    val returnedAt: String? = null,
     val items: List<RequestItem> = emptyList(),
     val user: User? = null,
     val targetFaculty: User? = null,

@@ -21,7 +21,6 @@ let app: Awaited<ReturnType<typeof buildApp>>;
 let adminToken: string;
 let taToken: string;
 let studentToken: string;
-let facultyToken: string;
 
 let adminUserId: string;
 let taUserId: string;
@@ -80,7 +79,6 @@ beforeAll(async () => {
     role: UserRole.FACULTY,
   });
   facultyUserId = facultyUser.id;
-  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1h' });
 });
 
 afterAll(async () => {

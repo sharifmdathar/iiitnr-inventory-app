@@ -52,7 +52,11 @@ fun RequestQrDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "Show this QR to TA",
+                        text =
+                            when (request.status) {
+                                "FULFILLED" -> "Return Components"
+                                else -> "Fulfill Request"
+                            },
                         style = MaterialTheme.typography.titleLarge,
                     )
                     IconButton(onClick = onDismiss) {
@@ -78,7 +82,13 @@ fun RequestQrDialog(
 
                     Image(
                         painter = qrPainter,
-                        contentDescription = "Request QR code for TA to scan",
+                        contentDescription =
+                            when (request.status) {
+                                "FULFILLED" ->
+                                    "QR for TA to scan and record return to inventory"
+
+                                else -> "Request QR code for TA to scan"
+                            },
                         modifier = Modifier.fillMaxWidth(),
                         contentScale = ContentScale.FillWidth,
                     )

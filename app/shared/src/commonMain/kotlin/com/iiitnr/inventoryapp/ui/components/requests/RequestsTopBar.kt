@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.AssignmentReturn
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 fun RequestsTopBar(
     onNavigateBack: () -> Unit,
     onFulfillByQrClick: (() -> Unit)? = null,
+    onReturnByQrClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -45,14 +47,29 @@ fun RequestsTopBar(
                 color = MaterialTheme.colorScheme.primary,
             )
         }
-        if (onFulfillByQrClick != null) {
-            IconButton(
-                onClick = onFulfillByQrClick,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.QrCodeScanner,
-                    contentDescription = "Fulfill by request ID or scan QR",
-                )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onReturnByQrClick != null) {
+                IconButton(
+                    onClick = onReturnByQrClick,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
+                        contentDescription = "Record return by request ID or scan QR",
+                    )
+                }
+            }
+            if (onFulfillByQrClick != null) {
+                IconButton(
+                    onClick = onFulfillByQrClick,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = "Fulfill by request ID or scan QR",
+                    )
+                }
             }
         }
     }

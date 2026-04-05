@@ -11,7 +11,6 @@ import {
   createComponent,
   createRequest,
   createUser,
-  deleteAllData,
   deleteAllRequests,
   deleteComponents,
   deleteUsers,

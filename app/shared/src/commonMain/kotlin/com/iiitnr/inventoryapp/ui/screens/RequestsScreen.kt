@@ -44,6 +44,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private enum class RequestIdDialogKind {
+    Fulfill,
+    Return,
+}
+
 @Composable
 fun RequestsScreen(
     tokenManager: TokenManager,
@@ -56,9 +61,9 @@ fun RequestsScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
     var requestToShowQr by remember { mutableStateOf<Request?>(null) }
-    var showFulfillByQrDialog by remember { mutableStateOf(false) }
+    var requestIdDialogKind by remember { mutableStateOf<RequestIdDialogKind?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
-    var fulfillByIdInput by remember { mutableStateOf("") }
+    var requestIdInput by remember { mutableStateOf("") }
     var currentUser by remember { mutableStateOf<User?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf<String?>(null) }
@@ -231,29 +236,42 @@ fun RequestsScreen(
             )
         }
 
-        if (showFulfillByQrDialog) {
+        val activeIdDialogKind = requestIdDialogKind
+        if (activeIdDialogKind != null && !showQrScanner) {
             FulfillByIdDialog(
-                requestIdInput = fulfillByIdInput,
-                onRequestIdChange = { fulfillByIdInput = it },
+                requestIdInput = requestIdInput,
+                onRequestIdChange = { requestIdInput = it },
+                dialogTitle =
+                    when (activeIdDialogKind) {
+                        RequestIdDialogKind.Fulfill -> "Fulfill by QR / ID"
+                        RequestIdDialogKind.Return -> "Record return by QR / ID"
+                    },
+                confirmButtonLabel =
+                    when (activeIdDialogKind) {
+                        RequestIdDialogKind.Fulfill -> "Fulfill"
+                        RequestIdDialogKind.Return -> "Mark returned"
+                    },
                 onConfirm = {
-                    val raw = fulfillByIdInput.trim()
+                    val raw = requestIdInput.trim()
                     val requestId = raw.removePrefix(REQUEST_QR_PREFIX).trim()
                     if (requestId.isNotBlank()) {
-                        updateRequestStatus(requestId, "FULFILLED")
-                        showFulfillByQrDialog = false
-                        fulfillByIdInput = ""
+                        val status =
+                            when (activeIdDialogKind) {
+                                RequestIdDialogKind.Fulfill -> "FULFILLED"
+                                RequestIdDialogKind.Return -> "RETURNED"
+                            }
+                        updateRequestStatus(requestId, status)
+                        requestIdDialogKind = null
+                        requestIdInput = ""
                     }
                 },
                 onDismiss = {
-                    showFulfillByQrDialog = false
-                    fulfillByIdInput = ""
+                    requestIdDialogKind = null
+                    requestIdInput = ""
                 },
                 onScanClick =
                     if (isAdminOrTA && isQrScanAvailable()) {
-                        {
-                            showFulfillByQrDialog = false
-                            showQrScanner = true
-                        }
+                        { showQrScanner = true }
                     } else {
                         null
                     },
@@ -265,7 +283,19 @@ fun RequestsScreen(
                 onNavigateBack = onNavigateBack,
                 onFulfillByQrClick =
                     if (isAdminOrTA) {
-                        { showFulfillByQrDialog = true }
+                        {
+                            requestIdDialogKind = RequestIdDialogKind.Fulfill
+                            requestIdInput = ""
+                        }
+                    } else {
+                        null
+                    },
+                onReturnByQrClick =
+                    if (isAdminOrTA) {
+                        {
+                            requestIdDialogKind = RequestIdDialogKind.Return
+                            requestIdInput = ""
+                        }
                     } else {
                         null
                     },
@@ -290,7 +320,8 @@ fun RequestsScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    val statusOptions = listOf("ALL", "PENDING", "APPROVED", "REJECTED", "FULFILLED")
+                    val statusOptions =
+                        listOf("ALL", "PENDING", "APPROVED", "REJECTED", "FULFILLED", "RETURNED")
                     items(statusOptions) { option ->
                         val isSelected = (statusFilter == null && option == "ALL") || statusFilter == option
                         TextButton(
@@ -357,6 +388,17 @@ fun RequestsScreen(
                         } else {
                             null
                         },
+                    onReturnRequest =
+                        if (isAdminOrTA) {
+                            { requestId ->
+                                updateRequestStatus(
+                                    requestId,
+                                    "RETURNED",
+                                )
+                            }
+                        } else {
+                            null
+                        },
                     onShowQr =
                         if (!isFaculty) {
                             { request -> requestToShowQr = request }
@@ -375,14 +417,12 @@ fun RequestsScreen(
                     onResult = { rawValue ->
                         val requestId = rawValue.removePrefix(REQUEST_QR_PREFIX).trim()
                         if (requestId.isNotBlank()) {
-                            fulfillByIdInput = requestId
+                            requestIdInput = requestId
                         }
                         showQrScanner = false
-                        showFulfillByQrDialog = true
                     },
                     onCancel = {
                         showQrScanner = false
-                        showFulfillByQrDialog = true
                     },
                 )
             }

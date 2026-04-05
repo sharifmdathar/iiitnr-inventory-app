@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.AssignmentReturn
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -31,17 +32,21 @@ import com.iiitnr.inventoryapp.data.models.Request
 private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
 private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
 private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
+private val cardBackgroundReturnedLight = Color(0xFFE8EAF6)
 private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
 
 private val cardBackgroundRejectedDark = Color(0xFF3D2020)
 private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
 private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
+private val cardBackgroundReturnedDark = Color(0xFF1E1E2E)
 private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
 
 private val statusApprovedLight = Color(0xFF2E7D32)
 private val statusApprovedDark = Color(0xFF81C784)
 private val statusFulfilledLight = Color(0xFF1976D2)
 private val statusFulfilledDark = Color(0xFF64B5F6)
+private val statusReturnedLight = Color(0xFF5E35B1)
+private val statusReturnedDark = Color(0xFFB39DDB)
 
 @Composable
 fun RequestCard(
@@ -50,6 +55,7 @@ fun RequestCard(
     onApproveRequest: ((String) -> Unit)? = null,
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
+    onReturnRequest: ((String) -> Unit)? = null,
     onShowQr: ((Request) -> Unit)? = null,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
@@ -60,6 +66,7 @@ fun RequestCard(
             "REJECTED" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
             "APPROVED" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
             "FULFILLED" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
+            "RETURNED" -> if (isDark) cardBackgroundReturnedDark else cardBackgroundReturnedLight
             else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
         }
     val statusSubtitleColor =
@@ -67,6 +74,7 @@ fun RequestCard(
             "REJECTED" -> MaterialTheme.colorScheme.error
             "APPROVED" -> if (isDark) statusApprovedDark else statusApprovedLight
             "FULFILLED" -> if (isDark) statusFulfilledDark else statusFulfilledLight
+            "RETURNED" -> if (isDark) statusReturnedDark else statusReturnedLight
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
 
@@ -100,6 +108,7 @@ fun RequestCard(
                     onApproveRequest = onApproveRequest,
                     onRejectRequest = onRejectRequest,
                     onFulfillRequest = onFulfillRequest,
+                    onReturnRequest = onReturnRequest,
                     onShowQr = onShowQr,
                 )
             }
@@ -115,6 +124,22 @@ fun RequestCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (request.fulfilledAt != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Fulfilled: ${request.fulfilledAt}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (request.returnedAt != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Returned: ${request.returnedAt}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (request.user != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -154,6 +179,7 @@ private fun RequestCardActions(
     onApproveRequest: ((String) -> Unit)?,
     onRejectRequest: ((String) -> Unit)?,
     onFulfillRequest: ((String) -> Unit)?,
+    onReturnRequest: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
 ) {
     when (request.status) {
@@ -170,6 +196,14 @@ private fun RequestCardActions(
                 request = request,
                 isFaculty = isFaculty,
                 onFulfillRequest = onFulfillRequest,
+                onShowQr = onShowQr,
+            )
+
+        "FULFILLED" ->
+            FulfilledRequestActions(
+                request = request,
+                isFaculty = isFaculty,
+                onReturnRequest = onReturnRequest,
                 onShowQr = onShowQr,
             )
     }
@@ -233,6 +267,35 @@ private fun ApprovedRequestActions(
                 Icon(
                     imageVector = Icons.Default.DoneAll,
                     contentDescription = "Fulfill request",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FulfilledRequestActions(
+    request: Request,
+    isFaculty: Boolean,
+    onReturnRequest: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!isFaculty && onShowQr != null) {
+            IconButton(onClick = { onShowQr(request) }) {
+                Icon(
+                    imageVector = Icons.Default.QrCode2,
+                    contentDescription = "Show QR for TA to scan when returning items",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (onReturnRequest != null) {
+            IconButton(onClick = { onReturnRequest(request.id) }) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
+                    contentDescription = "Record return to inventory",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }

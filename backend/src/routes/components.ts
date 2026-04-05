@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { component, requestItem } from '../drizzle/schema.js';
@@ -150,13 +150,13 @@ function validateQuantityRelationship(
   return null;
 }
 
-async function findComponentById(id: string): Promise<ComponentRecord | undefined> {
+function findComponentById(id: string): Promise<ComponentRecord | undefined> {
   return db.query.component.findFirst({
     where: (c, { eq }) => eq(c.id, id),
   });
 }
 
-async function getAllComponents(): Promise<ComponentRecord[]> {
+function getAllComponents(): Promise<ComponentRecord[]> {
   return db.query.component.findMany({
     orderBy: (components, { desc }) => [desc(components.createdAt)],
   });
@@ -227,7 +227,7 @@ function getLatestDateString(components: ComponentRecord[]): string {
 
 function parseIsoDate(dateStr: string): Date {
   const isoStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
-  return new Date(isoStr.endsWith('Z') ? isoStr : isoStr + 'Z');
+  return new Date(isoStr.endsWith('Z') ? isoStr : `${isoStr}Z`);
 }
 
 function shouldReturn304(modifiedSinceHeader: string | undefined, latestDateStr: string): boolean {
@@ -399,9 +399,14 @@ async function handleCreateComponent(
     return reply.code(validationError.code).send({ error: validationError.message });
   }
 
+  const componentName = input.name;
+  if (!componentName) {
+    return reply.code(400).send({ error: 'name is required' });
+  }
+
   try {
     const created = await insertComponent({
-      name: input.name!,
+      name: componentName,
       description: input.description,
       imageUrl: input.imageUrl,
       totalQuantity: input.totalQuantity ?? 0,
@@ -535,7 +540,7 @@ async function handleDeleteComponent(
   }
 }
 
-const componentsRoutes: FastifyPluginAsync = async (app) => {
+const componentsRoutes: FastifyPluginCallback = (app, _opts, done) => {
   app.get('/', { preHandler: requireAuth }, (req, reply) => handleGetComponents(app, req, reply));
 
   app.get('/export/csv', { preHandler: requireAuth }, (req, reply) =>
@@ -557,6 +562,8 @@ const componentsRoutes: FastifyPluginAsync = async (app) => {
   app.delete('/:id', { preHandler: requireAdminOrTA }, (req, reply) =>
     handleDeleteComponent(app, req, reply),
   );
+
+  done();
 };
 
 export default componentsRoutes;

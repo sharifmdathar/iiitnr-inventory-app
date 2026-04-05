@@ -103,6 +103,21 @@ export const request = pgTable(
   ],
 );
 
+export const component = pgTable('Component', {
+  id: text().primaryKey().notNull(),
+  name: text().notNull(),
+  description: text(),
+  imageUrl: text(),
+  totalQuantity: integer().default(0).notNull(),
+  availableQuantity: integer().default(0).notNull(),
+  category: componentCategory(),
+  location: location(),
+  createdAt: timestamp({ precision: 3, mode: 'string' })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
+});
+
 export const requestItem = pgTable(
   'RequestItem',
   {
@@ -140,21 +155,6 @@ export const requestItem = pgTable(
       .onDelete('restrict'),
   ],
 );
-
-export const component = pgTable('Component', {
-  id: text().primaryKey().notNull(),
-  name: text().notNull(),
-  description: text(),
-  imageUrl: text(),
-  totalQuantity: integer().default(0).notNull(),
-  availableQuantity: integer().default(0).notNull(),
-  category: componentCategory(),
-  location: location(),
-  createdAt: timestamp({ precision: 3, mode: 'string' })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
-});
 
 export const auditActionType = pgEnum('AuditActionType', [
   'CREATE',

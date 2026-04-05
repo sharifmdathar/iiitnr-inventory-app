@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastify';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { component, request, requestItem, user } from '../drizzle/schema.js';
@@ -131,7 +131,7 @@ async function validateFacultyExists(facultyId: string): Promise<boolean> {
     columns: { id: true },
     where: (u, { eq, and }) => and(eq(u.id, facultyId), eq(u.role, UserRole.FACULTY)),
   });
-  return !!facultyRow;
+  return Boolean(facultyRow);
 }
 
 async function validateComponentsExist(componentIds: string[]): Promise<boolean> {
@@ -335,30 +335,42 @@ async function handleCreateRequest(
 ) {
   const body = req.body as CreateRequestBody;
   const userId = getCurrentUser(req)?.sub;
-  if (!userId) return;
+  if (!userId) {
+    reply.code(401).send({ error: 'unauthorized' });
+    return;
+  }
 
   const bodyError = validateCreateRequestBody(body);
   if (bodyError) {
-    return reply.code(bodyError.code).send({ error: bodyError.message });
+    reply.code(bodyError.code).send({ error: bodyError.message });
+    return;
   }
 
-  const targetFacultyId = body.targetFacultyId!.trim();
-  const projectTitle = body.projectTitle!.trim();
+  const targetFacultyId = body.targetFacultyId?.trim();
+  const projectTitle = body.projectTitle?.trim();
+  const rawItems = body.items;
+  if (!targetFacultyId || !projectTitle || !Array.isArray(rawItems)) {
+    reply.code(400).send({ error: 'invalid request body' });
+    return;
+  }
 
-  const itemsResult = normalizeAndValidateItems(body.items!);
+  const itemsResult = normalizeAndValidateItems(rawItems);
   if (isValidationError(itemsResult)) {
-    return reply.code(itemsResult.code).send({ error: itemsResult.message });
+    reply.code(itemsResult.code).send({ error: itemsResult.message });
+    return;
   }
   const normalizedItems = itemsResult;
 
   try {
     if (!(await validateFacultyExists(targetFacultyId))) {
-      return reply.code(400).send({ error: 'invalid targetFacultyId' });
+      reply.code(400).send({ error: 'invalid targetFacultyId' });
+      return;
     }
 
     const componentIds = normalizedItems.map((item) => item.componentId);
     if (!(await validateComponentsExist(componentIds))) {
-      return reply.code(400).send({ error: 'one or more components not found' });
+      reply.code(400).send({ error: 'one or more components not found' });
+      return;
     }
 
     const now = new Date().toISOString();
@@ -387,7 +399,8 @@ async function handleCreateRequest(
 
     const createdRequest = await fetchAndShapeRequest(requestId);
     if (!createdRequest) {
-      return reply.code(500).send({ error: 'failed to create request' });
+      reply.code(500).send({ error: 'failed to create request' });
+      return;
     }
 
     await logAudit(
@@ -401,10 +414,10 @@ async function handleCreateRequest(
       req,
     );
 
-    return reply.code(201).send({ request: createdRequest });
+    reply.code(201).send({ request: createdRequest });
   } catch (err) {
     app.log.error(err);
-    return reply.code(500).send({ error: 'failed to create request' });
+    reply.code(500).send({ error: 'failed to create request' });
   }
 }
 
@@ -419,10 +432,10 @@ async function handleGetFaculty(
       .where(eq(user.role, UserRole.FACULTY))
       .orderBy(desc(user.createdAt));
 
-    return reply.send({ faculty });
+    reply.send({ faculty });
   } catch (err) {
     app.log.error(err);
-    return reply.code(500).send({ error: 'failed to fetch faculty' });
+    reply.code(500).send({ error: 'failed to fetch faculty' });
   }
 }
 
@@ -433,14 +446,18 @@ async function handleGetRequests(
 ) {
   const currentUser = getCurrentUser(req);
   const currentUserId = currentUser?.sub;
-  if (!currentUserId) return;
+  if (!currentUserId) {
+    reply.code(401).send({ error: 'unauthorized' });
+    return;
+  }
 
   const query = req.query as RequestQuery;
   const requestedUserId = query?.userId?.trim();
   const status = query?.status?.trim();
 
   if (status && !requestStatusValues.includes(status as RequestStatusValue)) {
-    return reply.code(400).send({ error: 'invalid status' });
+    reply.code(400).send({ error: 'invalid status' });
+    return;
   }
 
   const conditions = [];
@@ -473,10 +490,10 @@ async function handleGetRequests(
     });
 
     const requests = rows.map(shapeRequest);
-    return reply.send({ requests });
+    reply.send({ requests });
   } catch (err) {
     app.log.error(err);
-    return reply.code(500).send({ error: 'failed to fetch requests' });
+    reply.code(500).send({ error: 'failed to fetch requests' });
   }
 }
 
@@ -493,12 +510,14 @@ async function handlePendingStatusUpdate(
   ];
 
   if (!allowedPendingTransitions.includes(newStatus)) {
-    return reply.code(400).send({ error: 'PENDING requests can only be APPROVED or REJECTED' });
+    reply.code(400).send({ error: 'PENDING requests can only be APPROVED or REJECTED' });
+    return;
   }
 
   const authError = canApproveOrRejectRequest(currentUser, existingRequest);
   if (authError) {
-    return reply.code(authError.code).send({ error: authError.message });
+    reply.code(authError.code).send({ error: authError.message });
+    return;
   }
 
   await updateRequestStatus(existingRequest.id, newStatus);
@@ -516,7 +535,7 @@ async function handlePendingStatusUpdate(
     req,
   );
 
-  return reply.send({ request: updatedRequest });
+  reply.send({ request: updatedRequest });
 }
 
 async function handleApprovedStatusUpdate(
@@ -527,12 +546,14 @@ async function handleApprovedStatusUpdate(
   currentUser: CurrentUser,
 ) {
   if (newStatus !== RequestStatus.FULFILLED) {
-    return reply.code(400).send({ error: 'approved request can only be set to FULFILLED' });
+    reply.code(400).send({ error: 'approved request can only be set to FULFILLED' });
+    return;
   }
 
   const authError = canFulfillRequest(currentUser);
   if (authError) {
-    return reply.code(authError.code).send({ error: authError.message });
+    reply.code(authError.code).send({ error: authError.message });
+    return;
   }
 
   try {
@@ -551,14 +572,15 @@ async function handleApprovedStatusUpdate(
       req,
     );
 
-    return reply.send({ request: updatedRequest });
+    reply.send({ request: updatedRequest });
   } catch (error) {
     if (error instanceof Error) {
       const componentName = parseInsufficientQuantityError(error);
       if (componentName) {
-        return reply.code(400).send({
+        reply.code(400).send({
           error: `insufficient quantity for component "${componentName}"`,
         });
+        return;
       }
     }
     throw error;
@@ -573,12 +595,14 @@ async function handleFulfilledStatusUpdate(
   currentUser: CurrentUser,
 ) {
   if (newStatus !== RequestStatus.RETURNED) {
-    return reply.code(400).send({ error: 'fulfilled request can only be set to RETURNED' });
+    reply.code(400).send({ error: 'fulfilled request can only be set to RETURNED' });
+    return;
   }
 
   const authError = canFulfillRequest(currentUser);
   if (authError) {
-    return reply.code(authError.code).send({ error: authError.message });
+    reply.code(authError.code).send({ error: authError.message });
+    return;
   }
 
   await returnRequestTransaction(existingRequest);
@@ -596,7 +620,7 @@ async function handleFulfilledStatusUpdate(
     req,
   );
 
-  return reply.send({ request: updatedRequest });
+  reply.send({ request: updatedRequest });
 }
 
 async function handleUpdateRequestStatus(
@@ -609,57 +633,60 @@ async function handleUpdateRequestStatus(
   const id = params?.id;
 
   if (!id) {
-    return reply.code(400).send({ error: 'request id is required' });
+    reply.code(400).send({ error: 'request id is required' });
+    return;
   }
 
   const statusError = validateStatusInput(body?.status);
   if (statusError) {
-    return reply.code(statusError.code).send({ error: statusError.message });
+    reply.code(statusError.code).send({ error: statusError.message });
+    return;
   }
 
-  const newStatus = body!.status!.trim() as RequestStatusValue;
+  const statusRaw = typeof body.status === 'string' ? body.status.trim() : '';
+  if (!statusRaw) {
+    reply.code(400).send({ error: 'status is required' });
+    return;
+  }
+  const newStatus = statusRaw as RequestStatusValue;
+
   const currentUser = getCurrentUser(req);
   const currentUserId = currentUser?.sub;
-  if (!currentUserId) return;
+  if (!currentUserId) {
+    reply.code(401).send({ error: 'unauthorized' });
+    return;
+  }
 
   try {
     const existingRequest = await fetchRequestWithItems(id);
 
     if (!existingRequest) {
-      return reply.code(404).send({ error: 'request not found' });
+      reply.code(404).send({ error: 'request not found' });
+      return;
     }
 
     switch (existingRequest.status) {
       case RequestStatus.PENDING:
-        return await handlePendingStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+        await handlePendingStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+        break;
 
       case RequestStatus.APPROVED:
-        return await handleApprovedStatusUpdate(
-          req,
-          reply,
-          existingRequest,
-          newStatus,
-          currentUser,
-        );
+        await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+        break;
 
       case RequestStatus.FULFILLED:
-        return await handleFulfilledStatusUpdate(
-          req,
-          reply,
-          existingRequest,
-          newStatus,
-          currentUser,
-        );
+        await handleFulfilledStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+        break;
 
       default:
-        return reply.code(400).send({
+        reply.code(400).send({
           error:
             'request status can only be updated when status is PENDING, APPROVED, or FULFILLED',
         });
     }
   } catch (err) {
     app.log.error(err);
-    return reply.code(500).send({ error: 'failed to update request' });
+    reply.code(500).send({ error: 'failed to update request' });
   }
 }
 
@@ -672,12 +699,16 @@ async function handleDeleteRequest(
   const id = params?.id;
 
   if (!id) {
-    return reply.code(400).send({ error: 'request id is required' });
+    reply.code(400).send({ error: 'request id is required' });
+    return;
   }
 
   const currentUser = getCurrentUser(req);
   const currentUserId = currentUser?.sub;
-  if (!currentUserId) return;
+  if (!currentUserId) {
+    reply.code(401).send({ error: 'unauthorized' });
+    return;
+  }
 
   try {
     const existingRequest = await db.query.request.findFirst({
@@ -685,12 +716,14 @@ async function handleDeleteRequest(
     });
 
     if (!existingRequest) {
-      return reply.code(404).send({ error: 'request not found' });
+      reply.code(404).send({ error: 'request not found' });
+      return;
     }
 
     const authError = canDeleteRequest(currentUser, existingRequest);
     if (authError) {
-      return reply.code(authError.code).send({ error: authError.message });
+      reply.code(authError.code).send({ error: authError.message });
+      return;
     }
 
     await db.delete(requestItem).where(eq(requestItem.requestId, id));
@@ -707,14 +740,14 @@ async function handleDeleteRequest(
       req,
     );
 
-    return reply.code(204).send();
+    reply.code(204).send();
   } catch (err) {
     app.log.error(err);
-    return reply.code(500).send({ error: 'failed to delete request' });
+    reply.code(500).send({ error: 'failed to delete request' });
   }
 }
 
-const requestsRoutes: FastifyPluginAsync = async (app) => {
+const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {
   app.post('/requests', { preHandler: requireAuth, schema: createRequestSchema }, (req, reply) =>
     handleCreateRequest(app, req, reply),
   );
@@ -734,6 +767,8 @@ const requestsRoutes: FastifyPluginAsync = async (app) => {
   app.delete('/requests/:id', { preHandler: requireAuth }, (req, reply) =>
     handleDeleteRequest(app, req, reply),
   );
+
+  done();
 };
 
 export default requestsRoutes;

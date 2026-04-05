@@ -25,11 +25,13 @@ fun FulfillByIdDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     onScanClick: (() -> Unit)? = null,
+    dialogTitle: String = "Fulfill by QR / ID",
+    confirmButtonLabel: String = "Fulfill",
     modifier: Modifier = Modifier,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Fulfill by QR / ID") },
+        title = { Text(dialogTitle) },
         text = {
             Column(modifier = modifier.padding(vertical = 8.dp)) {
                 if (onScanClick != null) {
@@ -66,7 +68,7 @@ fun FulfillByIdDialog(
             TextButton(
                 onClick = onConfirm,
             ) {
-                Text("Fulfill", color = MaterialTheme.colorScheme.primary)
+                Text(confirmButtonLabel, color = MaterialTheme.colorScheme.primary)
             }
         },
         dismissButton = {
