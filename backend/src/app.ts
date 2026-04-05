@@ -117,15 +117,14 @@ function isLoopbackSocket(request: FastifyRequest): boolean {
   return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1';
 }
 
-function handleHttpsRedirect(request: FastifyRequest, reply: FastifyReply) {
+async function handleHttpsRedirect(request: FastifyRequest, reply: FastifyReply) {
   if (isLoopbackSocket(request)) {
-    return undefined;
+    return;
   }
   if (request.headers['x-forwarded-proto'] === 'http') {
     const host = request.headers.host;
     return reply.code(301).redirect(`https://${host ?? ''}${request.url}`);
   }
-  return undefined;
 }
 
 function handleError(error: Error, request: FastifyRequest, reply: FastifyReply) {

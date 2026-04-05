@@ -3,6 +3,7 @@ import { pool } from './drizzle/db.js';
 
 const app = await buildApp();
 const port = Number(process.env.PORT ?? 4000);
+const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
 
 try {
   await pool.query('SELECT 1');
@@ -25,7 +26,8 @@ try {
 }
 
 try {
-  await app.listen({ port, host: '0.0.0.0' });
+  await app.listen({ port, host });
+  app.log.info(`Server listening on http://${host}:${port}`);
 } catch (err) {
   app.log.error(err);
   process.exit(1);
