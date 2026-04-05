@@ -3,7 +3,10 @@ import './test-setup.js';
 import { describe, test, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app.js';
+import { db } from '../src/drizzle/db.js';
+import { component } from '../src/drizzle/schema.js';
 import {
   createComponent,
   createRequest,
@@ -648,17 +651,6 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 400);
     });
 
-    test('returns 400 when status is not APPROVED or REJECTED', async () => {
-      const response = await app.inject({
-        method: 'PUT',
-        url: '/requests/some-id',
-        headers: { authorization: `Bearer ${facultyToken}` },
-        payload: { status: 'PENDING' },
-      });
-
-      assert.equal(response.statusCode, 400);
-    });
-
     test('faculty can approve pending request targeting them', async () => {
       const item = await createComponent({
         name: 'Sensor',
@@ -937,6 +929,148 @@ describe('Request API', () => {
 
       assert.equal(response.statusCode, 400);
       assert.ok(response.json().error.includes('insufficient quantity'));
+    });
+
+    test('successful RETURNED increments availableQuantity', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Return Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 4 }],
+      });
+
+      const fulfillRes = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+      assert.equal(fulfillRes.statusCode, 200);
+      assert.equal((await findComponentById(item.id))?.availableQuantity, 6);
+
+      const returnRes = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'RETURNED' },
+      });
+
+      assert.equal(returnRes.statusCode, 200);
+      const body = returnRes.json();
+      assert.equal(body.request.status, 'RETURNED');
+      assert.ok(body.request.returnedAt);
+      const updatedComponent = await findComponentById(item.id);
+      assert.equal(updatedComponent?.availableQuantity, 10);
+    });
+
+    test('RETURNED requires Admin or TA role', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Return Auth Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 1 }],
+      });
+
+      await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'RETURNED' },
+      });
+
+      assert.equal(response.statusCode, 403);
+    });
+
+    test('APPROVED request cannot be set to RETURNED directly', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Skip Fulfill Return',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 1 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'RETURNED' },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('FULFILLED'));
+    });
+
+    test('when return would exceed totalQuantity, total is raised to match new available', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Raise Total Return',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 3 }],
+      });
+
+      await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+
+      const now = new Date().toISOString();
+      await db
+        .update(component)
+        .set({ totalQuantity: 2, updatedAt: now })
+        .where(eq(component.id, item.id));
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'RETURNED' },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const updated = await findComponentById(item.id);
+      assert.equal(updated?.availableQuantity, 10);
+      assert.equal(updated?.totalQuantity, 10);
     });
   });
 

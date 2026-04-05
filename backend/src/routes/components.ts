@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { component, requestItem } from '../drizzle/schema.js';
@@ -14,6 +14,33 @@ import {
 import type { CategoryValue, LocationValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
 import { isValidHttpUrl } from '../utils/validation.js';
+
+interface ComponentBody {
+  name?: string;
+  description?: string;
+  imageUrl?: string;
+  totalQuantity?: number;
+  availableQuantity?: number;
+  category?: string;
+  location?: string;
+}
+
+interface NormalizedComponentInput {
+  name?: string;
+  description?: string;
+  imageUrl?: string;
+  totalQuantity?: number;
+  availableQuantity?: number;
+  category?: string;
+  location?: string;
+}
+
+interface ValidationError {
+  code: number;
+  message: string;
+}
+
+type ComponentRecord = InferSelectModel<typeof component>;
 
 const componentBodySchema = {
   type: 'object',
@@ -37,394 +64,499 @@ const updateComponentSchema = {
   body: componentBodySchema,
 } as const;
 
-const componentsRoutes: FastifyPluginAsync = async (app) => {
-  app.get('/', { preHandler: requireAuth }, async (request, reply) => {
-    try {
-      const components = await db.query.component.findMany({
-        orderBy: (components, { desc }) => [desc(components.createdAt)],
-      });
-      if (components.length === 0) return reply.code(204).send();
+function normalizeComponentInput(body: ComponentBody): NormalizedComponentInput {
+  return {
+    name: body?.name?.trim(),
+    description: body?.description?.trim(),
+    imageUrl: body?.imageUrl?.trim(),
+    totalQuantity: body?.totalQuantity,
+    availableQuantity: body?.availableQuantity,
+    category: body?.category?.trim(),
+    location: body?.location?.trim(),
+  };
+}
 
-      // Find latest updatedAt/createdAt using string comparison (ISO format sorts lexicographically)
-      let latestDateStr = '';
-      for (const c of components) {
-        const dateStr = (c.updatedAt ?? c.createdAt) as string;
-        if (dateStr > latestDateStr) {
-          latestDateStr = dateStr;
-        }
-      }
+function validateQuantity(value: unknown, fieldName: string): ValidationError | null {
+  if (value !== undefined && (typeof value !== 'number' || value < 0)) {
+    return { code: 400, message: `${fieldName} must be a non-negative number` };
+  }
+  return null;
+}
 
-      if (!latestDateStr) {
-        return reply.send({ components });
-      }
+function validateCategory(category: string | undefined): ValidationError | null {
+  if (category && !categoryValues.includes(category as CategoryValue)) {
+    return {
+      code: 400,
+      message: `invalid category. Must be one of ${categoryValues.join(', ')} (use Others if none apply)`,
+    };
+  }
+  return null;
+}
 
-      const isoStr = latestDateStr.includes('T') ? latestDateStr : latestDateStr.replace(' ', 'T');
-      const lastModifiedDate = new Date(isoStr.endsWith('Z') ? isoStr : isoStr + 'Z');
-      const lastModifiedHeader = lastModifiedDate.toUTCString();
+function validateLocation(location: string | undefined): ValidationError | null {
+  if (location && !locationValues.includes(location as LocationValue)) {
+    return {
+      code: 400,
+      message: `invalid location. Must be one of ${locationValues.join(', ')}`,
+    };
+  }
+  return null;
+}
 
-      const modifiedSinceHeader = request.headers['if-modified-since'];
-      if (modifiedSinceHeader) {
-        const clientDate = new Date(modifiedSinceHeader);
-        const clientIso = clientDate.toISOString();
-        const serverSec = isoStr.substring(0, 19);
-        const clientSec = clientIso.substring(0, 19);
+function validateImageUrl(imageUrl: string | undefined): ValidationError | null {
+  if (imageUrl && !isValidHttpUrl(imageUrl)) {
+    return { code: 400, message: 'imageUrl must be a valid HTTP or HTTPS URL' };
+  }
+  return null;
+}
 
-        if (clientSec >= serverSec) {
-          return reply.code(304).send();
-        }
-      }
-      return reply
-        .headers({
-          'Last-Modified': lastModifiedHeader,
-          'Cache-Control': 'private, max-age=0, must-revalidate',
-        })
-        .send({
-          components,
-          lastModified: lastModifiedHeader,
-        });
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to fetch components' });
-    }
-  });
+function validateCreateInput(input: NormalizedComponentInput): ValidationError | null {
+  if (!input.name) {
+    return { code: 400, message: 'name is required' };
+  }
 
-  app.get('/export/csv', { preHandler: requireAuth }, async (request, reply) => {
-    const userRole = (request.user as { role?: UserRoleValue })?.role;
-    if (userRole !== UserRole.ADMIN && userRole !== UserRole.TA && userRole !== UserRole.FACULTY) {
-      return reply.code(403).send({ error: 'forbidden: admin, TA, or faculty role required' });
-    }
-
-    try {
-      const components = await db.query.component.findMany({
-        orderBy: (components, { desc }) => [desc(components.createdAt)],
-      });
-
-      const csvHeader = 'Name,Description,Category,Location,Total Quantity,Available Quantity';
-      const csvRows = components.map((c: InferSelectModel<typeof component>) => {
-        const escapeCsv = (value: string | null | undefined) => {
-          if (value == null) return '';
-          const str = value.replace(/"/g, '""');
-          return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
-        };
-        return [
-          escapeCsv(c.name),
-          escapeCsv(c.description),
-          escapeCsv(c.category?.replace(/_/g, ' ') ?? null),
-          escapeCsv(c.location?.replace(/_/g, ' ') ?? null),
-          c.totalQuantity,
-          c.availableQuantity,
-        ].join(',');
-      });
-
-      const csv = [csvHeader, ...csvRows].join('\n');
-
-      return reply
-        .header('Content-Type', 'text/csv')
-        .header('Content-Disposition', 'attachment; filename="components.csv"')
-        .send(csv);
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to export components' });
-    }
-  });
-
-  app.get('/:id', { preHandler: requireAuth }, async (request, reply) => {
-    const params = request.params as { id?: string };
-    const id = params?.id;
-
-    if (!id) {
-      return reply.code(400).send({ error: 'component id is required' });
-    }
-
-    try {
-      const found = await db.query.component.findFirst({
-        where: (component, { eq }) => eq(component.id, id),
-      });
-
-      if (!found) {
-        return reply.code(404).send({ error: 'component not found' });
-      }
-
-      return reply.send({ component: found });
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to fetch component' });
-    }
-  });
-
-  app.post(
-    '/',
-    { preHandler: requireAdminOrTA, schema: createComponentSchema },
-    async (request, reply) => {
-      const body = request.body as {
-        name?: string;
-        description?: string;
-        imageUrl?: string;
-        totalQuantity?: number;
-        availableQuantity?: number;
-        category?: string;
-        location?: string;
-      };
-
-      const name = body?.name?.trim();
-      const description = body?.description?.trim();
-      const imageUrl = body?.imageUrl?.trim();
-      const totalQuantity = body?.totalQuantity;
-      const availableQuantity = body?.availableQuantity;
-      const category = body?.category?.trim();
-      const location = body?.location?.trim();
-
-      if (!name) {
-        return reply.code(400).send({ error: 'name is required' });
-      }
-
-      if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
-        return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
-      }
-
-      if (
-        availableQuantity !== undefined &&
-        (typeof availableQuantity !== 'number' || availableQuantity < 0)
-      ) {
-        return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
-      }
-
-      if (category && !categoryValues.includes(category as CategoryValue)) {
-        return reply.code(400).send({
-          error: `invalid category. Must be one of ${categoryValues.join(', ')} (use Others if none apply)`,
-        });
-      }
-
-      if (location && !locationValues.includes(location as LocationValue)) {
-        return reply
-          .code(400)
-          .send({ error: `invalid location. Must be one of ${locationValues.join(', ')}` });
-      }
-
-      if (imageUrl && !isValidHttpUrl(imageUrl)) {
-        return reply.code(400).send({ error: 'imageUrl must be a valid HTTP or HTTPS URL' });
-      }
-
-      try {
-        const now = new Date().toISOString();
-        const [created] = await db
-          .insert(component)
-          .values({
-            id: crypto.randomUUID(),
-            name,
-            description: description || null,
-            imageUrl: imageUrl || null,
-            totalQuantity: totalQuantity ?? 0,
-            availableQuantity: availableQuantity ?? totalQuantity ?? 0,
-            category: category ? (category as CategoryValue) : null,
-            location: location ? toLocationEnum(location) : null,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .returning();
-
-        if (!created) {
-          return reply.code(500).send({ error: 'failed to create component' });
-        }
-
-        await logAudit(
-          {
-            userId: getUserIdFromRequest(request),
-            action: AuditActionType.CREATE,
-            entityType: 'Component',
-            entityId: created.id,
-            newValues: created as Record<string, unknown>,
-          },
-          request,
-        );
-
-        return reply.code(201).send({ component: created });
-      } catch (err) {
-        app.log.error(err);
-        return reply.code(500).send({ error: 'failed to create component' });
-      }
-    },
+  return (
+    validateQuantity(input.totalQuantity, 'totalQuantity') ||
+    validateQuantity(input.availableQuantity, 'availableQuantity') ||
+    validateCategory(input.category) ||
+    validateLocation(input.location) ||
+    validateImageUrl(input.imageUrl)
   );
+}
 
-  app.put(
-    '/:id',
-    { preHandler: requireAdminOrTA, schema: updateComponentSchema },
-    async (request, reply) => {
-      const params = request.params as { id?: string };
-      const id = params?.id;
-      const body = request.body as {
-        name?: string;
-        description?: string;
-        imageUrl?: string;
-        availableQuantity?: number;
-        totalQuantity?: number;
-        category?: string;
-        location?: string;
-      };
-
-      if (!id) {
-        return reply.code(400).send({ error: 'component id is required' });
-      }
-
-      const name = body?.name?.trim();
-      const description = body?.description?.trim();
-      const imageUrl = body?.imageUrl?.trim();
-      const availableQuantity = body?.availableQuantity;
-      const totalQuantity = body?.totalQuantity;
-      const category = body?.category?.trim();
-      const location = body?.location?.trim();
-
-      if (totalQuantity !== undefined && (typeof totalQuantity !== 'number' || totalQuantity < 0)) {
-        return reply.code(400).send({ error: 'totalQuantity must be a non-negative number' });
-      }
-
-      if (
-        availableQuantity !== undefined &&
-        (typeof availableQuantity !== 'number' || availableQuantity < 0)
-      ) {
-        return reply.code(400).send({ error: 'availableQuantity must be a non-negative number' });
-      }
-
-      if (category !== undefined && category !== null && category !== '') {
-        if (!categoryValues.includes(category as CategoryValue)) {
-          return reply.code(400).send({
-            error: `invalid category. Must be one of ${categoryValues.join(
-              ', ',
-            )} (use Others if none apply)`,
-          });
-        }
-      }
-
-      if (location !== undefined && location !== null && location !== '') {
-        if (!locationValues.includes(location as LocationValue)) {
-          return reply
-            .code(400)
-            .send({ error: 'invalid location. Must be one of IoT Lab, Robo Lab, VLSI Lab' });
-        }
-      }
-
-      if (imageUrl !== undefined && imageUrl !== null && imageUrl !== '') {
-        if (!isValidHttpUrl(imageUrl)) {
-          return reply.code(400).send({ error: 'imageUrl must be a valid HTTP or HTTPS URL' });
-        }
-      }
-
-      try {
-        const existingComponent = await db.query.component.findFirst({
-          where: (c, { eq }) => eq(c.id, id),
-        });
-
-        if (!existingComponent) {
-          return reply.code(404).send({ error: 'component not found' });
-        }
-
-        const nextTotalQuantity =
-          totalQuantity !== undefined ? totalQuantity : existingComponent.totalQuantity;
-
-        const nextAvailableQuantity =
-          availableQuantity !== undefined
-            ? availableQuantity
-            : totalQuantity !== undefined
-              ? totalQuantity
-              : existingComponent.availableQuantity;
-
-        if (nextAvailableQuantity > nextTotalQuantity) {
-          return reply
-            .code(400)
-            .send({ error: 'availableQuantity cannot be greater than totalQuantity' });
-        }
-
-        const updateData: Record<string, unknown> = {};
-        if (name !== undefined) updateData.name = name;
-        if (description !== undefined) updateData.description = description || null;
-        if (imageUrl !== undefined) updateData.imageUrl = imageUrl || null;
-        if (totalQuantity !== undefined) updateData.totalQuantity = nextTotalQuantity;
-        if (availableQuantity !== undefined || totalQuantity !== undefined) {
-          updateData.availableQuantity = nextAvailableQuantity;
-        }
-        if (category !== undefined)
-          updateData.category = category ? (category as CategoryValue) : null;
-        if (location !== undefined)
-          updateData.location = location ? toLocationEnum(location) : null;
-        updateData.updatedAt = new Date().toISOString();
-
-        const [updated] = await db
-          .update(component)
-          .set(updateData as typeof component.$inferInsert)
-          .where(eq(component.id, id))
-          .returning();
-
-        if (!updated) {
-          return reply.code(500).send({ error: 'failed to update component' });
-        }
-
-        await logAudit(
-          {
-            userId: getUserIdFromRequest(request),
-            action: AuditActionType.UPDATE,
-            entityType: 'Component',
-            entityId: updated.id,
-            oldValues: existingComponent as Record<string, unknown>,
-            newValues: updated as Record<string, unknown>,
-          },
-          request,
-        );
-
-        return reply.send({ component: updated });
-      } catch (err) {
-        app.log.error(err);
-        return reply.code(500).send({ error: 'failed to update component' });
-      }
-    },
+function validateUpdateInput(input: NormalizedComponentInput): ValidationError | null {
+  return (
+    validateQuantity(input.totalQuantity, 'totalQuantity') ||
+    validateQuantity(input.availableQuantity, 'availableQuantity') ||
+    (input.category !== undefined && input.category !== ''
+      ? validateCategory(input.category)
+      : null) ||
+    (input.location !== undefined && input.location !== ''
+      ? validateLocation(input.location)
+      : null) ||
+    (input.imageUrl !== undefined && input.imageUrl !== ''
+      ? validateImageUrl(input.imageUrl)
+      : null)
   );
+}
 
-  app.delete('/:id', { preHandler: requireAdminOrTA }, async (request, reply) => {
-    const params = request.params as { id?: string };
-    const id = params?.id;
+function validateQuantityRelationship(
+  availableQuantity: number,
+  totalQuantity: number,
+): ValidationError | null {
+  if (availableQuantity > totalQuantity) {
+    return { code: 400, message: 'availableQuantity cannot be greater than totalQuantity' };
+  }
+  return null;
+}
 
-    if (!id) {
-      return reply.code(400).send({ error: 'component id is required' });
+async function findComponentById(id: string): Promise<ComponentRecord | undefined> {
+  return db.query.component.findFirst({
+    where: (c, { eq }) => eq(c.id, id),
+  });
+}
+
+async function getAllComponents(): Promise<ComponentRecord[]> {
+  return db.query.component.findMany({
+    orderBy: (components, { desc }) => [desc(components.createdAt)],
+  });
+}
+
+async function getComponentUsageCount(componentId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(requestItem)
+    .where(eq(requestItem.componentId, componentId));
+  return result?.count ?? 0;
+}
+
+async function insertComponent(data: {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  totalQuantity: number;
+  availableQuantity: number;
+  category?: CategoryValue | null;
+  location?: LocationValue | null;
+}): Promise<ComponentRecord | undefined> {
+  const now = new Date().toISOString();
+  const [created] = await db
+    .insert(component)
+    .values({
+      id: crypto.randomUUID(),
+      name: data.name,
+      description: data.description || null,
+      imageUrl: data.imageUrl || null,
+      totalQuantity: data.totalQuantity,
+      availableQuantity: data.availableQuantity,
+      category: data.category || null,
+      location: data.location || null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  return created;
+}
+
+async function updateComponentById(
+  id: string,
+  data: Record<string, unknown>,
+): Promise<ComponentRecord | undefined> {
+  const [updated] = await db
+    .update(component)
+    .set({ ...data, updatedAt: new Date().toISOString() } as typeof component.$inferInsert)
+    .where(eq(component.id, id))
+    .returning();
+  return updated;
+}
+
+async function deleteComponentById(id: string): Promise<void> {
+  await db.delete(component).where(eq(component.id, id));
+}
+
+function getLatestDateString(components: ComponentRecord[]): string {
+  let latest = '';
+  for (const c of components) {
+    const dateStr = (c.updatedAt ?? c.createdAt) as string;
+    if (dateStr > latest) {
+      latest = dateStr;
     }
+  }
+  return latest;
+}
 
-    try {
-      const existing = await db.query.component.findFirst({
-        where: (c, { eq }) => eq(c.id, id),
-      });
+function parseIsoDate(dateStr: string): Date {
+  const isoStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
+  return new Date(isoStr.endsWith('Z') ? isoStr : isoStr + 'Z');
+}
 
-      if (!existing) {
-        return reply.code(404).send({ error: 'component not found' });
-      }
+function shouldReturn304(modifiedSinceHeader: string | undefined, latestDateStr: string): boolean {
+  if (!modifiedSinceHeader) return false;
 
-      const usageRows = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(requestItem)
-        .where(eq(requestItem.componentId, id));
+  const isoStr = latestDateStr.includes('T') ? latestDateStr : latestDateStr.replace(' ', 'T');
+  const clientDate = new Date(modifiedSinceHeader);
+  const serverSec = isoStr.substring(0, 19);
+  const clientSec = clientDate.toISOString().substring(0, 19);
 
-      if ((usageRows[0]?.count ?? 0) > 0) {
-        return reply.code(400).send({
-          error: 'component cannot be deleted because it is used in one or more requests',
-        });
-      }
+  return clientSec >= serverSec;
+}
 
-      await db.delete(component).where(eq(component.id, id));
+function escapeCsvValue(value: string | null | undefined): string {
+  if (value == null) return '';
+  const str = value.replace(/"/g, '""');
+  return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
+}
 
-      await logAudit(
-        {
-          userId: getUserIdFromRequest(request),
-          action: AuditActionType.DELETE,
-          entityType: 'Component',
-          entityId: id,
-          oldValues: existing as Record<string, unknown>,
-        },
-        request,
-      );
+function componentToCsvRow(c: ComponentRecord): string {
+  return [
+    escapeCsvValue(c.name),
+    escapeCsvValue(c.description),
+    escapeCsvValue(c.category?.replace(/_/g, ' ') ?? null),
+    escapeCsvValue(c.location?.replace(/_/g, ' ') ?? null),
+    c.totalQuantity,
+    c.availableQuantity,
+  ].join(',');
+}
 
+function generateComponentsCsv(components: ComponentRecord[]): string {
+  const header = 'Name,Description,Category,Location,Total Quantity,Available Quantity';
+  const rows = components.map(componentToCsvRow);
+  return [header, ...rows].join('\n');
+}
+
+function buildUpdateData(
+  input: NormalizedComponentInput,
+  existing: ComponentRecord,
+): { data: Record<string, unknown>; nextAvailable: number; nextTotal: number } {
+  const nextTotal =
+    input.totalQuantity !== undefined ? input.totalQuantity : existing.totalQuantity;
+
+  const nextAvailable =
+    input.availableQuantity !== undefined
+      ? input.availableQuantity
+      : input.totalQuantity !== undefined
+        ? input.totalQuantity
+        : existing.availableQuantity;
+
+  const data: Record<string, unknown> = {};
+
+  if (input.name !== undefined) data.name = input.name;
+  if (input.description !== undefined) data.description = input.description || null;
+  if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl || null;
+  if (input.totalQuantity !== undefined) data.totalQuantity = nextTotal;
+  if (input.availableQuantity !== undefined || input.totalQuantity !== undefined) {
+    data.availableQuantity = nextAvailable;
+  }
+  if (input.category !== undefined) {
+    data.category = input.category ? (input.category as CategoryValue) : null;
+  }
+  if (input.location !== undefined) {
+    data.location = input.location ? toLocationEnum(input.location) : null;
+  }
+
+  return { data, nextAvailable, nextTotal };
+}
+
+function canExportCsv(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.ADMIN || role === UserRole.TA || role === UserRole.FACULTY;
+}
+
+async function handleGetComponents(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  try {
+    const components = await getAllComponents();
+
+    if (components.length === 0) {
       return reply.code(204).send();
-    } catch (err) {
-      app.log.error(err);
-      return reply.code(500).send({ error: 'failed to delete component' });
     }
-  });
+
+    const latestDateStr = getLatestDateString(components);
+
+    if (!latestDateStr) {
+      return reply.send({ components });
+    }
+
+    if (shouldReturn304(req.headers['if-modified-since'], latestDateStr)) {
+      return reply.code(304).send();
+    }
+
+    const lastModifiedHeader = parseIsoDate(latestDateStr).toUTCString();
+
+    return reply
+      .headers({
+        'Last-Modified': lastModifiedHeader,
+        'Cache-Control': 'private, max-age=0, must-revalidate',
+      })
+      .send({ components, lastModified: lastModifiedHeader });
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to fetch components' });
+  }
+}
+
+async function handleExportCsv(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const userRole = (req.user as { role?: UserRoleValue })?.role;
+
+  if (!canExportCsv(userRole)) {
+    return reply.code(403).send({ error: 'forbidden: admin, TA, or faculty role required' });
+  }
+
+  try {
+    const components = await getAllComponents();
+    const csv = generateComponentsCsv(components);
+
+    return reply
+      .header('Content-Type', 'text/csv')
+      .header('Content-Disposition', 'attachment; filename="components.csv"')
+      .send(csv);
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to export components' });
+  }
+}
+
+async function handleGetComponentById(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const { id } = req.params as { id?: string };
+
+  if (!id) {
+    return reply.code(400).send({ error: 'component id is required' });
+  }
+
+  try {
+    const found = await findComponentById(id);
+
+    if (!found) {
+      return reply.code(404).send({ error: 'component not found' });
+    }
+
+    return reply.send({ component: found });
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to fetch component' });
+  }
+}
+
+async function handleCreateComponent(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const input = normalizeComponentInput(req.body as ComponentBody);
+  const validationError = validateCreateInput(input);
+
+  if (validationError) {
+    return reply.code(validationError.code).send({ error: validationError.message });
+  }
+
+  try {
+    const created = await insertComponent({
+      name: input.name!,
+      description: input.description,
+      imageUrl: input.imageUrl,
+      totalQuantity: input.totalQuantity ?? 0,
+      availableQuantity: input.availableQuantity ?? input.totalQuantity ?? 0,
+      category: input.category ? (input.category as CategoryValue) : null,
+      location: input.location ? toLocationEnum(input.location) : null,
+    });
+
+    if (!created) {
+      return reply.code(500).send({ error: 'failed to create component' });
+    }
+
+    await logAudit(
+      {
+        userId: getUserIdFromRequest(req),
+        action: AuditActionType.CREATE,
+        entityType: 'Component',
+        entityId: created.id,
+        newValues: created as Record<string, unknown>,
+      },
+      req,
+    );
+
+    return reply.code(201).send({ component: created });
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to create component' });
+  }
+}
+
+async function handleUpdateComponent(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const { id } = req.params as { id?: string };
+
+  if (!id) {
+    return reply.code(400).send({ error: 'component id is required' });
+  }
+
+  const input = normalizeComponentInput(req.body as ComponentBody);
+  const validationError = validateUpdateInput(input);
+
+  if (validationError) {
+    return reply.code(validationError.code).send({ error: validationError.message });
+  }
+
+  try {
+    const existing = await findComponentById(id);
+
+    if (!existing) {
+      return reply.code(404).send({ error: 'component not found' });
+    }
+
+    const { data, nextAvailable, nextTotal } = buildUpdateData(input, existing);
+
+    const quantityError = validateQuantityRelationship(nextAvailable, nextTotal);
+    if (quantityError) {
+      return reply.code(quantityError.code).send({ error: quantityError.message });
+    }
+
+    const updated = await updateComponentById(id, data);
+
+    if (!updated) {
+      return reply.code(500).send({ error: 'failed to update component' });
+    }
+
+    await logAudit(
+      {
+        userId: getUserIdFromRequest(req),
+        action: AuditActionType.UPDATE,
+        entityType: 'Component',
+        entityId: updated.id,
+        oldValues: existing as Record<string, unknown>,
+        newValues: updated as Record<string, unknown>,
+      },
+      req,
+    );
+
+    return reply.send({ component: updated });
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to update component' });
+  }
+}
+
+async function handleDeleteComponent(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const { id } = req.params as { id?: string };
+
+  if (!id) {
+    return reply.code(400).send({ error: 'component id is required' });
+  }
+
+  try {
+    const existing = await findComponentById(id);
+
+    if (!existing) {
+      return reply.code(404).send({ error: 'component not found' });
+    }
+
+    const usageCount = await getComponentUsageCount(id);
+
+    if (usageCount > 0) {
+      return reply.code(400).send({
+        error: 'component cannot be deleted because it is used in one or more requests',
+      });
+    }
+
+    await deleteComponentById(id);
+
+    await logAudit(
+      {
+        userId: getUserIdFromRequest(req),
+        action: AuditActionType.DELETE,
+        entityType: 'Component',
+        entityId: id,
+        oldValues: existing as Record<string, unknown>,
+      },
+      req,
+    );
+
+    return reply.code(204).send();
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to delete component' });
+  }
+}
+
+const componentsRoutes: FastifyPluginAsync = async (app) => {
+  app.get('/', { preHandler: requireAuth }, (req, reply) => handleGetComponents(app, req, reply));
+
+  app.get('/export/csv', { preHandler: requireAuth }, (req, reply) =>
+    handleExportCsv(app, req, reply),
+  );
+
+  app.get('/:id', { preHandler: requireAuth }, (req, reply) =>
+    handleGetComponentById(app, req, reply),
+  );
+
+  app.post('/', { preHandler: requireAdminOrTA, schema: createComponentSchema }, (req, reply) =>
+    handleCreateComponent(app, req, reply),
+  );
+
+  app.put('/:id', { preHandler: requireAdminOrTA, schema: updateComponentSchema }, (req, reply) =>
+    handleUpdateComponent(app, req, reply),
+  );
+
+  app.delete('/:id', { preHandler: requireAdminOrTA }, (req, reply) =>
+    handleDeleteComponent(app, req, reply),
+  );
 };
 
 export default componentsRoutes;

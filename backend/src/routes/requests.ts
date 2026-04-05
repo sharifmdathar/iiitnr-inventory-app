@@ -40,6 +40,7 @@ interface LockedComponent {
   id: string;
   name: string;
   availableQuantity: number;
+  totalQuantity: number;
 }
 
 type RequestWithRelations = Awaited<ReturnType<typeof fetchRequestWithItems>>;
@@ -197,15 +198,6 @@ function validateStatusInput(status: string | undefined): ValidationError | null
     return { code: 400, message: 'invalid status' };
   }
 
-  const allowedStatuses: RequestStatusValue[] = [
-    RequestStatus.APPROVED,
-    RequestStatus.REJECTED,
-    RequestStatus.FULFILLED,
-  ];
-  if (!allowedStatuses.includes(trimmed as RequestStatusValue)) {
-    return { code: 400, message: 'status can only be set to APPROVED, REJECTED, or FULFILLED' };
-  }
-
   return null;
 }
 
@@ -258,10 +250,11 @@ function canDeleteRequest(
 }
 
 async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
+  const fulfilledAt = new Date().toISOString();
   await db.transaction(async (tx) => {
     for (const item of existingRequest.requestItems) {
       const lockResult = await tx.execute(
-        sql`SELECT "id", "name", "availableQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
+        sql`SELECT "id", "name", "availableQuantity", "totalQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
       );
       const lockedComp = lockResult.rows[0] as LockedComponent | undefined;
 
@@ -274,14 +267,56 @@ async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWit
         .update(component)
         .set({
           availableQuantity: lockedComp.availableQuantity - item.quantity,
-          updatedAt: new Date().toISOString(),
+          updatedAt: fulfilledAt,
         })
         .where(eq(component.id, item.componentId));
     }
 
     await tx
       .update(request)
-      .set({ status: RequestStatus.FULFILLED, updatedAt: new Date().toISOString() })
+      .set({
+        status: RequestStatus.FULFILLED,
+        updatedAt: fulfilledAt,
+        fulfilledAt,
+      })
+      .where(eq(request.id, existingRequest.id));
+  });
+}
+
+async function returnRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
+  const returnedAt = new Date().toISOString();
+  await db.transaction(async (tx) => {
+    for (const item of existingRequest.requestItems) {
+      const lockResult = await tx.execute(
+        sql`SELECT "id", "name", "availableQuantity", "totalQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
+      );
+      const lockedComp = lockResult.rows[0] as LockedComponent | undefined;
+
+      if (!lockedComp) {
+        const name = item.component?.name ?? 'unknown';
+        throw new Error(`COMPONENT_NOT_FOUND:${name}`);
+      }
+
+      const nextAvailable = lockedComp.availableQuantity + item.quantity;
+      const nextTotal = Math.max(lockedComp.totalQuantity, nextAvailable);
+
+      await tx
+        .update(component)
+        .set({
+          availableQuantity: nextAvailable,
+          totalQuantity: nextTotal,
+          updatedAt: returnedAt,
+        })
+        .where(eq(component.id, item.componentId));
+    }
+
+    await tx
+      .update(request)
+      .set({
+        status: RequestStatus.RETURNED,
+        updatedAt: returnedAt,
+        returnedAt,
+      })
       .where(eq(request.id, existingRequest.id));
   });
 }
@@ -530,6 +565,40 @@ async function handleApprovedStatusUpdate(
   }
 }
 
+async function handleFulfilledStatusUpdate(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  existingRequest: NonNullable<RequestWithRelations>,
+  newStatus: RequestStatusValue,
+  currentUser: CurrentUser,
+) {
+  if (newStatus !== RequestStatus.RETURNED) {
+    return reply.code(400).send({ error: 'fulfilled request can only be set to RETURNED' });
+  }
+
+  const authError = canFulfillRequest(currentUser);
+  if (authError) {
+    return reply.code(authError.code).send({ error: authError.message });
+  }
+
+  await returnRequestTransaction(existingRequest);
+  const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+
+  await logAudit(
+    {
+      userId: getUserIdFromRequest(req),
+      action: AuditActionType.REQUEST_STATUS_CHANGE,
+      entityType: 'Request',
+      entityId: existingRequest.id,
+      oldValues: { status: existingRequest.status },
+      newValues: { status: newStatus, returnedItems: existingRequest.requestItems },
+    },
+    req,
+  );
+
+  return reply.send({ request: updatedRequest });
+}
+
 async function handleUpdateRequestStatus(
   app: { log: { error: (err: unknown) => void } },
   req: FastifyRequest,
@@ -573,9 +642,19 @@ async function handleUpdateRequestStatus(
           currentUser,
         );
 
+      case RequestStatus.FULFILLED:
+        return await handleFulfilledStatusUpdate(
+          req,
+          reply,
+          existingRequest,
+          newStatus,
+          currentUser,
+        );
+
       default:
         return reply.code(400).send({
-          error: 'request status can only be updated when status is PENDING or APPROVED',
+          error:
+            'request status can only be updated when status is PENDING, APPROVED, or FULFILLED',
         });
     }
   } catch (err) {
