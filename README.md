@@ -1,9 +1,13 @@
 # IIITNR Inventory App
 
 [![Release](https://img.shields.io/github/v/release/sharifmdathar/iiitnr-inventory-app?label=Release&style=for-the-badge)](https://github.com/sharifmdathar/iiitnr-inventory-app/releases)
+[![Downloads](https://img.shields.io/github/downloads/sharifmdathar/iiitnr-inventory-app/total.svg?style=for-the-badge)](https://github.com/sharifmdathar/iiitnr-inventory-app/releases)
 [![CodeFactor](https://img.shields.io/codefactor/grade/github/sharifmdathar/iiitnr-inventory-app?label=CodeFactor&style=for-the-badge)](https://www.codefactor.io/repository/github/sharifmdathar/iiitnr-inventory-app)
 
-A monorepo inventory management system with a **Kotlin Multiplatform app** (Android + iOS + Desktop) and a Fastify + Prisma backend.
+A monorepo inventory management system with a **Kotlin Multiplatform app** (Android + iOS + Desktop) and a Fastify + Drizzle backend.
+
+## Demo Video
+[![Alt text](https://markdown-videos-api.jorgenkh.no/youtube/8teOK9uLwbg?width=1024&height=576&filetype=jpeg)](https://youtu.be/8teOK9uLwbg)
 
 ## Features
 
@@ -51,7 +55,7 @@ The UI lives in the `app/` multiplatform module:
 
 ## Database Setup
 
-### Using Docker Compose
+### Using Podman Compose
 
 Compose uses **profiles** so the main and test databases don’t run at the same time (same port). From `backend/`:
 
@@ -98,19 +102,18 @@ Edit `backend/.env` and set your Environment Variables
 
 ### Database Migrations
 
-**Development** (creates migration files, applies them, and generates the client):
+**Generate migration files** (after schema changes):
 
 ```bash
 cd backend
-bun run prisma:generate
-bun run prisma:migrate
+bun run db:generate
 ```
 
-**Production / container** (apply existing migrations only; run once before starting the backend):
+**Apply existing migrations** (development / production / container):
 
 ```bash
 cd backend
-bunx prisma migrate deploy
+bun run migrate
 ```
 
 ### Seed Database
@@ -135,11 +138,11 @@ The server will start on `http://localhost:4000` (or the port specified in `PORT
 
 ### Running the backend in a container
 
-Use the pre-built image or build from `backend/Containerfile` (or `Dockerfile`). From `backend/`:
+Use the pre-built image or build from `backend/Dockerfile`. From `backend/`:
 
 1. **Migrations**: Run once (e.g. for Supabase/Neon or a remote DB):
    ```bash
-   bunx prisma migrate deploy
+   bun run migrate
    ```
 2. **Compose** (uses `backend/compose.yaml`: image, `env_file: .env`, port 4000):
    ```bash
@@ -150,8 +153,8 @@ Use the pre-built image or build from `backend/Containerfile` (or `Dockerfile`).
 **Build the image locally** (from `backend/`):
 
 ```bash
-podman build -t iiitnr-inventory-backend -f Containerfile .
-# or: docker build -t iiitnr-inventory-backend .
+podman build -t iiitnr-inventory-backend -f Dockerfile .
+# optional: podman build -t iiitnr-inventory-backend .
 ```
 
 Then run with `podman run --rm -p 4000:4000 --env-file .env iiitnr-inventory-backend`, or point `compose.yaml` at your image.
@@ -252,8 +255,9 @@ From `backend/`:
 - `bun run lint:fix` - Fix ESLint errors
 - `bun run typecheck` - Type check TypeScript
 - `bun run format` - Format backend code with Prettier
-- `bun run prisma:generate` - Generate Prisma client
-- `bun run prisma:migrate` - Run database migrations
+- `bun run db:generate` - Generate Drizzle migration files from schema changes
+- `bun run migrate` - Apply Drizzle migrations (`src/drizzle`)
+- `bun run db:studio` - Open Drizzle Studio
 - `bun run seed` - Seed database with admin user
 - `bun run migrate:backup` - Backup app data, reset public schema, run migrations, then restore data (works on Supabase/Neon; requires `pg_dump` and `psql`). Optional: `bun run migrate:backup -- --restore-from=backups/data_YYYY-MM-DD.sql` to restore from a specific backup file.
 - `bun run create:user` - Create a user (e.g. promote PENDING to a role). Usage: `bun run create:user -- --email ... --password ... --role PENDING|STUDENT|FACULTY|TA|ADMIN [--name "Name"]`
@@ -264,7 +268,7 @@ At the repo root, `Justfile` streamlines common tasks:
 
 - `just` / `just dev` — Start backend dev server
 - `just install` — Install backend dependencies
-- `just image` — Build backend image (Containerfile) and run with `--env-file .env -p 4000:4000`
+- `just image` — Build backend image (Dockerfile) and run with `--env-file .env -p 4000:4000`
 - `just up` — Start backend container (`podman compose up -d`)
 - `just down` — Stop backend container
 - `just restart` — `compose down` then `up -d`
@@ -304,16 +308,16 @@ The health check endpoint is available at `GET /health` for Render's health chec
 .
 ├── backend/              # Fastify backend API
 │   ├── config/           # Config (e.g. env.example)
-│   ├── prisma/           # Prisma schema and migrations
+│   ├── scripts/          # Operational scripts (seed, create-user, migrate-with-backup)
 │   ├── src/              # Source code
 │   │   ├── app.ts        # Fastify app and routes
-│   │   ├── server.ts     # Entry point (DB + migration checks at startup)
-│   │   └── lib/          # Prisma client
+│   │   ├── server.ts     # Entry point (DB checks at startup)
+│   │   └── drizzle/      # Drizzle schema, migrations, and DB client
 │   ├── tests/            # Test suite
 │   ├── compose.yaml      # Backend service (image, env_file, port 4000)
 │   ├── compose.db.yaml   # Local Postgres only (profiles: main, test)
-│   ├── Containerfile     # Multi-stage image build (Bun → runner)
-│   └── prisma.config.ts  # Prisma 7 config (DB URL, schema path)
+│   ├── Dockerfile        # Multi-stage image build (Bun → runner)
+│   └── drizzle.config.ts # Drizzle Kit config (DB URL, schema path, migrations out)
 ├── app/                  # KMP app (Android, Desktop)
 └── Justfile              # Tasks: dev, test, image, up, down, lint, etc.
 ```
@@ -327,7 +331,7 @@ The application uses the following main models:
 - **Request**: User requests for components with status tracking
 - **RequestItem**: Individual items within a request linking components to requests
 
-See `backend/prisma/schema.prisma` for the complete schema definition.
+See `backend/src/drizzle/schema.ts` for the complete schema definition.
 
 ## License
 

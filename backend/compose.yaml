@@ -1,6 +1,6 @@
 services:
   backend:
-    image: mdatharsharif/iiitnr-inventory-backend:1.13.3
+    image: mdatharsharif/iiitnr-inventory-backend:1.14.0
     env_file: .env
     ports:
       - '4000:4000'
