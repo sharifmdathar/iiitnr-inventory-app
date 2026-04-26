@@ -28,6 +28,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.todayIn
+import kotlin.math.abs
+import kotlin.time.Clock
 
 private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
 private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
@@ -119,15 +125,23 @@ fun RequestCard(
                 color = statusSubtitleColor,
             )
             Spacer(modifier = Modifier.height(8.dp))
+            if (request.returnDueAt != null) {
+                Text(
+                    text = "Return: ${getRelativeDays(request.returnDueAt)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             Text(
-                text = "Created: ${request.createdAt}",
+                text = "Created: ${getRelativeDays(request.createdAt)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (request.fulfilledAt != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Fulfilled: ${request.fulfilledAt}",
+                    text = "Fulfilled: ${getRelativeDays(request.fulfilledAt)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -135,7 +149,7 @@ fun RequestCard(
             if (request.returnedAt != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Returned: ${request.returnedAt}",
+                    text = "Returned: ${getRelativeDays(request.returnedAt)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -191,6 +205,7 @@ private fun RequestCardActions(
                 onApproveRequest = onApproveRequest,
                 onRejectRequest = onRejectRequest,
             )
+
         "APPROVED" ->
             ApprovedRequestActions(
                 request = request,
@@ -300,5 +315,22 @@ private fun FulfilledRequestActions(
                 )
             }
         }
+    }
+}
+
+fun getRelativeDays(dateTimeString: String?): String {
+    if (dateTimeString == null) return ""
+    val dateTime = LocalDateTime.parse(dateTimeString.replace(' ', 'T'))
+    val date = dateTime.date
+
+    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val days = today.daysUntil(date)
+
+    return if (days == 0) {
+        "Today"
+    } else if (days < 0) {
+        "${abs(days)}d ago"
+    } else {
+        "Due in ${abs(days)}d"
     }
 }

@@ -14,7 +14,7 @@ kotlin {
     }
     android {
         namespace = "com.iiitnr.inventoryapp.shared"
-        compileSdk = 36
+        compileSdk = 37
     }
 
     listOf(
@@ -57,6 +57,7 @@ kotlin {
                 implementation(libs.qrose)
                 implementation(libs.sqldelight.runtime)
                 implementation(libs.sqldelight.coroutines.extensions)
+                implementation(libs.kotlinx.datetime)
             }
         }
 

@@ -1030,6 +1030,38 @@ describe('Request API', () => {
       assert.ok(response.json().error.includes('FULFILLED'));
     });
 
+    test('returnDueAt is set to 1 month from fulfilled time', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Return Due At Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 1 }],
+      });
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+      const { returnDueAt } = res.json().request;
+      const actualTime = new Date(returnDueAt).getTime();
+      const expectedTime = new Date(res.json().request.fulfilledAt).getTime() + 30 * 24 * 60 * 60 * 1000;
+
+      const diff = Math.abs(actualTime - expectedTime);
+      assert.ok(
+        diff < 10000,
+        `Time difference too large: ${diff}ms, expected ${expectedTime}ms, actual ${actualTime}ms`,
+      );
+    });
+
     test('when return would exceed totalQuantity, total is raised to match new available', async () => {
       const item = await createComponent({
         name: 'Sensor',

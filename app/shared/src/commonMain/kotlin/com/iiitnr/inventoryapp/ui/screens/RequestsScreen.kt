@@ -40,6 +40,8 @@ import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
+import io.ktor.client.plugins.ResponseException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -71,7 +73,7 @@ fun RequestsScreen(
     val isFaculty = currentUser?.role == "FACULTY"
     val isAdminOrTA = currentUser?.role?.uppercase() == "ADMIN" || currentUser?.role?.uppercase() == "TA"
 
-    val query = searchQuery.trim()
+    val query: String = searchQuery.trim()
     val filteredRequests =
         requests.filter { request ->
             val matchesStatus = statusFilter?.let { it == request.status } ?: true
@@ -116,9 +118,7 @@ fun RequestsScreen(
                 }
             } catch (e: Exception) {
                 if (!pollingMode) {
-                    val isAuthError =
-                        e is io.ktor.client.plugins.ResponseException &&
-                            e.response.status == io.ktor.http.HttpStatusCode.Unauthorized
+                    val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
                     if (isAuthError) return@launch
 
                     errorMessage =
@@ -320,8 +320,7 @@ fun RequestsScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    val statusOptions =
-                        listOf("ALL", "PENDING", "APPROVED", "REJECTED", "FULFILLED", "RETURNED")
+                    val statusOptions = listOf("ALL", "PENDING", "APPROVED", "REJECTED", "FULFILLED", "RETURNED")
                     items(statusOptions) { option ->
                         val isSelected = (statusFilter == null && option == "ALL") || statusFilter == option
                         TextButton(

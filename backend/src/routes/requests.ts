@@ -272,12 +272,15 @@ async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWit
         .where(eq(component.id, item.componentId));
     }
 
+    // 1 month from now
+    const returnDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     await tx
       .update(request)
       .set({
         status: RequestStatus.FULFILLED,
         updatedAt: fulfilledAt,
         fulfilledAt,
+        returnDueAt,
       })
       .where(eq(request.id, existingRequest.id));
   });

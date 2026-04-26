@@ -25,6 +25,7 @@ data class Request(
     val items: List<RequestItem> = emptyList(),
     val user: User? = null,
     val targetFaculty: User? = null,
+    val returnDueAt: String? = null,
 )
 
 @Serializable

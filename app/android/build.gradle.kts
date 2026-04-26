@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.iiitnr.inventoryapp"
-    compileSdk = 36
+    compileSdk = 37
 
     val hasReleaseSigning =
         project.hasProperty("RELEASE_KEYSTORE_PATH") ||
@@ -34,9 +34,9 @@ android {
         applicationId = "com.iiitnr.inventoryapp"
         minSdk = 24
         multiDexEnabled = true
-        targetSdk = 36
-        versionCode = 1_14_00
-        versionName = "1.14.0"
+        targetSdk = 37
+        versionCode = 1_14_01
+        versionName = "1.14.01"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -16,12 +16,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        uses: actions/setup-java@v5.2.0
         with:
           distribution: temurin
           java-version: 21
@@ -37,7 +37,7 @@ jobs:
           fi
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@f236b35da9d031e13b1005234ebe4392ed54c580
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: false
 
@@ -56,7 +56,7 @@ jobs:
           ./gradlew :android:assembleRelease --parallel --build-cache --scan
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: android-release-apk
           path: app/android/build/outputs/apk/release/android-release.apk
@@ -67,19 +67,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        uses: actions/setup-java@v5.2.0
         with:
           distribution: temurin
           java-version: 21
           cache: "gradle"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@f236b35da9d031e13b1005234ebe4392ed54c580
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: false
 
@@ -109,14 +109,14 @@ jobs:
           Copy-Item $msi.FullName -Destination "$env:GITHUB_WORKSPACE\IIITNR-Inventory-App.msi"
 
       - name: Upload EXE artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-release-exe
           path: IIITNR-Inventory-App.exe
           retention-days: 1
 
       - name: Upload MSI artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-release-msi
           path: IIITNR-Inventory-App.msi
@@ -127,19 +127,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        uses: actions/setup-java@v5.2.0
         with:
           distribution: temurin
           java-version: 21
           cache: "gradle"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@f236b35da9d031e13b1005234ebe4392ed54c580
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: false
 
@@ -196,7 +196,7 @@ jobs:
           ./appimagetool.AppImage "$APPDIR" IIITNR-Inventory-App.AppImage
 
       - name: Upload AppImage artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: linux-appimage-release
           path: IIITNR-Inventory-App.AppImage
@@ -210,7 +210,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        uses: actions/download-artifact@v8.0.1
         with:
           path: artifacts
 
@@ -226,7 +226,7 @@ jobs:
           echo "Using tag: $TAG_NAME"
 
       - name: Upload release assets
-        uses: softprops/action-gh-release@c95fe1470d71fcc9e25f41d4a3b5803be85193a0
+        uses: softprops/action-gh-release@v3.0.0
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           files: |
