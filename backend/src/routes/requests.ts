@@ -24,6 +24,7 @@ interface CreateRequestBody {
 
 interface UpdateStatusBody {
   status?: string;
+  lastRenewReason?: string;
 }
 
 interface RequestQuery {
@@ -76,6 +77,7 @@ const updateRequestStatusSchema = {
     required: ['status'],
     properties: {
       status: { type: 'string', maxLength: 50 },
+      lastRenewReason: { type: 'string', maxLength: 500 },
     },
     additionalProperties: false,
   },
@@ -205,7 +207,7 @@ function isValidationError(value: unknown): value is ValidationError {
   return typeof value === 'object' && value !== null && 'code' in value && 'message' in value;
 }
 
-function canApproveOrRejectRequest(
+function canRenewApproveOrRejectRequest(
   currentUser: CurrentUser,
   existingRequest: NonNullable<RequestWithRelations>,
 ): ValidationError | null {
@@ -272,7 +274,6 @@ async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWit
         .where(eq(component.id, item.componentId));
     }
 
-    // 1 month from now
     const returnDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     await tx
       .update(request)
@@ -281,6 +282,40 @@ async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWit
         updatedAt: fulfilledAt,
         fulfilledAt,
         returnDueAt,
+      })
+      .where(eq(request.id, existingRequest.id));
+  });
+}
+
+async function requestForRenewalTransaction(
+  existingRequest: NonNullable<RequestWithRelations>,
+  lastRenewReason: string | undefined,
+) {
+  const requestedRenewalAt = new Date().toISOString();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(request)
+      .set({
+        status: RequestStatus.REQUESTED_RENEW,
+        updatedAt: requestedRenewalAt,
+        lastRenewReason,
+      })
+      .where(eq(request.id, existingRequest.id));
+  });
+}
+
+async function approveRenewRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
+  const renewedAt = new Date().toISOString();
+  const newReturnDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(request)
+      .set({
+        status: RequestStatus.RENEWED,
+        updatedAt: renewedAt,
+        returnDueAt: newReturnDueAt,
+        lastRenewDate: renewedAt,
       })
       .where(eq(request.id, existingRequest.id));
   });
@@ -517,7 +552,7 @@ async function handlePendingStatusUpdate(
     return;
   }
 
-  const authError = canApproveOrRejectRequest(currentUser, existingRequest);
+  const authError = canRenewApproveOrRejectRequest(currentUser, existingRequest);
   if (authError) {
     reply.code(authError.code).send({ error: authError.message });
     return;
@@ -590,25 +625,24 @@ async function handleApprovedStatusUpdate(
   }
 }
 
-async function handleFulfilledStatusUpdate(
+async function handleRequestedRenewalStatusUpdate(
   req: FastifyRequest,
   reply: FastifyReply,
   existingRequest: NonNullable<RequestWithRelations>,
   newStatus: RequestStatusValue,
   currentUser: CurrentUser,
 ) {
-  if (newStatus !== RequestStatus.RETURNED) {
-    reply.code(400).send({ error: 'fulfilled request can only be set to RETURNED' });
+  if (newStatus !== RequestStatus.RENEWED) {
+    reply.code(400).send({ error: 'requested renewal request can only be set to RENEWED' });
     return;
   }
 
-  const authError = canFulfillRequest(currentUser);
+  const authError = canRenewApproveOrRejectRequest(currentUser, existingRequest);
   if (authError) {
     reply.code(authError.code).send({ error: authError.message });
     return;
   }
-
-  await returnRequestTransaction(existingRequest);
+  await approveRenewRequestTransaction(existingRequest);
   const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
@@ -618,7 +652,48 @@ async function handleFulfilledStatusUpdate(
       entityType: 'Request',
       entityId: existingRequest.id,
       oldValues: { status: existingRequest.status },
-      newValues: { status: newStatus, returnedItems: existingRequest.requestItems },
+      newValues: { status: newStatus },
+    },
+    req,
+  );
+  reply.send({ request: updatedRequest });
+}
+
+async function handleFulfilledStatusUpdate(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  existingRequest: NonNullable<RequestWithRelations>,
+  newStatus: RequestStatusValue,
+  currentUser: CurrentUser,
+  lastRenewReason: string | undefined,
+) {
+  if (newStatus !== RequestStatus.RETURNED && newStatus !== RequestStatus.REQUESTED_RENEW) {
+    reply.code(400).send({
+      error: 'fulfilled request can only be set to RETURNED, RENEWED, or REQUESTED_RENEW',
+    });
+    return;
+  }
+  let updatedRequest;
+  if (newStatus === RequestStatus.RETURNED) {
+    const authError = canFulfillRequest(currentUser);
+    if (authError) {
+      reply.code(authError.code).send({ error: authError.message });
+      return;
+    }
+    await returnRequestTransaction(existingRequest);
+  } else if (newStatus === RequestStatus.REQUESTED_RENEW) {
+    await requestForRenewalTransaction(existingRequest, lastRenewReason);
+  }
+  updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+
+  await logAudit(
+    {
+      userId: getUserIdFromRequest(req),
+      action: AuditActionType.REQUEST_STATUS_CHANGE,
+      entityType: 'Request',
+      entityId: existingRequest.id,
+      oldValues: { status: existingRequest.status },
+      newValues: { status: newStatus },
     },
     req,
   );
@@ -678,7 +753,25 @@ async function handleUpdateRequestStatus(
         break;
 
       case RequestStatus.FULFILLED:
-        await handleFulfilledStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+        const lastRenewReason = body.lastRenewReason?.trim();
+        await handleFulfilledStatusUpdate(
+          req,
+          reply,
+          existingRequest,
+          newStatus,
+          currentUser,
+          lastRenewReason,
+        );
+        break;
+
+      case RequestStatus.REQUESTED_RENEW:
+        await handleRequestedRenewalStatusUpdate(
+          req,
+          reply,
+          existingRequest,
+          newStatus,
+          currentUser,
+        );
         break;
 
       default:

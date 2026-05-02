@@ -1103,6 +1103,57 @@ describe('Request API', () => {
       assert.equal(updated?.availableQuantity, 10);
       assert.equal(updated?.totalQuantity, 10);
     });
+
+    test('student can request renewal', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Renewal Request Test',
+        status: 'FULFILLED',
+        items: [{ componentId: item.id, quantity: 1 }],
+      });
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${studentToken}` },
+        payload: { status: 'REQUESTED_RENEW', lastRenewReason: 'Renewal Reason' },
+      });
+      assert.equal(response.statusCode, 200);
+      const updated = await findRequestById(req.id);
+      assert.ok(updated?.lastRenewReason);
+      assert.equal(updated?.lastRenewReason, 'Renewal Reason');
+    });
+
+    test('faculty can approve renewal request', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Renewed Test',
+        status: 'REQUESTED_RENEW',
+        items: [{ componentId: item.id, quantity: 1 }],
+      });
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${facultyToken}` },
+        payload: { status: 'RENEWED' },
+      });
+      assert.equal(response.statusCode, 200);
+      const updated = await findRequestById(req.id);
+      assert.equal(updated?.status, 'RENEWED');
+    });
   });
 
   describe('DELETE /requests/:id - Retract/Delete request', () => {

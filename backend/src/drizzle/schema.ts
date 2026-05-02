@@ -25,6 +25,8 @@ export const requestStatus = pgEnum('RequestStatus', [
   'REJECTED',
   'FULFILLED',
   'RETURNED',
+  'RENEWED',
+  'REQUESTED_RENEW',
 ]);
 export const userRole = pgEnum('UserRole', ['ADMIN', 'FACULTY', 'PENDING', 'STUDENT', 'TA']);
 
@@ -79,6 +81,8 @@ export const request = pgTable(
     returnedAt: timestamp({ precision: 3, mode: 'string' }),
     fulfilledAt: timestamp({ precision: 3, mode: 'string' }),
     receivedByUserId: text(),
+    lastRenewDate: timestamp({ precision: 3, mode: 'string' }),
+    lastRenewReason: text(),
   },
   (table) => [
     index('Request_targetFacultyId_idx').using(

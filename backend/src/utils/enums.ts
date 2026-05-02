@@ -12,6 +12,8 @@ export const RequestStatus = {
   REJECTED: 'REJECTED',
   FULFILLED: 'FULFILLED',
   RETURNED: 'RETURNED',
+  REQUESTED_RENEW: 'REQUESTED_RENEW',
+  RENEWED: 'RENEWED',
 } as const;
 
 export const ComponentCategory = {
