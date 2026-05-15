@@ -40,12 +40,16 @@ private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
 private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
 private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
 private val cardBackgroundReturnedLight = Color(0xFFE8EAF6)
+private val cardBackgroundRequestedRenewLight = Color(0xFFFFF3E0)
+private val cardBackgroundRenewedLight = Color(0xFFE0F2F1)
 private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
 
 private val cardBackgroundRejectedDark = Color(0xFF3D2020)
 private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
 private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
 private val cardBackgroundReturnedDark = Color(0xFF1E1E2E)
+private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
+private val cardBackgroundRenewedDark = Color(0xFF1A2E2C)
 private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
 
 private val statusApprovedLight = Color(0xFF2E7D32)
@@ -54,6 +58,10 @@ private val statusFulfilledLight = Color(0xFF1976D2)
 private val statusFulfilledDark = Color(0xFF64B5F6)
 private val statusReturnedLight = Color(0xFF5E35B1)
 private val statusReturnedDark = Color(0xFFB39DDB)
+private val statusRequestedRenewLight = Color(0xFFE65100)
+private val statusRequestedRenewDark = Color(0xFFFFB74D)
+private val statusRenewedLight = Color(0xFF00695C)
+private val statusRenewedDark = Color(0xFF4DB6AC)
 
 @Composable
 fun RequestCard(
@@ -76,6 +84,9 @@ fun RequestCard(
             "APPROVED" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
             "FULFILLED" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
             "RETURNED" -> if (isDark) cardBackgroundReturnedDark else cardBackgroundReturnedLight
+            "REQUESTED_RENEW" ->
+                if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
+            "RENEWED" -> if (isDark) cardBackgroundRenewedDark else cardBackgroundRenewedLight
             else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
         }
     val statusSubtitleColor =
@@ -84,6 +95,9 @@ fun RequestCard(
             "APPROVED" -> if (isDark) statusApprovedDark else statusApprovedLight
             "FULFILLED" -> if (isDark) statusFulfilledDark else statusFulfilledLight
             "RETURNED" -> if (isDark) statusReturnedDark else statusReturnedLight
+            "REQUESTED_RENEW" ->
+                if (isDark) statusRequestedRenewDark else statusRequestedRenewLight
+            "RENEWED" -> if (isDark) statusRenewedDark else statusRenewedLight
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
 
@@ -125,7 +139,7 @@ fun RequestCard(
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = request.status.toDisplayLabel(),
+                text = requestStatusDisplayLabel(request.status),
                 style = MaterialTheme.typography.bodyMedium,
                 color = statusSubtitleColor,
             )
@@ -155,6 +169,22 @@ fun RequestCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Returned: ${getRelativeDays(request.returnedAt)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (!request.lastRenewReason.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Renewal reason: ${request.lastRenewReason}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (request.lastRenewDate != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Last renewed: ${getRelativeDays(request.lastRenewDate)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -381,3 +411,10 @@ fun String.toDisplayLabel(): String =
     lowercase()
         .split('_')
         .joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }
+
+fun requestStatusDisplayLabel(status: String): String =
+    when (status) {
+        "REQUESTED_RENEW" -> "Renewal Requested"
+        "RENEWED" -> "Renewed"
+        else -> status.toDisplayLabel()
+    }

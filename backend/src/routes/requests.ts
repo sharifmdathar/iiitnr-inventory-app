@@ -673,7 +673,6 @@ async function handleFulfilledStatusUpdate(
     });
     return;
   }
-  let updatedRequest;
   if (newStatus === RequestStatus.RETURNED) {
     const authError = canFulfillRequest(currentUser);
     if (authError) {
@@ -684,7 +683,7 @@ async function handleFulfilledStatusUpdate(
   } else if (newStatus === RequestStatus.REQUESTED_RENEW) {
     await requestForRenewalTransaction(existingRequest, lastRenewReason);
   }
-  updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+  const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
     {
@@ -752,7 +751,7 @@ async function handleUpdateRequestStatus(
         await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
         break;
 
-      case RequestStatus.FULFILLED:
+      case RequestStatus.FULFILLED: {
         const lastRenewReason = body.lastRenewReason?.trim();
         await handleFulfilledStatusUpdate(
           req,
@@ -763,6 +762,7 @@ async function handleUpdateRequestStatus(
           lastRenewReason,
         );
         break;
+      }
 
       case RequestStatus.REQUESTED_RENEW:
         await handleRequestedRenewalStatusUpdate(

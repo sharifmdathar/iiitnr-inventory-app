@@ -148,12 +148,8 @@
           "name": "AuditLog_userId_fkey",
           "tableFrom": "AuditLog",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -430,12 +426,8 @@
           "name": "Request_targetFacultyId_fkey",
           "tableFrom": "Request",
           "tableTo": "User",
-          "columnsFrom": [
-            "targetFacultyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["targetFacultyId"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -443,12 +435,8 @@
           "name": "Request_userId_fkey",
           "tableFrom": "Request",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -540,12 +528,8 @@
           "name": "RequestItem_componentId_fkey",
           "tableFrom": "RequestItem",
           "tableTo": "Component",
-          "columnsFrom": [
-            "componentId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["componentId"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -553,12 +537,8 @@
           "name": "RequestItem_requestId_fkey",
           "tableFrom": "RequestItem",
           "tableTo": "Request",
-          "columnsFrom": [
-            "requestId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requestId"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -690,22 +670,12 @@
     "public.ComponentCategory": {
       "name": "ComponentCategory",
       "schema": "public",
-      "values": [
-        "Sensors",
-        "Actuators",
-        "Microcontrollers",
-        "Microprocessors",
-        "Others"
-      ]
+      "values": ["Sensors", "Actuators", "Microcontrollers", "Microprocessors", "Others"]
     },
     "public.Location": {
       "name": "Location",
       "schema": "public",
-      "values": [
-        "IoT_Lab",
-        "Robo_Lab",
-        "VLSI_Lab"
-      ]
+      "values": ["IoT_Lab", "Robo_Lab", "VLSI_Lab"]
     },
     "public.RequestStatus": {
       "name": "RequestStatus",
@@ -723,13 +693,7 @@
     "public.UserRole": {
       "name": "UserRole",
       "schema": "public",
-      "values": [
-        "ADMIN",
-        "FACULTY",
-        "PENDING",
-        "STUDENT",
-        "TA"
-      ]
+      "values": ["ADMIN", "FACULTY", "PENDING", "STUDENT", "TA"]
     }
   },
   "schemas": {},

@@ -44,7 +44,6 @@ The UI lives in the `app/` multiplatform module:
   - Open the repo in Android Studio.
   - Use a recent JDK (21+) and Android Gradle Plugin (already configured).
   - Run the `android` run configuration or `./gradlew :android:installDebug` from `app/`.
-
 - **Desktop**:
   - Requires JDK 21+.
   - From `app/`:
@@ -59,10 +58,12 @@ The UI lives in the `app/` multiplatform module:
 
 Compose uses **profiles** so the main and test databases don’t run at the same time (same port). From `backend/`:
 
-| Command | Effect |
-|--------|--------|
-| `podman compose -f compose.db.yaml --profile main up -d` | Start **main** Postgres (port 5432, DB `iiitnr_inventory`, persisted) |
+
+| Command                                                  | Effect                                                                     |
+| -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `podman compose -f compose.db.yaml --profile main up -d` | Start **main** Postgres (port 5432, DB `iiitnr_inventory`, persisted)      |
 | `podman compose -f compose.db.yaml --profile test up -d` | Start **test** Postgres (port 5432, DB `iiitnr_inventory_test`, ephemeral) |
+
 
 Main DB (development):
 
@@ -140,14 +141,12 @@ The server will start on `http://localhost:4000` (or the port specified in `PORT
 
 Use the pre-built image or build from `backend/Dockerfile`. From `backend/`:
 
-1. **Migrations**: Run once (e.g. for Supabase/Neon or a remote DB):
-   ```bash
-   bun run migrate
-   ```
-2. **Compose** (uses `backend/compose.yaml`: image, `env_file: .env`, port 4000):
-   ```bash
+The container **entrypoint runs Drizzle migrations** (`./migrate`) before starting the API server, so you do not need a separate migrate step at deploy time. For local development without Docker, use `bun run migrate` (or `bun run dev` / `bun run start`, which run migrations automatically).
+
+1. **Compose** (uses `backend/compose.yaml`: image, `env_file: .env`, port 4000):
+  ```bash
    podman compose up -d
-   ```
+  ```
    Ensure `backend/.env` exists and has `DATABASE_URL` (and `JWT_SECRET`, etc.). The backend listens on port 4000.
 
 **Build the image locally** (from `backend/`):
@@ -174,11 +173,9 @@ All authentication endpoints are public (no auth required).
   - Body: `{ email, password, name? }`
   - New users receive role `PENDING` until an admin promotes them
   - Returns: `{ user, token }`
-
 - `POST /auth/login` - Login with email and password
   - Body: `{ email, password }`
   - Returns: `{ user, token }`
-
 - `GET /auth/me` - Get current user info (requires authentication)
   - Headers: `Authorization: Bearer <token>`
   - Returns: `{ user }`
@@ -202,7 +199,6 @@ All request endpoints require authentication. Users can only see their own reque
 - `POST /requests` - Create a new request (authenticated users)
   - Body: `{ items: [{ componentId, quantity }] }`
   - Returns: `{ request }` with items and component details
-
 - `GET /requests` - List requests (authenticated users)
   - Query params: `?status=PENDING|APPROVED|REJECTED|FULFILLED` (optional)
   - Query params: `?userId=<uuid>` (Admin/TA only, optional)
@@ -236,6 +232,7 @@ bun test
 ```
 
 The test suite includes:
+
 - Authentication tests (`tests/auth.test.ts`)
 - Component management tests (`tests/components.test.ts`)
 - Request system tests (`tests/requests.test.ts`)
@@ -296,9 +293,9 @@ To deploy the backend to Render:
 3. Build command: `bun install --frozen-lockfile && bun run build`
 4. Start command: `bun run start`
 5. Add environment variables:
-   - `DATABASE_URL` (required)
-   - `JWT_SECRET` (required, must be changed from "change-me")
-   - `PORT` (optional, defaults to 4000)
+  - `DATABASE_URL` (required)
+  - `JWT_SECRET` (required, must be changed from "change-me")
+  - `PORT` (optional, defaults to 4000)
 
 The health check endpoint is available at `GET /health` for Render's health checks.
 

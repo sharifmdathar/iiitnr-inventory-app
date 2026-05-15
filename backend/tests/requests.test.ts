@@ -1053,7 +1053,8 @@ describe('Request API', () => {
       });
       const { returnDueAt } = res.json().request;
       const actualTime = new Date(returnDueAt).getTime();
-      const expectedTime = new Date(res.json().request.fulfilledAt).getTime() + 30 * 24 * 60 * 60 * 1000;
+      const expectedTime =
+        new Date(res.json().request.fulfilledAt).getTime() + 30 * 24 * 60 * 60 * 1000;
 
       const diff = Math.abs(actualTime - expectedTime);
       assert.ok(

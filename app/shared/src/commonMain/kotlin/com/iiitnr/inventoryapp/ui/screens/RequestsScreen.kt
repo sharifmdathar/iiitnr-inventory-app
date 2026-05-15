@@ -9,13 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,10 +33,12 @@ import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.components.requests.FulfillByIdDialog
 import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
+import com.iiitnr.inventoryapp.ui.components.requests.RenewReasonDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
-import com.iiitnr.inventoryapp.ui.components.requests.toDisplayLabel
+import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
+import com.iiitnr.inventoryapp.ui.components.requests.requestStatusDisplayLabel
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
 import io.ktor.client.plugins.ResponseException
@@ -63,6 +63,8 @@ fun RequestsScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
     var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
+    var pendingRenewRequestId by remember { mutableStateOf<String?>(null) }
+    var renewReasonInput by remember { mutableStateOf("") }
     var requestToShowQr by remember { mutableStateOf<Request?>(null) }
     var requestIdDialogKind by remember { mutableStateOf<RequestIdDialogKind?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
@@ -71,6 +73,7 @@ fun RequestsScreen(
     var searchQuery by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val isFaculty = currentUser?.role == "FACULTY"
     val isAdminOrTA = currentUser?.role?.uppercase() == "ADMIN" || currentUser?.role?.uppercase() == "TA"
 
@@ -161,6 +164,7 @@ fun RequestsScreen(
     fun updateRequestStatus(
         requestId: String,
         status: String,
+        lastRenewReason: String? = null,
     ) {
         scope.launch {
             try {
@@ -169,9 +173,15 @@ fun RequestsScreen(
                     ApiClient.requestApiService.updateRequestStatus(
                         "Bearer $token",
                         requestId,
-                        UpdateRequestStatusPayload(status = status),
+                        UpdateRequestStatusPayload(
+                            status = status,
+                            lastRenewReason = lastRenewReason,
+                        ),
                     )
                     loadRequests()
+                    requestStatusActionSnackbarMessage(status)?.let { message ->
+                        snackbarHostState.showSnackbar(message)
+                    }
                 } else {
                     errorMessage = "No authentication token"
                 }
@@ -237,6 +247,26 @@ fun RequestsScreen(
             )
         }
 
+        if (pendingRenewRequestId != null) {
+            RenewReasonDialog(
+                reason = renewReasonInput,
+                onReasonChange = { renewReasonInput = it },
+                onConfirm = {
+                    val id = pendingRenewRequestId
+                    val reason = renewReasonInput.trim()
+                    pendingRenewRequestId = null
+                    renewReasonInput = ""
+                    if (id != null && reason.isNotEmpty()) {
+                        updateRequestStatus(id, "REQUESTED_RENEW", lastRenewReason = reason)
+                    }
+                },
+                onDismiss = {
+                    pendingRenewRequestId = null
+                    renewReasonInput = ""
+                },
+            )
+        }
+
         val activeIdDialogKind = requestIdDialogKind
         if (activeIdDialogKind != null && !showQrScanner) {
             FulfillByIdDialog(
@@ -279,35 +309,32 @@ fun RequestsScreen(
             )
         }
 
-        Scaffold(topBar = {
-            RequestsTopBar(
-                onNavigateBack = onNavigateBack,
-                onFulfillByQrClick =
-                    if (isAdminOrTA) {
-                        {
-                            requestIdDialogKind = RequestIdDialogKind.Fulfill
-                            requestIdInput = ""
-                        }
-                    } else {
-                        null
-                    },
-                onReturnByQrClick =
-                    if (isAdminOrTA) {
-                        {
-                            requestIdDialogKind = RequestIdDialogKind.Return
-                            requestIdInput = ""
-                        }
-                    } else {
-                        null
-                    },
-            )
-        }, floatingActionButton = {
-            if (!isFaculty) {
-                FloatingActionButton(onClick = { onNavigateToComponents() }) {
-                    Icon(Icons.Default.Add, contentDescription = "Create Request")
-                }
-            }
-        }) { paddingValues ->
+        Scaffold(
+            topBar = {
+                RequestsTopBar(
+                    onNavigateBack = onNavigateBack,
+                    onFulfillByQrClick =
+                        if (isAdminOrTA) {
+                            {
+                                requestIdDialogKind = RequestIdDialogKind.Fulfill
+                                requestIdInput = ""
+                            }
+                        } else {
+                            null
+                        },
+                    onReturnByQrClick =
+                        if (isAdminOrTA) {
+                            {
+                                requestIdDialogKind = RequestIdDialogKind.Return
+                                requestIdInput = ""
+                            }
+                        } else {
+                            null
+                        },
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
                 SearchBar(
                     searchQuery = searchQuery,
@@ -340,7 +367,7 @@ fun RequestsScreen(
                             },
                         ) {
                             Text(
-                                text = option.toDisplayLabel(),
+                                text = requestStatusDisplayLabel(option),
                                 color =
                                     if (isSelected) {
                                         MaterialTheme.colorScheme.primary
@@ -356,6 +383,9 @@ fun RequestsScreen(
                     isLoading = isLoading,
                     errorMessage = errorMessage,
                     requests = filteredRequests,
+                    allRequests = requests,
+                    statusFilter = statusFilter,
+                    searchQuery = query,
                     onRetry = { loadRequests() },
                     onDeleteRequest =
                         if (isFaculty) {
@@ -412,10 +442,8 @@ fun RequestsScreen(
                     onRequestRenew =
                         if (!isFaculty && !isAdminOrTA) {
                             { requestId ->
-                                updateRequestStatus(
-                                    requestId,
-                                    "REQUESTED_RENEW",
-                                )
+                                pendingRenewRequestId = requestId
+                                renewReasonInput = ""
                             }
                         } else {
                             null

@@ -7,7 +7,8 @@ RUN bun install --frozen-lockfile
 COPY src ./src
 COPY tsconfig.json ./
 ENV NODE_ENV=production
-RUN bun build src/server.ts --minify --compile --outfile server
+RUN bun build src/server.ts --minify --compile --outfile server && \
+    bun build src/index.ts --minify --compile --outfile migrate
 
 FROM alpine:3.23.3 AS runner
 
@@ -23,9 +24,15 @@ WORKDIR /app
 RUN mkdir -p /app/tmp && chown bunuser:nodejs /app/tmp
 
 COPY --from=builder --chown=bunuser:nodejs /app/server ./server
+COPY --from=builder --chown=bunuser:nodejs /app/migrate ./migrate
+COPY --from=builder --chown=bunuser:nodejs /app/src/drizzle ./drizzle
+COPY --chown=bunuser:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 
 ENV NODE_ENV=production
 ENV TMPDIR=/app/tmp
+ENV MIGRATIONS_FOLDER=/app/drizzle
+
+RUN chmod +x docker-entrypoint.sh
 
 USER bunuser
 EXPOSE 4000
@@ -33,4 +40,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD wget --no-verbose --tries=1 --spider http://localhost:4000/ || exit 1
 
-CMD ["./server"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
