@@ -26,6 +26,8 @@ data class Request(
     val user: User? = null,
     val targetFaculty: User? = null,
     val returnDueAt: String? = null,
+    val lastRenewDate: String? = null,
+    val lastRenewReason: String? = null,
 )
 
 @Serializable
@@ -59,4 +61,5 @@ data class RequestsResponse(
 @Serializable
 data class UpdateRequestStatusPayload(
     val status: String,
+    val lastRenewReason: String? = null,
 )

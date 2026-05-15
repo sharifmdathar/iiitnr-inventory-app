@@ -38,6 +38,7 @@ import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
 import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
+import com.iiitnr.inventoryapp.ui.components.requests.toDisplayLabel
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
 import io.ktor.client.plugins.ResponseException
@@ -320,7 +321,17 @@ fun RequestsScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    val statusOptions = listOf("ALL", "PENDING", "APPROVED", "REJECTED", "FULFILLED", "RETURNED")
+                    val statusOptions =
+                        listOf(
+                            "ALL",
+                            "PENDING",
+                            "APPROVED",
+                            "REJECTED",
+                            "FULFILLED",
+                            "REQUESTED_RENEW",
+                            "RENEWED",
+                            "RETURNED",
+                        )
                     items(statusOptions) { option ->
                         val isSelected = (statusFilter == null && option == "ALL") || statusFilter == option
                         TextButton(
@@ -329,7 +340,7 @@ fun RequestsScreen(
                             },
                         ) {
                             Text(
-                                text = option.lowercase().replaceFirstChar { it.uppercaseChar() },
+                                text = option.toDisplayLabel(),
                                 color =
                                     if (isSelected) {
                                         MaterialTheme.colorScheme.primary
@@ -393,6 +404,28 @@ fun RequestsScreen(
                                 updateRequestStatus(
                                     requestId,
                                     "RETURNED",
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    onRequestRenew =
+                        if (!isFaculty && !isAdminOrTA) {
+                            { requestId ->
+                                updateRequestStatus(
+                                    requestId,
+                                    "REQUESTED_RENEW",
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    onApproveRenew =
+                        if (isFaculty) {
+                            { requestId ->
+                                updateRequestStatus(
+                                    requestId,
+                                    "RENEWED",
                                 )
                             }
                         } else {

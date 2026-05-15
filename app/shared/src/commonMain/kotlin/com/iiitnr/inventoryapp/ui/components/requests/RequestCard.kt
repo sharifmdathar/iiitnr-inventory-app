@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.QrCode2
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -62,6 +63,8 @@ fun RequestCard(
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
     onReturnRequest: ((String) -> Unit)? = null,
+    onRequestRenew: ((String) -> Unit)? = null,
+    onApproveRenew: ((String) -> Unit)? = null,
     onShowQr: ((Request) -> Unit)? = null,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
@@ -115,12 +118,14 @@ fun RequestCard(
                     onRejectRequest = onRejectRequest,
                     onFulfillRequest = onFulfillRequest,
                     onReturnRequest = onReturnRequest,
+                    onRequestRenew = onRequestRenew,
+                    onApproveRenew = onApproveRenew,
                     onShowQr = onShowQr,
                 )
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = request.status.lowercase().replaceFirstChar { it.uppercaseChar() },
+                text = request.status.toDisplayLabel(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = statusSubtitleColor,
             )
@@ -194,6 +199,8 @@ private fun RequestCardActions(
     onRejectRequest: ((String) -> Unit)?,
     onFulfillRequest: ((String) -> Unit)?,
     onReturnRequest: ((String) -> Unit)?,
+    onRequestRenew: ((String) -> Unit)?,
+    onApproveRenew: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
 ) {
     when (request.status) {
@@ -219,7 +226,15 @@ private fun RequestCardActions(
                 request = request,
                 isFaculty = isFaculty,
                 onReturnRequest = onReturnRequest,
+                onRequestRenew = onRequestRenew,
                 onShowQr = onShowQr,
+            )
+
+        "REQUESTED_RENEW" ->
+            RequestedRenewActions(
+                request = request,
+                isFaculty = isFaculty,
+                onApproveRenew = onApproveRenew,
             )
     }
 }
@@ -294,9 +309,19 @@ private fun FulfilledRequestActions(
     request: Request,
     isFaculty: Boolean,
     onReturnRequest: ((String) -> Unit)?,
+    onRequestRenew: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!isFaculty && onRequestRenew != null) {
+            IconButton(onClick = { onRequestRenew(request.id) }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Request renewal",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
         if (!isFaculty && onShowQr != null) {
             IconButton(onClick = { onShowQr(request) }) {
                 Icon(
@@ -318,6 +343,23 @@ private fun FulfilledRequestActions(
     }
 }
 
+@Composable
+private fun RequestedRenewActions(
+    request: Request,
+    isFaculty: Boolean,
+    onApproveRenew: ((String) -> Unit)?,
+) {
+    if (isFaculty && onApproveRenew != null) {
+        IconButton(onClick = { onApproveRenew(request.id) }) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Approve renewal request",
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
 fun getRelativeDays(dateTimeString: String?): String {
     if (dateTimeString == null) return ""
     val dateTime = LocalDateTime.parse(dateTimeString.replace(' ', 'T'))
@@ -334,3 +376,8 @@ fun getRelativeDays(dateTimeString: String?): String {
         "Due in ${abs(days)}d"
     }
 }
+
+fun String.toDisplayLabel(): String =
+    lowercase()
+        .split('_')
+        .joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }

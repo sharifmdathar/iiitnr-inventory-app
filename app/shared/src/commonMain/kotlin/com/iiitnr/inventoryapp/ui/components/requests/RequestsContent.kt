@@ -20,6 +20,8 @@ fun RequestsContent(
     onRejectRequest: ((String) -> Unit)? = null,
     onFulfillRequest: ((String) -> Unit)? = null,
     onReturnRequest: ((String) -> Unit)? = null,
+    onRequestRenew: ((String) -> Unit)? = null,
+    onApproveRenew: ((String) -> Unit)? = null,
     onShowQr: ((Request) -> Unit)? = null,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
@@ -42,6 +44,8 @@ fun RequestsContent(
                     onRejectRequest = onRejectRequest,
                     onFulfillRequest = onFulfillRequest,
                     onReturnRequest = onReturnRequest,
+                    onRequestRenew = onRequestRenew,
+                    onApproveRenew = onApproveRenew,
                     onShowQr = onShowQr,
                     isFaculty = isFaculty,
                 )
