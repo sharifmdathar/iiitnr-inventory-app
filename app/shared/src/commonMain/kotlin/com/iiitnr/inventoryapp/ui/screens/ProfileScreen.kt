@@ -47,6 +47,7 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToRequests: () -> Unit = {},
+    onNavigateToAuditLog: () -> Unit = {},
 ) {
     var userData by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -164,6 +165,20 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("My Requests")
+                }
+
+                val isAdmin =
+                    userData!!.role.uppercase().let {
+                        it == "ADMIN" || it == "TA"
+                    }
+                if (isAdmin) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onNavigateToAuditLog,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Audit Log")
+                    }
                 }
             }
         }

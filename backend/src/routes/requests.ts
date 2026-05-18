@@ -774,10 +774,23 @@ async function handleUpdateRequestStatus(
         );
         break;
 
+      case RequestStatus.RENEWED: {
+        const renewedLastRenewReason = body.lastRenewReason?.trim();
+        await handleFulfilledStatusUpdate(
+          req,
+          reply,
+          existingRequest,
+          newStatus,
+          currentUser,
+          renewedLastRenewReason,
+        );
+        break;
+      }
+
       default:
         reply.code(400).send({
           error:
-            'request status can only be updated when status is PENDING, APPROVED, or FULFILLED',
+            'request status can only be updated when status is PENDING, APPROVED, FULFILLED, REQUESTED_RENEW, or RENEWED',
         });
     }
   } catch (err) {

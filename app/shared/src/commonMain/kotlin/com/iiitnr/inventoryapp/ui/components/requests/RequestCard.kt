@@ -266,6 +266,15 @@ private fun RequestCardActions(
                 isFaculty = isFaculty,
                 onApproveRenew = onApproveRenew,
             )
+
+        "RENEWED" ->
+            RenewedRequestActions(
+                request = request,
+                isFaculty = isFaculty,
+                onReturnRequest = onReturnRequest,
+                onRequestRenew = onRequestRenew,
+                onShowQr = onShowQr,
+            )
     }
 }
 
@@ -386,6 +395,45 @@ private fun RequestedRenewActions(
                 contentDescription = "Approve renewal request",
                 tint = MaterialTheme.colorScheme.primary,
             )
+        }
+    }
+}
+
+@Composable
+private fun RenewedRequestActions(
+    request: Request,
+    isFaculty: Boolean,
+    onReturnRequest: ((String) -> Unit)?,
+    onRequestRenew: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!isFaculty && onRequestRenew != null) {
+            IconButton(onClick = { onRequestRenew(request.id) }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Request renewal",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (!isFaculty && onShowQr != null) {
+            IconButton(onClick = { onShowQr(request) }) {
+                Icon(
+                    imageVector = Icons.Default.QrCode2,
+                    contentDescription = "Show QR for TA to scan when returning items",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (onReturnRequest != null) {
+            IconButton(onClick = { onReturnRequest(request.id) }) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
+                    contentDescription = "Record return to inventory",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

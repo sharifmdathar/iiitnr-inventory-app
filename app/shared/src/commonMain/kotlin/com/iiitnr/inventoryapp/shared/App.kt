@@ -22,6 +22,7 @@ import com.iiitnr.inventoryapp.data.api.AuthEvent
 import com.iiitnr.inventoryapp.data.api.AuthEventManager
 import com.iiitnr.inventoryapp.data.cache.ComponentsCache
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.ui.screens.AuditLogScreen
 import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
 import com.iiitnr.inventoryapp.ui.screens.ProfileScreen
@@ -124,6 +125,8 @@ fun App(
                                 navController.popBackStack()
                             }, onNavigateToRequests = {
                                 navController.navigate("requests")
+                            }, onNavigateToAuditLog = {
+                                navController.navigate("audit_log")
                             })
                         }
                         composable("requests") {
@@ -134,6 +137,12 @@ fun App(
                                     popUpTo("requests") { inclusive = true }
                                 }
                             })
+                        }
+                        composable("audit_log") {
+                            AuditLogScreen(
+                                tokenManager = tokenManager,
+                                onNavigateBack = { navController.popBackStack() },
+                            )
                         }
                     }
                 }
