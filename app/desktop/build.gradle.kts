@@ -23,13 +23,21 @@ kotlin {
     }
 }
 
+val googleConfigPropertiesFile = layout.projectDirectory.file("src/jvmMain/resources/google-desktop-config.properties").asFile
+
 tasks.register("populateGoogleConfig") {
+    val fileToPopulate = googleConfigPropertiesFile
+
+    inputs.environment("GOOGLE_DESKTOP_CLIENT_ID")
+    inputs.environment("GOOGLE_DESKTOP_CLIENT_SECRET")
+    inputs.environment("GOOGLE_DESKTOP_REDIRECT_URI")
+    outputs.file(fileToPopulate)
+
     doLast {
-        val propertiesFile = project.file("src/jvmMain/resources/google-desktop-config.properties")
         val properties = Properties()
 
-        if (propertiesFile.exists()) {
-            propertiesFile.inputStream().use { stream ->
+        if (fileToPopulate.exists()) {
+            fileToPopulate.inputStream().use { stream ->
                 properties.load(stream)
             }
         }
@@ -49,8 +57,8 @@ tasks.register("populateGoogleConfig") {
             properties.setProperty("google.desktop.redirect.uri", redirectUri)
         }
 
-        propertiesFile.parentFile.mkdirs()
-        propertiesFile.outputStream().use { stream ->
+        fileToPopulate.parentFile.mkdirs()
+        fileToPopulate.outputStream().use { stream ->
             properties.store(stream, "Google Desktop OAuth Configuration - Auto-generated from environment variables")
         }
     }
