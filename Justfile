@@ -36,6 +36,9 @@ test:
 desk:
     cd app && ./gradlew desktop:run
 
+andro:
+    cd app && ./gradlew assembleDebug
+
 lint:
     cd backend && bun run lint
     cd app && ./gradlew ktlintCheck

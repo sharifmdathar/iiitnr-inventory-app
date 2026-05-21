@@ -44,4 +44,5 @@ object ApiClient {
     val componentApiService: ComponentApiService = ComponentApiService(client, BASE_URL)
     val requestApiService: RequestApiService = RequestApiService(client, BASE_URL)
     val auditLogApiService: AuditLogApiService = AuditLogApiService(client, BASE_URL)
+    val versionApiService: VersionApiService = VersionApiService(client, BASE_URL)
 }

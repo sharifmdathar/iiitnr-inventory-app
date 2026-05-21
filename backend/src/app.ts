@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'node:fs';
 import Fastify from 'fastify';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
@@ -212,6 +213,14 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
 function setupRoutes(app: FastifyInstance) {
   app.get('/', handleRootRoute);
   app.get('/health', (_, reply) => handleHealthCheck(app, reply));
+  app.get('/version', (_, reply) => {
+    try {
+      const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+      reply.send({ version: pkg.version });
+    } catch (e) {
+      reply.code(500).send({ error: 'Failed to read version' });
+    }
+  });
 }
 
 export async function buildApp() {

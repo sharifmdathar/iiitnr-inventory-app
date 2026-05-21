@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
@@ -6,6 +8,40 @@ plugins {
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
     alias(libs.plugins.sqldelight)
+}
+
+val packageJsonFile = rootProject.layout.projectDirectory.file("../backend/package.json")
+val generatedVersionDir = layout.buildDirectory.dir("generated/source/appVersion/commonMain/kotlin")
+
+val generateVersionKt by tasks.registering {
+    val versionInput = packageJsonFile.asFile
+    val versionOutputDir = generatedVersionDir.get().asFile
+
+    inputs.file(versionInput)
+    outputs.dir(versionOutputDir)
+
+    doLast {
+        val packageJson = versionInput.readText()
+        val version =
+            (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
+                ?.toString()
+                ?.takeIf { it.isNotBlank() }
+                ?: error("Could not find version in backend/package.json")
+        val versionFile =
+            versionOutputDir.resolve("com/iiitnr/inventoryapp/data/GeneratedVersion.kt")
+
+        versionOutputDir.deleteRecursively()
+        versionFile.parentFile.mkdirs()
+        versionFile.writeText(
+            """
+            package com.iiitnr.inventoryapp.data
+
+            internal object GeneratedVersion {
+                const val CURRENT_VERSION = "$version"
+            }
+            """.trimIndent() + "\n",
+        )
+    }
 }
 
 kotlin {
@@ -32,6 +68,8 @@ kotlin {
 
     sourceSets {
         val commonMain by getting {
+            kotlin.srcDir(generateVersionKt)
+
             dependencies {
                 val composeVersion = libs.versions.composeMultiplatform.get()
 

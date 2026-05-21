@@ -15,9 +15,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.iiitnr.inventoryapp.data.Version
+import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.api.AuthEvent
 import com.iiitnr.inventoryapp.data.api.AuthEventManager
 import com.iiitnr.inventoryapp.data.cache.ComponentsCache
@@ -42,12 +45,30 @@ fun App(
         val navController = rememberNavController()
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
+        val uriHandler = LocalUriHandler.current
         var startDestination by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
             scope.launch {
                 val token = tokenManager.token.first()
                 startDestination = if (token != null) "components" else "login"
+            }
+            scope.launch {
+                try {
+                    val serverVersion = ApiClient.versionApiService.fetchServerVersion().version
+                    if (Version.isVersionNewer(Version.CURRENT_VERSION, serverVersion)) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Update available: $serverVersion",
+                            actionLabel = "Download",
+                            duration = androidx.compose.material3.SnackbarDuration.Short,
+                        )
+                        if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                            uriHandler.openUri("https://github.com/sharifmdathar/iiitnr-inventory-app/releases")
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Silently fail on version check
+                }
             }
             scope.launch {
                 AuthEventManager.events.collect { event ->

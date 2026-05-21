@@ -1,9 +1,31 @@
+import groovy.json.JsonSlurper
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
 }
+
+val appVersion =
+    providers.fileContents(rootProject.layout.projectDirectory.file("../backend/package.json"))
+        .asText
+        .map { packageJson ->
+            (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
+                ?.toString()
+                ?.takeIf { it.isNotBlank() }
+                ?: error("Could not find version in backend/package.json")
+        }
+
+fun versionCodeFrom(version: String): Int =
+    version.split('.')
+        .map { it.toInt() }
+        .let { parts ->
+            val major = parts.getOrElse(0) { 0 }
+            val minor = parts.getOrElse(1) { 0 }
+            val patch = parts.getOrElse(2) { 0 }
+            major * 10_000 + minor * 100 + patch
+        }
 
 android {
     namespace = "com.iiitnr.inventoryapp"
@@ -35,8 +57,8 @@ android {
         minSdk = 24
         multiDexEnabled = true
         targetSdk = 37
-        versionCode = 1_14_05
-        versionName = "1.14.05"
+        versionName = appVersion.get()
+        versionCode = versionCodeFrom(versionName!!)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.util.Properties
 
@@ -7,6 +8,16 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.compose.desktop)
 }
+
+val appVersion =
+    providers.fileContents(rootProject.layout.projectDirectory.file("../backend/package.json"))
+        .asText
+        .map { packageJson ->
+            (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
+                ?.toString()
+                ?.takeIf { it.isNotBlank() }
+                ?: error("Could not find version in backend/package.json")
+        }
 
 kotlin {
     jvm()
@@ -100,7 +111,7 @@ compose.desktop {
             }
 
             packageName = "IIITNR Inventory App"
-            packageVersion = "1.14.05"
+            packageVersion = appVersion.get()
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"
