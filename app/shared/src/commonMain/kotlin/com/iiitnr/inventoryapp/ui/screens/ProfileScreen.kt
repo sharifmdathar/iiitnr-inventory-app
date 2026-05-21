@@ -156,6 +156,8 @@ fun ProfileScreen(
                         InfoRow("Email", userData!!.email)
                         InfoRow("Name", userData!!.name ?: "Not provided")
                         InfoRow("Role", userData!!.role)
+                        userData!!.batch?.let { InfoRow("Batch", it) }
+                        userData!!.branch?.let { InfoRow("Branch", it) }
                     }
                 }
 

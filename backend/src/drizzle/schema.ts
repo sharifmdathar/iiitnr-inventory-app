@@ -51,6 +51,8 @@ export const user = pgTable(
     passwordHash: text(),
     googleId: text(),
     role: userRole().default('PENDING').notNull(),
+    batch: text(),
+    branch: text(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

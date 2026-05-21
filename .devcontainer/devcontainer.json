@@ -12,7 +12,8 @@
     }
   ],
   "forwardPorts": [4000],
-  "initializeCommand": "docker network create iiitnr-inventory 2> /dev/null || true",
-  "runArgs": ["--network=iiitnr-inventory"],
-  "postCreateCommand": "just install && cd app && ./gradlew --version"
+  "postCreateCommand": "just install && cd app && ./gradlew --version",
+  "containerEnv": {
+    "DOCKER_HOST": "unix:///var/run/docker.sock"
+  }
 }

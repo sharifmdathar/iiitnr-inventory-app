@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
+import com.iiitnr.inventoryapp.data.models.User
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
@@ -144,63 +145,23 @@ fun RequestCard(
                 color = statusSubtitleColor,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            if (request.returnDueAt != null) {
-                Text(
-                    text = "Return: ${getRelativeDays(request.returnDueAt)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
             Text(
-                text = "Created: ${getRelativeDays(request.createdAt)}",
+                text = buildDatesLine(request),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (request.fulfilledAt != null) {
+            if (request.user != null || request.targetFaculty != null) {
                 Spacer(modifier = Modifier.height(4.dp))
+                val requester = request.user?.let { compactUserLabel(it) }
+                val faculty = request.targetFaculty?.let { it.name ?: it.email }
+                val combined = when {
+                    requester != null && faculty != null -> "$requester  ← $faculty"
+                    requester != null -> requester
+                    faculty != null -> "Requested from: $faculty"
+                    else -> ""
+                }
                 Text(
-                    text = "Fulfilled: ${getRelativeDays(request.fulfilledAt)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (request.returnedAt != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Returned: ${getRelativeDays(request.returnedAt)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (!request.lastRenewReason.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Renewal reason: ${request.lastRenewReason}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (request.lastRenewDate != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Last renewed: ${getRelativeDays(request.lastRenewDate)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (request.user != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Requested by: ${request.user.name ?: request.user.email}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            if (request.targetFaculty != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Requested from: ${request.targetFaculty.name ?: request.targetFaculty.email}",
+                    text = combined,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -466,3 +427,38 @@ fun requestStatusDisplayLabel(status: String): String =
         "RENEWED" -> "Renewed"
         else -> status.toDisplayLabel()
     }
+
+fun buildUserDetailsLabel(prefix: String, user: User): String {
+    val details = mutableListOf<String>()
+    user.name?.takeIf { it.isNotBlank() }?.let { details += "Name: $it" }
+    user.batch?.takeIf { it.isNotBlank() }?.let { details += "Batch: $it" }
+    user.branch?.takeIf { it.isNotBlank() }?.let { details += "Branch: $it" }
+
+    val label = details.joinToString(" • ")
+    return if (label.isBlank()) {
+        "$prefix: ${user.email}"
+    } else {
+        "$prefix: $label"
+    }
+}
+
+fun compactUserLabel(user: User): String {
+    val displayName = user.name?.takeIf { it.isNotBlank() } ?: user.email
+    val branch = user.branch?.takeIf { it.isNotBlank() }
+    val batch = user.batch?.takeIf { it.isNotBlank() }?.replace("-", "–")
+    val suffix = listOfNotNull(branch, batch).joinToString(" ")
+    return if (suffix.isBlank()) displayName else "$displayName ($suffix)"
+}
+
+fun buildDatesLine(request: com.iiitnr.inventoryapp.data.models.Request): String {
+    val tokens = mutableListOf<String>()
+    request.returnDueAt?.let {
+        var s = getRelativeDays(it)
+        if (s.startsWith("Due in ")) s = "Due: " + s.removePrefix("Due in ")
+        tokens += s
+    }
+    tokens += "Created: ${getRelativeDays(request.createdAt)}"
+    request.fulfilledAt?.let { tokens += "Fulfilled: ${getRelativeDays(it)}" }
+    request.lastRenewDate?.let { tokens += "Renewed: ${getRelativeDays(it)}" }
+    return tokens.joinToString(" · ")
+}

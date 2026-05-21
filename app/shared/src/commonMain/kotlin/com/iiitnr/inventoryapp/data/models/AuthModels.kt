@@ -7,7 +7,6 @@ data class RegisterRequest(
     val email: String,
     val password: String,
     val name: String? = null,
-    val role: String? = null,
 )
 
 @Serializable
@@ -28,6 +27,8 @@ data class User(
     val name: String? = null,
     val imageUrl: String? = null,
     val role: String,
+    val batch: String? = null,
+    val branch: String? = null,
     val createdAt: String? = null,
 )
 

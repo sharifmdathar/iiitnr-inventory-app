@@ -28,9 +28,18 @@ val googleConfigPropertiesFile = layout.projectDirectory.file("src/jvmMain/resou
 tasks.register("populateGoogleConfig") {
     val fileToPopulate = googleConfigPropertiesFile
 
-    inputs.environment("GOOGLE_DESKTOP_CLIENT_ID")
-    inputs.environment("GOOGLE_DESKTOP_CLIENT_SECRET")
-    inputs.environment("GOOGLE_DESKTOP_REDIRECT_URI")
+    inputs.property(
+        "GOOGLE_DESKTOP_CLIENT_ID",
+        providers.environmentVariable("GOOGLE_DESKTOP_CLIENT_ID").orElse("")
+    )
+    inputs.property(
+        "GOOGLE_DESKTOP_CLIENT_SECRET",
+        providers.environmentVariable("GOOGLE_DESKTOP_CLIENT_SECRET").orElse("")
+    )
+    inputs.property(
+        "GOOGLE_DESKTOP_REDIRECT_URI",
+        providers.environmentVariable("GOOGLE_DESKTOP_REDIRECT_URI").orElse("")
+    )
     outputs.file(fileToPopulate)
 
     doLast {
@@ -91,7 +100,7 @@ compose.desktop {
             }
 
             packageName = "IIITNR Inventory App"
-            packageVersion = "1.14.04"
+            packageVersion = "1.14.05"
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"

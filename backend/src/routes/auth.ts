@@ -7,6 +7,7 @@ import { user } from '../drizzle/schema.js';
 import { UserRole, AuditActionType } from '../utils/enums.js';
 import type { UserRoleValue } from '../utils/enums.js';
 import { logAudit } from '../utils/audit.js';
+import { deriveIiitnrProfileFromEmail, pickDerivedProfileUpdates } from '../utils/iiitnr-email.js';
 
 interface RegisterBody {
   email?: string;
@@ -29,7 +30,19 @@ interface UserResponse {
   name: string | null;
   imageUrl: string | null;
   role: string;
+  batch: string | null;
+  branch: string | null;
 }
+
+const userPublicColumns = {
+  id: true,
+  email: true,
+  name: true,
+  imageUrl: true,
+  role: true,
+  batch: true,
+  branch: true,
+} as const;
 
 interface ValidationError {
   code: number;
@@ -209,14 +222,14 @@ function parseGoogleAuthError(err: unknown): ValidationError {
 
 function findUserByEmail(email: string) {
   return db.query.user.findFirst({
-    columns: { id: true, email: true, name: true, imageUrl: true, role: true, passwordHash: true },
+    columns: { ...userPublicColumns, passwordHash: true },
     where: (u, { eq }) => eq(u.email, email),
   });
 }
 
 function findUserById(id: string) {
   return db.query.user.findFirst({
-    columns: { id: true, email: true, name: true, imageUrl: true, role: true },
+    columns: userPublicColumns,
     where: (u, { eq }) => eq(u.id, id),
   });
 }
@@ -228,6 +241,8 @@ async function createUser(data: {
   googleId?: string;
   imageUrl?: string | null;
   role: UserRoleValue;
+  batch?: string | null;
+  branch?: string | null;
 }) {
   const now = new Date().toISOString();
 
@@ -236,6 +251,8 @@ async function createUser(data: {
     .values({
       id: crypto.randomUUID(),
       ...data,
+      batch: data.batch ?? null,
+      branch: data.branch ?? null,
       createdAt: now,
       updatedAt: now,
     })
@@ -245,10 +262,30 @@ async function createUser(data: {
       name: user.name,
       imageUrl: user.imageUrl,
       role: user.role,
+      batch: user.batch,
+      branch: user.branch,
       createdAt: user.createdAt,
     });
 
   return created;
+}
+
+function buildGoogleUserCreatePayload(
+  email: string,
+  name: string | null,
+  googleId: string,
+  imageUrl: string | null,
+) {
+  const derived = deriveIiitnrProfileFromEmail(email);
+  return {
+    email,
+    name: name ?? undefined,
+    googleId,
+    imageUrl,
+    role: derived?.role ?? UserRole.PENDING,
+    batch: derived?.batch ?? null,
+    branch: derived?.branch ?? null,
+  };
 }
 
 async function findOrCreateGoogleUser(
@@ -257,39 +294,49 @@ async function findOrCreateGoogleUser(
   name: string | null,
   imageUrl: string | null,
 ): Promise<UserResponse> {
+  const normalizedEmail = email.trim().toLowerCase();
   const existingUser = await db.query.user.findFirst({
-    columns: { id: true, email: true, name: true, imageUrl: true, role: true, googleId: true },
-    where: (u, { eq, or }) => or(eq(u.googleId, googleId), eq(u.email, email)),
+    columns: { ...userPublicColumns, googleId: true },
+    where: (u, { eq, or }) => or(eq(u.googleId, googleId), eq(u.email, normalizedEmail)),
   });
 
   if (!existingUser) {
-    const created = await createUser({
-      email,
-      name: name ?? undefined,
-      googleId,
-      imageUrl,
-      role: UserRole.STUDENT,
-    });
+    const created = await createUser(buildGoogleUserCreatePayload(normalizedEmail, name, googleId, imageUrl));
 
     if (!created) throw new Error('User creation failed');
     return created;
   }
 
-  const needsUpdate =
+  const derived = deriveIiitnrProfileFromEmail(normalizedEmail);
+  const profileUpdates = derived
+    ? pickDerivedProfileUpdates(derived, {
+        batch: existingUser.batch,
+        branch: existingUser.branch,
+      })
+    : {};
+
+  const needsProfileUpdate = Object.keys(profileUpdates).length > 0;
+  const needsGoogleMetadataUpdate =
     !existingUser.googleId ||
     (name != null && existingUser.name !== name) ||
     (imageUrl != null && existingUser.imageUrl !== imageUrl);
 
-  if (!needsUpdate) {
+  if (!needsProfileUpdate && !needsGoogleMetadataUpdate) {
     return existingUser;
   }
 
   const [updated] = await db
     .update(user)
     .set({
-      googleId: existingUser.googleId || googleId,
-      name: name ?? existingUser.name,
-      imageUrl: imageUrl ?? existingUser.imageUrl,
+      ...(needsGoogleMetadataUpdate
+        ? {
+            googleId: existingUser.googleId || googleId,
+            name: name ?? existingUser.name,
+            imageUrl: imageUrl ?? existingUser.imageUrl,
+          }
+        : {}),
+      ...profileUpdates,
+      updatedAt: new Date().toISOString(),
     })
     .where(eq(user.id, existingUser.id))
     .returning({
@@ -298,6 +345,8 @@ async function findOrCreateGoogleUser(
       name: user.name,
       imageUrl: user.imageUrl,
       role: user.role,
+      batch: user.batch,
+      branch: user.branch,
     });
 
   if (!updated) throw new Error('User update failed');
@@ -311,6 +360,8 @@ function toUserResponse(userData: UserResponse): UserResponse {
     name: userData.name,
     imageUrl: userData.imageUrl,
     role: userData.role,
+    batch: userData.batch ?? null,
+    branch: userData.branch ?? null,
   };
 }
 

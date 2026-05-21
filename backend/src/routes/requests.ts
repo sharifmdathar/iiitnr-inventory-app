@@ -100,8 +100,8 @@ async function fetchFullRequest(id: string) {
     where: eq(request.id, id),
     with: {
       requestItems: { with: { component: true } },
-      user_userId: { columns: { id: true, email: true, name: true, role: true } },
-      user_targetFacultyId: { columns: { id: true, email: true, name: true, role: true } },
+      user_userId: { columns: { id: true, email: true, name: true, role: true, batch: true, branch: true } },
+      user_targetFacultyId: { columns: { id: true, email: true, name: true, role: true, batch: true, branch: true } },
     },
   });
   return row;
@@ -522,8 +522,8 @@ async function handleGetRequests(
       orderBy: desc(request.createdAt),
       with: {
         requestItems: { with: { component: true } },
-        user_userId: { columns: { id: true, email: true, name: true, role: true } },
-        user_targetFacultyId: { columns: { id: true, email: true, name: true, role: true } },
+        user_userId: { columns: { id: true, email: true, name: true, role: true, batch: true, branch: true } },
+        user_targetFacultyId: { columns: { id: true, email: true, name: true, role: true, batch: true, branch: true } },
       },
     });
 
