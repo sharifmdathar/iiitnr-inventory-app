@@ -20,3 +20,11 @@ export const requireAdminOrTA = async (request: FastifyRequest, reply: FastifyRe
 
 export const isAdminOrTA = (role?: UserRoleValue): boolean =>
   role === UserRole.ADMIN || role === UserRole.TA;
+
+export const requireAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
+  await request.jwtVerify();
+  const userRole = (request.user as { role?: UserRoleValue })?.role;
+  if (userRole !== UserRole.ADMIN) {
+    return reply.code(403).send({ error: 'forbidden: admin role required' });
+  }
+};

@@ -48,6 +48,7 @@ export type AuditActionTypeValue = (typeof AuditActionType)[keyof typeof AuditAc
 
 export const requestStatusValues = Object.values(RequestStatus);
 export const categoryValues = Object.values(ComponentCategory);
+export const userRoleValues = Object.values(UserRole);
 
 const locationEnumValues = Object.values(Location);
 export const locationValues = locationEnumValues.map((v) => v.replace(/_/g, ' '));
