@@ -3,7 +3,10 @@ package com.iiitnr.inventoryapp.data
 object Version {
     const val CURRENT_VERSION = GeneratedVersion.CURRENT_VERSION
 
-    fun isVersionNewer(current: String, latest: String): Boolean {
+    fun isVersionNewer(
+        current: String,
+        latest: String,
+    ): Boolean {
         val currentParts = current.split('.').mapNotNull { it.toIntOrNull() }
         val latestParts = latest.split('.').mapNotNull { it.toIntOrNull() }
 

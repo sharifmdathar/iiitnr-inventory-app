@@ -26,6 +26,7 @@ RUN mkdir -p /app/tmp && chown bunuser:nodejs /app/tmp
 COPY --from=builder --chown=bunuser:nodejs /app/server ./server
 COPY --from=builder --chown=bunuser:nodejs /app/migrate ./migrate
 COPY --from=builder --chown=bunuser:nodejs /app/src/drizzle ./drizzle
+COPY --chown=bunuser:nodejs package.json ./package.json
 COPY --chown=bunuser:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
 
 ENV NODE_ENV=production
@@ -37,7 +38,7 @@ RUN chmod +x docker-entrypoint.sh
 USER bunuser
 EXPOSE 4000
 
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/ || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

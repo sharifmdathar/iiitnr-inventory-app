@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import { deriveIiitnrProfileFromEmail, pickDerivedProfileUpdates } from '../src/utils/iiitnr-email.js';
+import {
+  deriveIiitnrProfileFromEmail,
+  pickDerivedProfileUpdates,
+} from '../src/utils/iiitnr-email.js';
 import { UserRole } from '../src/utils/enums.js';
 
 describe('deriveIiitnrProfileFromEmail', () => {

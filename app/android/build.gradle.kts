@@ -8,7 +8,8 @@ plugins {
 }
 
 val appVersion =
-    providers.fileContents(rootProject.layout.projectDirectory.file("../backend/package.json"))
+    providers
+        .fileContents(rootProject.layout.projectDirectory.file("../backend/package.json"))
         .asText
         .map { packageJson ->
             (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
@@ -18,7 +19,8 @@ val appVersion =
         }
 
 fun versionCodeFrom(version: String): Int =
-    version.split('.')
+    version
+        .split('.')
         .map { it.toInt() }
         .let { parts ->
             val major = parts.getOrElse(0) { 0 }

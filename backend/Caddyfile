@@ -1,0 +1,15 @@
+inventory.iiitnr.edu.in
+
+# Proxy to backend
+reverse_proxy localhost:4000
+
+encode zstd gzip
+
+log {
+    output file /var/log/caddy/access.log {
+        roll_size 100mb
+        roll_keep 10
+        roll_keep_for 720h
+    }
+    format json
+}

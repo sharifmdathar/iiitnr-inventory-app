@@ -154,12 +154,13 @@ fun RequestCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 val requester = request.user?.let { compactUserLabel(it) }
                 val faculty = request.targetFaculty?.let { it.name ?: it.email }
-                val combined = when {
-                    requester != null && faculty != null -> "$requester  ← $faculty"
-                    requester != null -> requester
-                    faculty != null -> "Requested from: $faculty"
-                    else -> ""
-                }
+                val combined =
+                    when {
+                        requester != null && faculty != null -> "$requester  ← $faculty"
+                        requester != null -> requester
+                        faculty != null -> "Requested from: $faculty"
+                        else -> ""
+                    }
                 Text(
                     text = combined,
                     style = MaterialTheme.typography.bodySmall,
@@ -428,7 +429,10 @@ fun requestStatusDisplayLabel(status: String): String =
         else -> status.toDisplayLabel()
     }
 
-fun buildUserDetailsLabel(prefix: String, user: User): String {
+fun buildUserDetailsLabel(
+    prefix: String,
+    user: User,
+): String {
     val details = mutableListOf<String>()
     user.name?.takeIf { it.isNotBlank() }?.let { details += "Name: $it" }
     user.batch?.takeIf { it.isNotBlank() }?.let { details += "Batch: $it" }

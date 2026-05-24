@@ -301,7 +301,9 @@ async function findOrCreateGoogleUser(
   });
 
   if (!existingUser) {
-    const created = await createUser(buildGoogleUserCreatePayload(normalizedEmail, name, googleId, imageUrl));
+    const created = await createUser(
+      buildGoogleUserCreatePayload(normalizedEmail, name, googleId, imageUrl),
+    );
 
     if (!created) throw new Error('User creation failed');
     return created;

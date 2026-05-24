@@ -57,11 +57,12 @@ fun App(
                 try {
                     val serverVersion = ApiClient.versionApiService.fetchServerVersion().version
                     if (Version.isVersionNewer(Version.CURRENT_VERSION, serverVersion)) {
-                        val result = snackbarHostState.showSnackbar(
-                            message = "Update available: $serverVersion",
-                            actionLabel = "Download",
-                            duration = androidx.compose.material3.SnackbarDuration.Short,
-                        )
+                        val result =
+                            snackbarHostState.showSnackbar(
+                                message = "Update available: $serverVersion",
+                                actionLabel = "Download",
+                                duration = androidx.compose.material3.SnackbarDuration.Short,
+                            )
                         if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
                             uriHandler.openUri("https://github.com/sharifmdathar/iiitnr-inventory-app/releases")
                         }
