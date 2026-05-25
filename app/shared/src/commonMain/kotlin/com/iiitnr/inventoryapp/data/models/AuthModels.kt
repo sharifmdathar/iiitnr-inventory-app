@@ -47,3 +47,30 @@ data class ErrorResponse(
 data class MeResponse(
     val user: User,
 )
+
+@Serializable
+data class UserResponse(
+    val user: User,
+)
+
+@Serializable
+data class UsersResponse(
+    val users: List<User>,
+    val pagination: UserPagination,
+)
+
+@Serializable
+data class UserPagination(
+    val total: Int,
+    val limit: Int,
+    val offset: Int,
+    val hasMore: Boolean,
+)
+
+@Serializable
+data class UpdateUserRequest(
+    val name: String? = null,
+    val role: String? = null,
+    val batch: String? = null,
+    val branch: String? = null,
+)

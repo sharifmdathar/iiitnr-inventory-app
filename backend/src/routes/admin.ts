@@ -281,9 +281,7 @@ const adminRoutes: FastifyPluginCallback = (app, _opts, done) => {
     handleGetAuditLogs(app, req, reply),
   );
 
-  app.get('/users', { preHandler: requireAdmin }, (req, reply) =>
-    handleGetUsers(app, req, reply),
-  );
+  app.get('/users', { preHandler: requireAdmin }, (req, reply) => handleGetUsers(app, req, reply));
 
   app.patch('/users/:id', { preHandler: requireAdmin }, (req, reply) =>
     handleUpdateUser(app, req, reply),

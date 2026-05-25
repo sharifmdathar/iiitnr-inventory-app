@@ -53,9 +53,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await db.delete(auditLog).where(
-    inArray(auditLog.userId, [adminUserId, taUserId, studentUserId, ...otherUserIds].filter(Boolean)),
-  );
+  await db
+    .delete(auditLog)
+    .where(
+      inArray(
+        auditLog.userId,
+        [adminUserId, taUserId, studentUserId, ...otherUserIds].filter(Boolean),
+      ),
+    );
   await deleteAllData();
   const allUserIds = [adminUserId, taUserId, studentUserId, ...otherUserIds].filter(Boolean);
   await deleteUsers(allUserIds);
@@ -363,9 +368,7 @@ describe('User Management API', () => {
       const logs = await db
         .select()
         .from(auditLog)
-        .where(
-          inArray(auditLog.entityId, [targetUser.id]),
-        );
+        .where(inArray(auditLog.entityId, [targetUser.id]));
 
       const updateLog = logs.find(
         (l) => l.action === AuditActionType.UPDATE && l.entityType === 'User',

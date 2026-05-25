@@ -31,6 +31,7 @@ import com.iiitnr.inventoryapp.ui.screens.LoginScreen
 import com.iiitnr.inventoryapp.ui.screens.ProfileScreen
 import com.iiitnr.inventoryapp.ui.screens.RegisterScreen
 import com.iiitnr.inventoryapp.ui.screens.RequestsScreen
+import com.iiitnr.inventoryapp.ui.screens.UserManagementScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -149,6 +150,8 @@ fun App(
                                 navController.navigate("requests")
                             }, onNavigateToAuditLog = {
                                 navController.navigate("audit_log")
+                            }, onNavigateToUserManagement = {
+                                navController.navigate("user_management")
                             })
                         }
                         composable("requests") {
@@ -162,6 +165,12 @@ fun App(
                         }
                         composable("audit_log") {
                             AuditLogScreen(
+                                tokenManager = tokenManager,
+                                onNavigateBack = { navController.popBackStack() },
+                            )
+                        }
+                        composable("user_management") {
+                            UserManagementScreen(
                                 tokenManager = tokenManager,
                                 onNavigateBack = { navController.popBackStack() },
                             )

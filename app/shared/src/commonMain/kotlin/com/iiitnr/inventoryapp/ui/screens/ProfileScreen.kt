@@ -48,6 +48,7 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToRequests: () -> Unit = {},
     onNavigateToAuditLog: () -> Unit = {},
+    onNavigateToUserManagement: () -> Unit = {},
 ) {
     var userData by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -180,6 +181,16 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Audit Log")
+                    }
+                }
+
+                if (userData!!.role.uppercase() == "ADMIN") {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onNavigateToUserManagement,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Manage Users")
                     }
                 }
             }
