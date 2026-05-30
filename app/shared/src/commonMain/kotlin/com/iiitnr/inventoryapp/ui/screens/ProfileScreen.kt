@@ -19,6 +19,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,11 +34,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -89,108 +90,98 @@ fun ProfileScreen(
         }
     }
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-        ) {
-            TextButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.align(Alignment.CenterStart),
-            ) {
-                Text("Back")
-            }
-            Text(
-                text = "Profile",
-                style = MaterialTheme.typography.headlineLarge,
-                fontSize = 32.sp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.Center),
-            )
-            TextButton(
-                onClick = {
-                    scope.launch {
-                        tokenManager.clearToken()
-                        onLogout()
+    Scaffold(
+        topBar = {
+            AppTopBar(
+                title = "Profile",
+                onNavigateBack = onNavigateBack,
+                actions = {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                tokenManager.clearToken()
+                                onLogout()
+                            }
+                        },
+                    ) {
+                        Text("Logout")
                     }
                 },
-                modifier = Modifier.align(Alignment.CenterEnd),
-            ) {
-                Text("Logout")
-            }
-        }
+            )
+        },
+    ) { paddingValues ->
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top,
+        ) {
+            when {
+                isLoading -> {
+                    CircularProgressIndicator()
+                }
 
-        when {
-            isLoading -> {
-                CircularProgressIndicator()
-            }
+                errorMessage != null -> {
+                    Text(
+                        text = errorMessage.orEmpty(),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
 
-            errorMessage != null -> {
-                Text(
-                    text = errorMessage.orEmpty(),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-
-            userData != null -> {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                userData != null -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                     ) {
-                        ProfilePicture(userData!!.imageUrl)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            ProfilePicture(userData!!.imageUrl)
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        InfoRow("Email", userData!!.email)
-                        InfoRow("Name", userData!!.name ?: "Not provided")
-                        InfoRow("Role", userData!!.role)
-                        userData!!.batch?.let { InfoRow("Batch", it) }
-                        userData!!.branch?.let { InfoRow("Branch", it) }
+                            InfoRow("Email", userData!!.email)
+                            InfoRow("Name", userData!!.name ?: "Not provided")
+                            InfoRow("Role", userData!!.role)
+                            userData!!.batch?.let { InfoRow("Batch", it) }
+                            userData!!.branch?.let { InfoRow("Branch", it) }
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = onNavigateToRequests,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("My Requests")
-                }
-
-                val isAdmin =
-                    userData!!.role.uppercase().let {
-                        it == "ADMIN" || it == "TA"
-                    }
-                if (isAdmin) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     Button(
-                        onClick = onNavigateToAuditLog,
+                        onClick = onNavigateToRequests,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Audit Log")
+                        Text("Requests")
                     }
-                }
 
-                if (userData!!.role.uppercase() == "ADMIN") {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onNavigateToUserManagement,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Manage Users")
+                    val isAdmin =
+                        userData!!.role.uppercase().let {
+                            it == "ADMIN" || it == "TA"
+                        }
+                    if (isAdmin) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = onNavigateToAuditLog,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Audit Log")
+                        }
+                    }
+
+                    if (userData!!.role.uppercase() == "ADMIN") {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = onNavigateToUserManagement,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Manage Users")
+                        }
                     }
                 }
             }

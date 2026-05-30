@@ -2,6 +2,7 @@ package com.iiitnr.inventoryapp.shared
 
 import androidx.compose.ui.window.ComposeUIViewController
 import com.iiitnr.inventoryapp.data.storage.createTokenManager
+import com.iiitnr.inventoryapp.ui.theme.AppTheme
 
 fun mainViewController() =
     ComposeUIViewController(
@@ -10,5 +11,7 @@ fun mainViewController() =
         },
     ) {
         val tokenManager = createTokenManager()
-        App(tokenManager = tokenManager)
+        AppTheme {
+            App(tokenManager = tokenManager)
+        }
     }

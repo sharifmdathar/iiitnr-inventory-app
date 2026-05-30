@@ -33,7 +33,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.GoogleSignInRequest
@@ -118,8 +117,7 @@ fun LoginScreen(
     ) {
         Text(
             text = "IIITNR Inventory App",
-            style = MaterialTheme.typography.headlineLarge,
-            fontSize = 32.sp,
+            style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 32.dp),
         )
 

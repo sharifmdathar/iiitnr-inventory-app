@@ -47,5 +47,6 @@ class UserApiService(
                 }
                 contentType(ContentType.Application.Json)
                 setBody(request)
-            }.body<UserResponse>().user
+            }.body<UserResponse>()
+            .user
 }

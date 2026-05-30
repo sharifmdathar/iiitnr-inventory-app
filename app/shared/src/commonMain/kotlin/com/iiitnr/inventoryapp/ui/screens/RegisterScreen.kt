@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.RegisterRequest
 import com.iiitnr.inventoryapp.data.storage.TokenManager
@@ -55,8 +54,7 @@ fun RegisterScreen(
     ) {
         Text(
             text = "Register",
-            style = MaterialTheme.typography.headlineLarge,
-            fontSize = 32.sp,
+            style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 32.dp),
         )
 

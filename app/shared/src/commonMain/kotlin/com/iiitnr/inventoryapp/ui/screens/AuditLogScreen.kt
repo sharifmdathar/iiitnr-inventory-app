@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,10 +21,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,8 +38,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +56,14 @@ import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.AuditLogEntry
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
+import com.iiitnr.inventoryapp.ui.theme.SemanticAudit
+import com.iiitnr.inventoryapp.ui.theme.SemanticDanger
+import com.iiitnr.inventoryapp.ui.theme.SemanticIdentity
+import com.iiitnr.inventoryapp.ui.theme.SemanticInfo
+import com.iiitnr.inventoryapp.ui.theme.SemanticNeutral
+import com.iiitnr.inventoryapp.ui.theme.SemanticSuccess
+import com.iiitnr.inventoryapp.ui.theme.SemanticWarning
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -70,13 +72,13 @@ import kotlinx.serialization.json.jsonPrimitive
 
 private val actionColors =
     mapOf(
-        "CREATE" to Color(0xFF2E7D32),
-        "UPDATE" to Color(0xFF1565C0),
-        "DELETE" to Color(0xFFC62828),
-        "LOGIN" to Color(0xFF6A1B9A),
-        "LOGOUT" to Color(0xFF78909C),
-        "REQUEST_STATUS_CHANGE" to Color(0xFFE65100),
-        "INVENTORY_ADJUST" to Color(0xFF00838F),
+        "CREATE" to SemanticSuccess,
+        "UPDATE" to SemanticInfo,
+        "DELETE" to SemanticDanger,
+        "LOGIN" to SemanticIdentity,
+        "LOGOUT" to SemanticNeutral,
+        "REQUEST_STATUS_CHANGE" to SemanticWarning,
+        "INVENTORY_ADJUST" to SemanticAudit,
     )
 
 private val actionLabels =
@@ -152,28 +154,9 @@ fun AuditLogScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Audit Log", fontWeight = FontWeight.Bold)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
+            AppTopBar(
+                title = "Audit Log",
+                onNavigateBack = onNavigateBack,
             )
         },
     ) { paddingValues ->
@@ -552,7 +535,7 @@ private fun DiffViewer(
                                 text = "- $oldVal",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
-                                color = Color(0xFFC62828),
+                                color = SemanticDanger,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -562,7 +545,7 @@ private fun DiffViewer(
                                 text = "+ $newVal",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontFamily = FontFamily.Monospace,
-                                color = Color(0xFF2E7D32),
+                                color = SemanticSuccess,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                             )

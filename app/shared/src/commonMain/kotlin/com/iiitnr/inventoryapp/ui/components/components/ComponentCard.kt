@@ -35,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +45,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.ui.components.common.InfoChip
+import com.iiitnr.inventoryapp.ui.theme.SemanticSuccessAccent
 
 @Composable
 fun ComponentCard(
@@ -194,7 +194,7 @@ fun ComponentCard(
                 val quantityColor =
                     lerp(
                         start = MaterialTheme.colorScheme.error,
-                        stop = Color(0xFF66BB6A),
+                        stop = SemanticSuccessAccent,
                         fraction = quantityRatio,
                     )
 
