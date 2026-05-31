@@ -4,11 +4,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -24,6 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Request
@@ -31,12 +38,16 @@ import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
+import com.iiitnr.inventoryapp.ui.components.common.requestStatusColor
 import com.iiitnr.inventoryapp.ui.components.requests.FulfillByIdDialog
 import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
 import com.iiitnr.inventoryapp.ui.components.requests.RenewReasonDialog
+import com.iiitnr.inventoryapp.ui.components.requests.RequestItemRow
 import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
+import com.iiitnr.inventoryapp.ui.components.requests.compactUserLabel
+import com.iiitnr.inventoryapp.ui.components.requests.nextScannedRequestStatus
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusDisplayLabel
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
@@ -46,11 +57,6 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
-private enum class RequestIdDialogKind {
-    Fulfill,
-    Return,
-}
 
 @Composable
 fun RequestsScreen(
@@ -66,7 +72,8 @@ fun RequestsScreen(
     var pendingRenewRequestId by remember { mutableStateOf<String?>(null) }
     var renewReasonInput by remember { mutableStateOf("") }
     var requestToShowQr by remember { mutableStateOf<Request?>(null) }
-    var requestIdDialogKind by remember { mutableStateOf<RequestIdDialogKind?>(null) }
+    var showRequestIdDialog by remember { mutableStateOf(false) }
+    var scannedRequest by remember { mutableStateOf<Request?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
     var requestIdInput by remember { mutableStateOf("") }
     var currentUser by remember { mutableStateOf<User?>(null) }
@@ -191,6 +198,25 @@ fun RequestsScreen(
         }
     }
 
+    fun openScannedRequest(rawValue: String) {
+        val requestId = rawValue.trim().removePrefix(REQUEST_QR_PREFIX).trim()
+        if (requestId.isBlank()) {
+            return
+        }
+
+        val request = requests.firstOrNull { it.id == requestId }
+        if (request == null) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Request not found. Refresh and try again.")
+            }
+            return
+        }
+
+        scannedRequest = request
+        requestIdInput = requestId
+        showRequestIdDialog = false
+    }
+
     fun loadUserData() {
         scope.launch {
             try {
@@ -267,37 +293,32 @@ fun RequestsScreen(
             )
         }
 
-        val activeIdDialogKind = requestIdDialogKind
-        if (activeIdDialogKind != null && !showQrScanner) {
+        scannedRequest?.let { request ->
+            ScannedRequestDialog(
+                request = request,
+                onConfirm = { nextStatus ->
+                    scannedRequest = null
+                    requestIdInput = ""
+                    updateRequestStatus(request.id, nextStatus)
+                },
+                onDismiss = {
+                    scannedRequest = null
+                    requestIdInput = ""
+                },
+            )
+        }
+
+        if (showRequestIdDialog && !showQrScanner && scannedRequest == null) {
             FulfillByIdDialog(
                 requestIdInput = requestIdInput,
                 onRequestIdChange = { requestIdInput = it },
-                dialogTitle =
-                    when (activeIdDialogKind) {
-                        RequestIdDialogKind.Fulfill -> "Fulfill by QR / ID"
-                        RequestIdDialogKind.Return -> "Record return by QR / ID"
-                    },
-                confirmButtonLabel =
-                    when (activeIdDialogKind) {
-                        RequestIdDialogKind.Fulfill -> "Fulfill"
-                        RequestIdDialogKind.Return -> "Mark returned"
-                    },
+                dialogTitle = "Scan request QR / ID",
+                confirmButtonLabel = "Review",
                 onConfirm = {
-                    val raw = requestIdInput.trim()
-                    val requestId = raw.removePrefix(REQUEST_QR_PREFIX).trim()
-                    if (requestId.isNotBlank()) {
-                        val status =
-                            when (activeIdDialogKind) {
-                                RequestIdDialogKind.Fulfill -> "FULFILLED"
-                                RequestIdDialogKind.Return -> "RETURNED"
-                            }
-                        updateRequestStatus(requestId, status)
-                        requestIdDialogKind = null
-                        requestIdInput = ""
-                    }
+                    openScannedRequest(requestIdInput)
                 },
                 onDismiss = {
-                    requestIdDialogKind = null
+                    showRequestIdDialog = false
                     requestIdInput = ""
                 },
                 onScanClick =
@@ -314,19 +335,10 @@ fun RequestsScreen(
                 RequestsTopBar(
                     onNavigateBack = onNavigateBack,
                     role = currentUser?.role,
-                    onFulfillByQrClick =
+                    onScanRequestClick =
                         if (isAdminOrTA) {
                             {
-                                requestIdDialogKind = RequestIdDialogKind.Fulfill
-                                requestIdInput = ""
-                            }
-                        } else {
-                            null
-                        },
-                    onReturnByQrClick =
-                        if (isAdminOrTA) {
-                            {
-                                requestIdDialogKind = RequestIdDialogKind.Return
+                                showRequestIdDialog = true
                                 requestIdInput = ""
                             }
                         } else {
@@ -476,10 +488,7 @@ fun RequestsScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 QrScannerContent(
                     onResult = { rawValue ->
-                        val requestId = rawValue.removePrefix(REQUEST_QR_PREFIX).trim()
-                        if (requestId.isNotBlank()) {
-                            requestIdInput = requestId
-                        }
+                        openScannedRequest(rawValue)
                         showQrScanner = false
                     },
                     onCancel = {
@@ -489,4 +498,111 @@ fun RequestsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun ScannedRequestDialog(
+    request: Request,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val nextStatus = nextScannedRequestStatus(request.status)
+    val currentStatusColor = requestStatusColor(status = request.status)
+    val nextStatusColor = nextStatus?.let { requestStatusColor(status = it) }
+    val nextAction =
+        when (nextStatus) {
+            "FULFILLED" -> "Fulfill Request"
+            "RETURNED" -> "Mark Returned"
+            else -> null
+        }
+    val statusTransition =
+        buildAnnotatedString {
+            withStyle(SpanStyle(color = currentStatusColor)) {
+                append(requestStatusDisplayLabel(request.status))
+            }
+            nextStatus?.let {
+                append(" → ")
+                withStyle(SpanStyle(color = nextStatusColor ?: currentStatusColor)) {
+                    append(requestStatusDisplayLabel(it))
+                }
+            }
+        }
+    val requester = request.user?.let { compactUserLabel(it) }
+    val faculty = request.targetFaculty?.let { it.name ?: it.email }
+    val userLine =
+        when {
+            requester != null && faculty != null -> "$requester  ←  $faculty"
+            requester != null -> requester
+            faculty != null -> "From: $faculty"
+            else -> null
+        }
+    val itemsTitle =
+        when (nextStatus) {
+            "FULFILLED" -> "Requesting items"
+            "RETURNED" -> "Returning items"
+            else -> ""
+        }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(nextAction ?: "Request scanned") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = request.projectTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = statusTransition,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                userLine?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = itemsTitle,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (request.items.isEmpty()) {
+                    Text(
+                        text = "No items found for this request.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    request.items.forEach { item ->
+                        RequestItemRow(item = item)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (nextStatus != null && nextAction != null) {
+                TextButton(onClick = { onConfirm(nextStatus) }) {
+                    Text(nextAction)
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("Close")
+                }
+            }
+        },
+        dismissButton = {
+            if (nextStatus != null) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        },
+    )
 }

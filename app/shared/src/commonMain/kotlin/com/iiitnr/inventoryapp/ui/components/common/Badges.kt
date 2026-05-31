@@ -78,7 +78,7 @@ fun StatusChip(
 @Composable
 fun requestStatusColor(
     status: String,
-    isDark: Boolean,
+    isDark: Boolean = isSystemInDarkTheme(),
 ): Color =
     when (status.uppercase()) {
         "PENDING" -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)

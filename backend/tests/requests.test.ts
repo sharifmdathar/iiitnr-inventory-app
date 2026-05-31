@@ -1155,6 +1155,66 @@ describe('Request API', () => {
       const updated = await findRequestById(req.id);
       assert.equal(updated?.status, 'RENEWED');
     });
+
+    test('successful RETURNED from RENEWED increments availableQuantity', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 6,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Renewed Return Test',
+        status: 'RENEWED',
+        items: [{ componentId: item.id, quantity: 4 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'RETURNED' },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'RETURNED');
+      assert.ok(body.request.returnedAt);
+      const updatedComponent = await findComponentById(item.id);
+      assert.equal(updatedComponent?.availableQuantity, 10);
+    });
+
+    test('RENEWED request cannot be set to FULFILLED', async () => {
+      const item = await createComponent({
+        name: 'Sensor',
+        totalQuantity: 10,
+        availableQuantity: 6,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Renewed Fulfill Test',
+        status: 'RENEWED',
+        items: [{ componentId: item.id, quantity: 4 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'FULFILLED' },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('RETURNED'));
+      assert.equal((await findRequestById(req.id))?.status, 'RENEWED');
+      assert.equal((await findComponentById(item.id))?.availableQuantity, 6);
+    });
   });
 
   describe('DELETE /requests/:id - Retract/Delete request', () => {

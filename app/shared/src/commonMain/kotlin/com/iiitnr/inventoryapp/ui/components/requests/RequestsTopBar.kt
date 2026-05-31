@@ -1,7 +1,6 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.AssignmentReturn
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -12,8 +11,7 @@ import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 @Composable
 fun RequestsTopBar(
     onNavigateBack: () -> Unit,
-    onFulfillByQrClick: (() -> Unit)? = null,
-    onReturnByQrClick: (() -> Unit)? = null,
+    onScanRequestClick: (() -> Unit)? = null,
     role: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -23,19 +21,11 @@ fun RequestsTopBar(
         role = role,
         onNavigateBack = onNavigateBack,
         actions = {
-            if (onReturnByQrClick != null) {
-                IconButton(onClick = onReturnByQrClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
-                        contentDescription = "Record return by request ID or scan QR",
-                    )
-                }
-            }
-            if (onFulfillByQrClick != null) {
-                IconButton(onClick = onFulfillByQrClick) {
+            if (onScanRequestClick != null) {
+                IconButton(onClick = onScanRequestClick) {
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = "Fulfill by request ID or scan QR",
+                        contentDescription = "Scan request QR or enter request ID",
                     )
                 }
             }

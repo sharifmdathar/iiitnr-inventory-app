@@ -1,6 +1,6 @@
 {
   "name": "@iiitnr/backend",
-  "version": "1.14.07",
+  "version": "1.14.8",
   "private": true,
   "type": "module",
   "scripts": {

@@ -52,6 +52,7 @@ kotlin {
     android {
         namespace = "com.iiitnr.inventoryapp.shared"
         compileSdk = 37
+        withHostTest {}
     }
 
     listOf(
@@ -97,6 +98,12 @@ kotlin {
                 implementation(libs.sqldelight.runtime)
                 implementation(libs.sqldelight.coroutines.extensions)
                 implementation(libs.kotlinx.datetime)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
 
