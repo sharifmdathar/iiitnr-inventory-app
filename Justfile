@@ -1,3 +1,5 @@
+set windows-shell := ["cmd.exe", "/c"]
+
 default: dev
 
 install:
@@ -33,26 +35,59 @@ test:
     cd backend && bun test
     cd backend && podman compose -f compose.db.yaml --profile test down
 
+[unix]
 desk:
     cd app && ./gradlew desktop:run
 
+[windows]
+desk:
+    cd app && .\gradlew.bat desktop:run
+
+[unix]
 andro:
     cd app && ./gradlew assembleDebug
 
+[windows]
+andro:
+    cd app && .\gradlew.bat assembleDebug
+
+[unix]
 lint:
     cd backend && bun run lint
     cd app && ./gradlew ktlintCheck
 
+[windows]
+lint:
+    cd backend && bun run lint
+    cd app && .\gradlew.bat ktlintCheck
+
+[unix]
 lint-fix:
     cd backend && bun run lint:fix
     cd app && ./gradlew ktlintFormat
 
+[windows]
+lint-fix:
+    cd backend && bun run lint:fix
+    cd app && .\gradlew.bat ktlintFormat
+
 typecheck:
     cd backend && bun run typecheck
 
+[unix]
 fmt:
     cd backend && bun run format
     cd app && ./gradlew ktlintFormat
 
+[windows]
+fmt:
+    cd backend && bun run format
+    cd app && .\gradlew.bat ktlintFormat
+
+[unix]
 detekt:
     cd app && ./gradlew detekt
+
+[windows]
+detekt:
+    cd app && .\gradlew.bat detekt

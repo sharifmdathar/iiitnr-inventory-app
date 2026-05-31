@@ -94,6 +94,7 @@ fun ProfileScreen(
         topBar = {
             AppTopBar(
                 title = "Profile",
+                role = userData?.role,
                 onNavigateBack = onNavigateBack,
                 actions = {
                     TextButton(

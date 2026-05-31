@@ -14,6 +14,7 @@ val packageJsonFile = rootProject.layout.projectDirectory.file("../backend/packa
 val generatedVersionDir = layout.buildDirectory.dir("generated/source/appVersion/commonMain/kotlin")
 
 val generateVersionKt by tasks.registering {
+    description = "Generates Version for the App"
     val versionInput = packageJsonFile.asFile
     val versionOutputDir = generatedVersionDir.get().asFile
 

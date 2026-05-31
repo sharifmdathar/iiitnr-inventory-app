@@ -313,6 +313,7 @@ fun RequestsScreen(
             topBar = {
                 RequestsTopBar(
                     onNavigateBack = onNavigateBack,
+                    role = currentUser?.role,
                     onFulfillByQrClick =
                         if (isAdminOrTA) {
                             {

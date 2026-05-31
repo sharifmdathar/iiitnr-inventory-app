@@ -37,6 +37,7 @@ kotlin {
 val googleConfigPropertiesFile = layout.projectDirectory.file("src/jvmMain/resources/google-desktop-config.properties").asFile
 
 tasks.register("populateGoogleConfig") {
+    description = "Populates the google Config"
     val fileToPopulate = googleConfigPropertiesFile
 
     inputs.property(

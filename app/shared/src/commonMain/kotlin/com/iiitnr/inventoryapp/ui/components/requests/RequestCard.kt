@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.ui.components.common.StatusChip
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
@@ -85,23 +86,11 @@ fun RequestCard(
             "APPROVED" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
             "FULFILLED" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
             "RETURNED" -> if (isDark) cardBackgroundReturnedDark else cardBackgroundReturnedLight
-            "REQUESTED_RENEW" ->
-                if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
+            "REQUESTED_RENEW" -> if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
+
             "RENEWED" -> if (isDark) cardBackgroundRenewedDark else cardBackgroundRenewedLight
             else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
         }
-    val statusSubtitleColor =
-        when (request.status) {
-            "REJECTED" -> MaterialTheme.colorScheme.error
-            "APPROVED" -> if (isDark) statusApprovedDark else statusApprovedLight
-            "FULFILLED" -> if (isDark) statusFulfilledDark else statusFulfilledLight
-            "RETURNED" -> if (isDark) statusReturnedDark else statusReturnedLight
-            "REQUESTED_RENEW" ->
-                if (isDark) statusRequestedRenewDark else statusRequestedRenewLight
-            "RENEWED" -> if (isDark) statusRenewedDark else statusRenewedLight
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
-
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -117,14 +106,18 @@ fun RequestCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
             ) {
-                Text(
-                    text = request.projectTitle,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = request.projectTitle,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    StatusChip(status = request.status)
+                }
                 RequestCardActions(
                     request = request,
                     isFaculty = isFaculty,
@@ -138,12 +131,6 @@ fun RequestCard(
                     onShowQr = onShowQr,
                 )
             }
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = requestStatusDisplayLabel(request.status),
-                style = MaterialTheme.typography.bodyMedium,
-                color = statusSubtitleColor,
-            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = buildDatesLine(request),
@@ -418,9 +405,7 @@ fun getRelativeDays(dateTimeString: String?): String {
 }
 
 fun String.toDisplayLabel(): String =
-    lowercase()
-        .split('_')
-        .joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }
+    lowercase().split('_').joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }
 
 fun requestStatusDisplayLabel(status: String): String =
     when (status) {

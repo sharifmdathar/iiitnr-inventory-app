@@ -8,22 +8,30 @@ import androidx.compose.runtime.Composable
 
 private val DarkColorScheme =
     darkColorScheme(
-        primary = InventoryBlueDark,
-        primaryContainer = InventoryBlueContainerDark,
-        secondary = InventoryTealDark,
+        primary = IIITNRPrimaryDark,
+        onPrimary = IIITNROnSurface,
+        primaryContainer = IIITNRPrimaryContainerDark,
+        secondary = IIITNRSecondaryDark,
         tertiary = InventoryAmberDark,
-        background = InventoryBackgroundDark,
-        surface = InventorySurfaceDark,
+        error = IIITNRErrorDark,
+        background = IIITNRSurfaceDark,
+        onBackground = IIITNROnSurfaceDark,
+        surface = IIITNRSurfaceDark,
+        onSurface = IIITNROnSurfaceDark,
     )
 
 private val LightColorScheme =
     lightColorScheme(
-        primary = InventoryBlue,
-        primaryContainer = InventoryBlueContainer,
-        secondary = InventoryTeal,
+        primary = IIITNRPrimary,
+        onPrimary = IIITNRSurface,
+        primaryContainer = IIITNRPrimaryContainer,
+        secondary = IIITNRSecondary,
         tertiary = InventoryAmber,
-        background = InventoryBackground,
-        surface = InventorySurface,
+        error = IIITNRError,
+        background = IIITNRSurface,
+        onBackground = IIITNROnSurface,
+        surface = IIITNRSurface,
+        onSurface = IIITNROnSurface,
     )
 
 @Composable
@@ -32,7 +40,7 @@ fun AppTheme(content: @Composable () -> Unit) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = IIITNRTypography,
         content = content,
     )
 }

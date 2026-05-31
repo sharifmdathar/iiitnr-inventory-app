@@ -14,11 +14,13 @@ fun RequestsTopBar(
     onNavigateBack: () -> Unit,
     onFulfillByQrClick: (() -> Unit)? = null,
     onReturnByQrClick: (() -> Unit)? = null,
+    role: String? = null,
     modifier: Modifier = Modifier,
 ) {
     AppTopBar(
         title = "Requests",
         modifier = modifier,
+        role = role,
         onNavigateBack = onNavigateBack,
         actions = {
             if (onReturnByQrClick != null) {

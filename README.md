@@ -34,27 +34,32 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 
 ## ✨ Key Features
 
-### 👤 Role-Based Authentication & Authorization (RBAC)
+### 👤 Role-Based Auth & Profiles (RBAC)
 - **Multi-Role Matrix:** Features strict role-based verification supporting five tiers: `STUDENT`, `TA` (Teaching Assistant), `FACULTY`, `ADMIN`, and `PENDING`.
-- **Restricted Access:** Ensures only authenticated and authorized users can modify quantities or change issue states.
-- **Domain Gatekeeping:** Strictly restricts registration/login to IIIT-NR emails via `ALLOWED_EMAIL_DOMAIN` configuration (e.g., `@iiitnr.edu.in`), protecting college resources.
-- **Double Auth Support:** Supports traditional email-password auth alongside seamless Google Sign-in.
+- **Automatic Batch/Branch Derivation:** Student batch (graduation range, e.g., `2024-2028`) and branch (`CSE`, `ECE`, `DSAI`) are derived automatically from their institutional email address during signup or profile fetches.
+- **Domain Gatekeeping:** Restricts registration/login to IIIT-NR emails via `ALLOWED_EMAIL_DOMAIN` configuration (e.g., `@iiitnr.edu.in`), protecting college resources.
+- **Dual Authentication:** Supports traditional email-password credentials alongside secure Google Sign-in.
+- **User Management Panel:** Provides administrators with a user panel to search registered accounts and update user details (names, roles, batches, and branches).
 
 ### 📦 Lab & Component Catalog Management
 - **Hierarchical Layout:** Components organized by categories (`Sensors`, `Actuators`, `Microcontrollers`, `Microprocessors`, `Others`).
 - **Physical Locations:** Tracks lab inventory mapping directly to physical college labs (`IoT_Lab`, `Robo_Lab`, `VLSI_Lab`).
 - **Real-time Stock Auditing:** Separates `totalQuantity` from `availableQuantity` dynamically, updating automatically as items are requested, approved, and returned.
-- **Data Export:** Built-in tool to export the complete component list as a CSV file for physical catalog records.
+- **Platform-Native Data Export:** Built-in tool to export the component database to a CSV file from the client top bar (uses platform-specific storage on Android and Desktop).
 
 ### 🔄 Multi-State Issue, Return & Renewal System
 - **Project Nominated Issues:** Students/TAs issue items under specific project titles and name a nominating `FACULTY` supervisor.
-- **Structured Approval Lifecycle:** Issue requests transition through secure steps, requiring supervisor sign-off and subsequent administrator fulfillment.
-- **Smart Renewals:** Support for requesting renewals with specified reasons (`REQUESTED_RENEW` -> `RENEWED`).
-- **Overdue Tracking:** Tracks due dates (`returnDueAt`) and returned dates (`returnedAt`) to prevent hoarding or loss of lab supplies.
+- **Fulfillment & Due Tracking:** Approved requests are fulfilled by admins/TAs, automatically setting a 30-day return due date (`returnDueAt`).
+- **Request Renewals:** Students/TAs can submit renewal requests with a detailed reason, allowing nominating faculty or admins to extend the due date by another 30 days.
+- **Automatic Stock Restocking:** Returning components automatically increments `availableQuantity` on the backend, checking against `totalQuantity`.
 
 ### 🛡️ Enterprise-Grade Admin Audit Logging
-- **Immutable Ledger:** Complete user-actions history tracking actions like `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`, `REQUEST_STATUS_CHANGE`, and `INVENTORY_ADJUST`.
+- **Immutable Ledger:** Records all system activities like `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`, `REQUEST_STATUS_CHANGE`, and `INVENTORY_ADJUST`.
 - **System-Wide Accountability:** Stores state changes using highly detailed diffs (`oldValues` and `newValues`), tracking IP addresses, and user-agent details for advanced security audits.
+
+### 🔄 Automatic Version Compatibility Check
+- **Synchronized Deployments:** Startup compatibility check that calls the server version endpoint (`GET /version`), matching it using semantic version comparisons.
+- **In-App Upgrades:** Displays a Snackbar banner to download updates from the GitHub Releases page if a newer server version is detected.
 
 ---
 
@@ -124,6 +129,8 @@ erDiagram
         text passwordHash
         text googleId UK
         UserRole role
+        text batch
+        text branch
         timestamp createdAt
         timestamp updatedAt
     }

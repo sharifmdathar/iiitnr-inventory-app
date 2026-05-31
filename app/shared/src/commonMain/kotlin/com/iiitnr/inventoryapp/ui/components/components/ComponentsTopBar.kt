@@ -27,6 +27,7 @@ fun ComponentsTopBar(
     onNavigateToHome: () -> Unit,
     onNavigateToRequests: () -> Unit,
     pendingRequestsCount: Int? = null,
+    role: String? = null,
     showExportCsv: Boolean = false,
     onExportCsv: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -34,6 +35,7 @@ fun ComponentsTopBar(
     AppTopBar(
         title = "Components",
         modifier = modifier,
+        role = role,
         actions = {
             if (showExportCsv && onExportCsv != null) {
                 IconButton(onClick = onExportCsv) {
