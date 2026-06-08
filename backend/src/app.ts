@@ -156,13 +156,27 @@ function handleRootRoute() {
   return { message: 'IIITNR Inventory App Backend' };
 }
 
-async function handleHealthCheck(app: FastifyInstance, reply: FastifyReply) {
+let appReady = false;
+
+export function markAppReady() {
+  appReady = true;
+}
+
+async function handleHealthCheck(reply: FastifyReply) {
+  return reply.code(200).send({ status: 'ok' });
+}
+
+async function handleReadyCheck(app: FastifyInstance, reply: FastifyReply) {
+  if (!appReady) {
+    return reply.code(503).send({ status: 'starting' });
+  }
+
   try {
     await pool.query('SELECT 1');
-    return reply.code(200).send({ status: 'ok', db: 'up' });
+    return reply.code(200).send({ status: 'ready', db: 'up' });
   } catch (error) {
-    app.log.error({ err: error }, 'Health check DB query failed');
-    return reply.code(503).send({ status: 'error', db: 'down' });
+    app.log.error({ err: error }, 'Readiness check DB query failed');
+    return reply.code(503).send({ status: 'not_ready', db: 'down' });
   }
 }
 
@@ -212,7 +226,8 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
 
 function setupRoutes(app: FastifyInstance) {
   app.get('/', handleRootRoute);
-  app.get('/health', (_, reply) => handleHealthCheck(app, reply));
+  app.get('/health', (_, reply) => handleHealthCheck(reply));
+  app.get('/ready', (_, reply) => handleReadyCheck(app, reply));
   app.get('/version', (_, reply) => {
     try {
       const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));

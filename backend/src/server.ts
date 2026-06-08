@@ -1,4 +1,4 @@
-import { buildApp } from './app.js';
+import { buildApp, markAppReady } from './app.js';
 import { pool } from './drizzle/db.js';
 
 const app = await buildApp();
@@ -27,6 +27,7 @@ try {
 
 try {
   await app.listen({ port, host });
+  markAppReady();
   app.log.info(`Server listening on http://${host}:${port}`);
 } catch (err) {
   app.log.error(err);

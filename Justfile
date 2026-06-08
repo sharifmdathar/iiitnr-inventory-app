@@ -5,6 +5,9 @@ default: dev
 install:
     cd backend && bun install
 
+up-dep:
+    cd backend && bun update --latest
+
 image:
     cd backend && podman build -t test . && podman images test && podman run --env-file .env -p4000:4000 test
 
