@@ -166,6 +166,7 @@ jobs:
           #!/bin/bash
           SELF="$(readlink -f "$0")"
           DIR="$(dirname "$SELF")"
+          export _JAVA_AWT_WM_NONREPARENTING=1
           exec "$DIR/bin/IIITNR Inventory App" "$@"
           APPRUN
           chmod +x "$APPDIR/AppRun"

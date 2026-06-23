@@ -55,14 +55,16 @@ kotlin {
         withHostTest {}
     }
 
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach {
-        it.binaries.framework {
-            baseName = "shared"
-            isStatic = true
+    val iosTargets = listOf(iosX64(), iosArm64(), iosSimulatorArm64())
+    if (org.gradle.internal.os.OperatingSystem
+            .current()
+            .isMacOsX
+    ) {
+        iosTargets.forEach {
+            it.binaries.framework {
+                baseName = "shared"
+                isStatic = true
+            }
         }
     }
 

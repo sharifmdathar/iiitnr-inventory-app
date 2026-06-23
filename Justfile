@@ -40,7 +40,7 @@ test:
 
 [unix]
 desk:
-    cd app && ./gradlew desktop:run
+    cd app && _JAVA_AWT_WM_NONREPARENTING=1 ./gradlew desktop:run
 
 [windows]
 desk:

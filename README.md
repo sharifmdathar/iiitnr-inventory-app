@@ -76,13 +76,13 @@ graph TD
     classDef db fill:#336791,stroke:#fff,stroke-width:2px,color:#fff;
 
     %% Client Frontend Targets
-    subgraph Client Application (Kotlin Multiplatform)
+    subgraph "Client Application (Kotlin Multiplatform)"
         Desktop["💻 Compose Desktop (JVM)"]:::client
         Android["📱 Android Client"]:::client
         iOS["🍏 iOS Client"]:::client
         
         %% Shared Core Module
-        subgraph Shared Core Module (shared)
+        subgraph "Shared Core Module (shared)"
             UI["🎨 Compose Multiplatform UI Screens"]:::shared
             API["📡 Ktor ApiClient & Services"]:::shared
             Cache["💾 ComponentsCache (In-Memory)"]:::shared
@@ -97,7 +97,7 @@ graph TD
     API --> Models
 
     %% Backend Engine
-    subgraph Backend Services (Fastify & Bun)
+    subgraph "Backend Services (Fastify & Bun)"
         API_Gateway["⚡ Fastify Server (Bun Engine)"]:::backend
         Routes["📂 Routers (Auth, Admin, Components, Requests)"]:::backend
         Drizzle["🧩 Drizzle ORM (TypeScript Types)"]:::backend

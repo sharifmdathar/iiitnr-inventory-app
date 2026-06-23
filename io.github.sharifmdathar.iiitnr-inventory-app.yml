@@ -1,0 +1,84 @@
+id: io.github.sharifmdathar.iiitnr-inventory-app
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.openjdk21
+command: iiitnr-inventory-app
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --env=_JAVA_AWT_WM_NONREPARENTING=1
+  - --filesystem=xdg-download:rw
+  - --env=GTK_THEME=Adwaita:dark
+modules:
+  - name: iiitnr-inventory-app
+    buildsystem: simple
+    build-options:
+      env:
+        JAVA_HOME: /usr/lib/sdk/openjdk21
+        PATH: /usr/lib/sdk/openjdk21/bin:/usr/bin:/bin
+    build-commands:
+      - ./app/gradlew -p app :desktop:createDistributable
+      - mkdir -p /app/iiitnr-inventory-app /app/bin
+      - cp -r ./app/desktop/build/compose/binaries/main/app/"IIITNR Inventory App"/* /app/iiitnr-inventory-app/
+      - |
+        cat > /app/bin/iiitnr-inventory-app << 'WRAPPER'
+        #!/bin/sh
+        exec /app/iiitnr-inventory-app/bin/IIITNR\ Inventory\ App "$@"
+        WRAPPER
+        chmod +x /app/bin/iiitnr-inventory-app
+      - mkdir -p /app/share/icons/hicolor/256x256/apps
+      - cp ./app/desktop/icon.png /app/share/icons/hicolor/256x256/apps/io.github.sharifmdathar.iiitnr-inventory-app.png
+      - mkdir -p /app/share/applications
+      - |
+        cat > /app/share/applications/io.github.sharifmdathar.iiitnr-inventory-app.desktop << 'DESKTOP'
+        [Desktop Entry]
+        Type=Application
+        Name=IIITNR Inventory App
+        Icon=io.github.sharifmdathar.iiitnr-inventory-app
+        Exec=iiitnr-inventory-app
+        Categories=Office;X-Inventory;
+        DESKTOP
+      - mkdir -p /app/share/metainfo
+      - |
+        cat > /app/share/metainfo/io.github.sharifmdathar.iiitnr-inventory-app.metainfo.xml << 'METADATA'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <component type="desktop">
+          <project_license>MIT</project_license>
+          <id>io.github.sharifmdathar.iiitnr-inventory-app</id>
+          <metadata_license>CC0-1.0</metadata_license>
+          <name>IIITNR Inventory App</name>
+          <summary>Inventory management application for IIITNR</summary>
+          <description>
+            <p>IIITNR Inventory App is a desktop application for managing inventory, tracking items, and generating reports.</p>
+          </description>
+          <developer id="io.github.sharifmdathar">
+            <name>Md Athar Sharif</name>
+          </developer>
+          <url type="homepage">https://github.com/sharifmdathar/iiitnr-inventory-app</url>
+          <update_contact>sharifmdathar@gmail.com</update_contact>
+          <provides>
+            <binary>iiitnr-inventory-app</binary>
+          </provides>
+          <screenshots>
+            <screenshot type="default">
+              <caption>Main inventory view</caption>
+              <image>https://raw.githubusercontent.com/sharifmdathar/iiitnr-inventory-app/v1.14.8/app/desktop/icon.png</image>
+            </screenshot>
+          </screenshots>
+          <releases>
+            <release version="v1.14.8" date="2026-06-23"/>
+          </releases>
+          <content_rating type="oars-1.1"/>
+          <launchable type="desktop-id">io.github.sharifmdathar.iiitnr-inventory-app.desktop</launchable>
+        </component>
+        METADATA
+    sources:
+      - type: git
+        url: https://github.com/sharifmdathar/iiitnr-inventory-app
+        tag: v1.14.8
+        commit: 09b99618b47549f79164e96ef54ec2aab2700b7b 

@@ -13,42 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.iiitnr.inventoryapp.ui.theme.SemanticInfo
-import com.iiitnr.inventoryapp.ui.theme.SemanticNeutral
-import com.iiitnr.inventoryapp.ui.theme.SemanticSuccess
 import com.iiitnr.inventoryapp.ui.theme.SemanticWarning
-
-@Composable
-fun RoleBadge(
-    role: String?,
-    modifier: Modifier = Modifier,
-) {
-    val normalized = role?.uppercase()?.takeIf { it.isNotBlank() } ?: "PENDING"
-    val color =
-        when (normalized) {
-            "ADMIN" -> MaterialTheme.colorScheme.primary
-            "FACULTY" -> SemanticInfo
-            "TA" -> SemanticSuccess
-            "STUDENT" -> MaterialTheme.colorScheme.secondary
-            else -> SemanticNeutral
-        }
-
-    Surface(
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(8.dp))
-                .semantics { contentDescription = "Role: $normalized" },
-        color = color.copy(alpha = 0.12f),
-        contentColor = color,
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        Text(
-            text = normalized,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-    }
-}
 
 @Composable
 fun StatusChip(
