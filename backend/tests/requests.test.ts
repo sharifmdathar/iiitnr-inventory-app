@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app.js';
 import { db } from '../src/drizzle/db.js';
-import { component } from '../src/drizzle/schema.js';
+import { component, request } from '../src/drizzle/schema.js';
 import {
   createComponent,
   createRequest,
@@ -541,6 +541,39 @@ describe('Request API', () => {
 
       assert.equal(response.statusCode, 400);
       assert.ok(response.json().error.includes('invalid status'));
+    });
+
+    test('overdue checked-out requests are returned as EXPIRED', async () => {
+      const item = await createComponent({
+        name: 'Overdue Sensor',
+        totalQuantity: 10,
+        availableQuantity: 9,
+      });
+      createdComponentIds.push(item.id);
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Overdue Checkout',
+        status: 'FULFILLED',
+        items: [{ componentId: item.id, quantity: 1 }],
+      });
+      const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
+      await db.update(request).set({ returnDueAt: overdueAt }).where(eq(request.id, req.id));
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/requests?status=EXPIRED',
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.ok(
+        body.requests.some(
+          (r: { id: string; status: string }) => r.id === req.id && r.status === 'EXPIRED',
+        ),
+      );
+      assert.equal((await findRequestById(req.id))?.status, 'EXPIRED');
     });
 
     test('faculty sees all requests targeting them', async () => {
@@ -1183,6 +1216,38 @@ describe('Request API', () => {
       const body = response.json();
       assert.equal(body.request.status, 'RETURNED');
       assert.ok(body.request.returnedAt);
+      const updatedComponent = await findComponentById(item.id);
+      assert.equal(updatedComponent?.availableQuantity, 10);
+    });
+
+    test('expired request can be marked returned by admin', async () => {
+      const item = await createComponent({
+        name: 'Expired Return Sensor',
+        totalQuantity: 10,
+        availableQuantity: 6,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Expired Return Test',
+        status: 'FULFILLED',
+        items: [{ componentId: item.id, quantity: 4 }],
+      });
+      const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
+      await db.update(request).set({ returnDueAt: overdueAt }).where(eq(request.id, req.id));
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: { status: 'RETURNED' },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'RETURNED');
       const updatedComponent = await findComponentById(item.id);
       assert.equal(updatedComponent?.availableQuantity, 10);
     });

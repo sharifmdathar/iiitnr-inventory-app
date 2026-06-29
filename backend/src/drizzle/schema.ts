@@ -25,6 +25,7 @@ export const requestStatus = pgEnum('RequestStatus', [
   'REJECTED',
   'FULFILLED',
   'RETURNED',
+  'EXPIRED',
   'RENEWED',
   'REQUESTED_RENEW',
 ]);

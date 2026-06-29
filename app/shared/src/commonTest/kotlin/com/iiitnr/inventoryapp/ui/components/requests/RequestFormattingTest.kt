@@ -17,6 +17,7 @@ class RequestFormattingTest {
         assertEquals("Renewal Requested", requestStatusDisplayLabel("REQUESTED_RENEW"))
         assertEquals("Renewed", requestStatusDisplayLabel("RENEWED"))
         assertEquals("Fulfilled", requestStatusDisplayLabel("FULFILLED"))
+        assertEquals("Expired", requestStatusDisplayLabel("EXPIRED"))
     }
 
     @Test

@@ -370,6 +370,7 @@ fun RequestsScreen(
                             "FULFILLED",
                             "REQUESTED_RENEW",
                             "RENEWED",
+                            "EXPIRED",
                             "RETURNED",
                         )
                     items(statusOptions) { option ->

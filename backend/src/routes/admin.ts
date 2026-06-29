@@ -4,7 +4,7 @@ import { db } from '../drizzle/db.js';
 import { auditLog, user } from '../drizzle/schema.js';
 import { requireAdminOrTA, requireAdmin } from '../middleware/auth.js';
 import type { AuditActionTypeValue, UserRoleValue } from '../utils/enums.js';
-import { UserRole, userRoleValues, AuditActionType } from '../utils/enums.js';
+import { userRoleValues, AuditActionType } from '../utils/enums.js';
 
 interface AuditLogQueryParams {
   limit?: string;

@@ -52,6 +52,7 @@ fun requestStatusColor(
         "REQUESTED_RENEW" -> if (isDark) Color(0xFFFDBA74) else Color(0xFFEA580C)
         "RENEWED" -> if (isDark) Color(0xFF5EEAD4) else Color(0xFF0F766E)
         "RETURNED" -> if (isDark) Color(0xFFD1D5DB) else Color(0xFF6B7280)
+        "EXPIRED" -> if (isDark) Color(0xFFFCA5A5) else Color(0xFFB91C1C)
         "REJECTED" -> MaterialTheme.colorScheme.error
         else -> SemanticWarning
     }

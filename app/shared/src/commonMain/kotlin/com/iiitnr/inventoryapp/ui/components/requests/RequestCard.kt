@@ -44,6 +44,7 @@ private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
 private val cardBackgroundReturnedLight = Color(0xFFE8EAF6)
 private val cardBackgroundRequestedRenewLight = Color(0xFFFFF3E0)
 private val cardBackgroundRenewedLight = Color(0xFFE0F2F1)
+private val cardBackgroundExpiredLight = Color(0xFFFFE4E6)
 private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
 
 private val cardBackgroundRejectedDark = Color(0xFF3D2020)
@@ -52,6 +53,7 @@ private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
 private val cardBackgroundReturnedDark = Color(0xFF1E1E2E)
 private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
 private val cardBackgroundRenewedDark = Color(0xFF1A2E2C)
+private val cardBackgroundExpiredDark = Color(0xFF3F1D24)
 private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
 
 private val statusApprovedLight = Color(0xFF2E7D32)
@@ -89,6 +91,7 @@ fun RequestCard(
             "REQUESTED_RENEW" -> if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
 
             "RENEWED" -> if (isDark) cardBackgroundRenewedDark else cardBackgroundRenewedLight
+            "EXPIRED" -> if (isDark) cardBackgroundExpiredDark else cardBackgroundExpiredLight
             else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
         }
     Card(
@@ -222,6 +225,14 @@ private fun RequestCardActions(
                 isFaculty = isFaculty,
                 onReturnRequest = onReturnRequest,
                 onRequestRenew = onRequestRenew,
+                onShowQr = onShowQr,
+            )
+
+        "EXPIRED" ->
+            ExpiredRequestActions(
+                request = request,
+                isFaculty = isFaculty,
+                onReturnRequest = onReturnRequest,
                 onShowQr = onShowQr,
             )
     }
@@ -381,6 +392,35 @@ private fun RenewedRequestActions(
                     imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
                     contentDescription = "Record return to inventory",
                     tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpiredRequestActions(
+    request: Request,
+    isFaculty: Boolean,
+    onReturnRequest: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!isFaculty && onShowQr != null) {
+            IconButton(onClick = { onShowQr(request) }) {
+                Icon(
+                    imageVector = Icons.Default.QrCode2,
+                    contentDescription = "Show QR for TA to scan when returning overdue items",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        if (onReturnRequest != null) {
+            IconButton(onClick = { onReturnRequest(request.id) }) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
+                    contentDescription = "Record overdue return to inventory",
+                    tint = MaterialTheme.colorScheme.error,
                 )
             }
         }

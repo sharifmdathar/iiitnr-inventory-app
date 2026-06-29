@@ -21,6 +21,11 @@ class RequestScanStatusTest {
     }
 
     @Test
+    fun expiredScansToReturned() {
+        assertEquals("RETURNED", nextScannedRequestStatus("EXPIRED"))
+    }
+
+    @Test
     fun scanStatusMappingIsCaseInsensitive() {
         assertEquals("RETURNED", nextScannedRequestStatus("renewed"))
     }

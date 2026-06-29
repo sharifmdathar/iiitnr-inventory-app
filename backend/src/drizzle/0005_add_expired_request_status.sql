@@ -1,0 +1,1 @@
+ALTER TYPE "public"."RequestStatus" ADD VALUE IF NOT EXISTS 'EXPIRED';

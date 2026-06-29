@@ -8,6 +8,7 @@ import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
+import { startRequestExpirySweep } from './services/request-expiry.js';
 
 interface AppEnvironment {
   isTest: boolean;
@@ -217,7 +218,18 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
     app.addHook('onRequest', handleHttpsRedirect);
   }
 
+  let stopRequestExpirySweep: (() => void) | undefined;
+  if (!env.isTest) {
+    app.addHook('onReady', (done) => {
+      stopRequestExpirySweep = startRequestExpirySweep((err) => {
+        app.log.error({ err }, 'Request expiry sweep failed');
+      });
+      done();
+    });
+  }
+
   app.addHook('onClose', async () => {
+    stopRequestExpirySweep?.();
     if (!env.isTest) {
       await pool.end();
     }
@@ -232,7 +244,7 @@ function setupRoutes(app: FastifyInstance) {
     try {
       const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
       reply.send({ version: pkg.version });
-    } catch (e) {
+    } catch {
       reply.code(500).send({ error: 'Failed to read version' });
     }
   });

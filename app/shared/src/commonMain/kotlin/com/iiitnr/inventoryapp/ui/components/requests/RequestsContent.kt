@@ -24,6 +24,7 @@ private fun filteredEmptyMessage(
         "REQUESTED_RENEW" -> "No renewal requests"
         "RENEWED" -> "No renewed requests"
         "RETURNED" -> "No returned requests"
+        "EXPIRED" -> "No expired requests"
         null -> null
         else -> "No matching requests"
     }

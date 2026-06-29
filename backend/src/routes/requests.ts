@@ -6,6 +6,7 @@ import { requireAuth, isAdminOrTA } from '../middleware/auth.js';
 import { RequestStatus, requestStatusValues, UserRole, AuditActionType } from '../utils/enums.js';
 import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
+import { expireOverdueRequests, REQUEST_RETURN_LIMIT_MS } from '../services/request-expiry.js';
 interface CurrentUser {
   sub?: string;
   role?: UserRoleValue;
@@ -262,7 +263,7 @@ async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWit
       const lockResult = await tx.execute(
         sql`SELECT "id", "name", "availableQuantity", "totalQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
       );
-      const lockedComp = lockResult.rows[0] as LockedComponent | undefined;
+      const lockedComp = lockResult.rows[0] as unknown as LockedComponent | undefined;
 
       if (!lockedComp || lockedComp.availableQuantity < item.quantity) {
         const name = lockedComp?.name ?? item.component?.name ?? 'unknown';
@@ -278,7 +279,7 @@ async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWit
         .where(eq(component.id, item.componentId));
     }
 
-    const returnDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const returnDueAt = new Date(Date.now() + REQUEST_RETURN_LIMIT_MS).toISOString();
     await tx
       .update(request)
       .set({
@@ -310,7 +311,7 @@ async function requestForRenewalTransaction(
 
 async function approveRenewRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
   const renewedAt = new Date().toISOString();
-  const newReturnDueAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const newReturnDueAt = new Date(Date.now() + REQUEST_RETURN_LIMIT_MS).toISOString();
 
   await db.transaction(async (tx) => {
     await tx
@@ -332,7 +333,7 @@ async function returnRequestTransaction(existingRequest: NonNullable<RequestWith
       const lockResult = await tx.execute(
         sql`SELECT "id", "name", "availableQuantity", "totalQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
       );
-      const lockedComp = lockResult.rows[0] as LockedComponent | undefined;
+      const lockedComp = lockResult.rows[0] as unknown as LockedComponent | undefined;
 
       if (!lockedComp) {
         const name = item.component?.name ?? 'unknown';
@@ -708,6 +709,44 @@ async function handleFulfilledStatusUpdate(
   reply.send({ request: updatedRequest });
 }
 
+async function handleExpiredStatusUpdate(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  existingRequest: NonNullable<RequestWithRelations>,
+  newStatus: RequestStatusValue,
+  currentUser: CurrentUser,
+) {
+  if (newStatus !== RequestStatus.RETURNED) {
+    reply.code(400).send({
+      error: 'EXPIRED request can only be set to RETURNED',
+    });
+    return;
+  }
+
+  const authError = canFulfillRequest(currentUser);
+  if (authError) {
+    reply.code(authError.code).send({ error: authError.message });
+    return;
+  }
+
+  await returnRequestTransaction(existingRequest);
+  const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+
+  await logAudit(
+    {
+      userId: getUserIdFromRequest(req),
+      action: AuditActionType.REQUEST_STATUS_CHANGE,
+      entityType: 'Request',
+      entityId: existingRequest.id,
+      oldValues: { status: existingRequest.status },
+      newValues: { status: newStatus },
+    },
+    req,
+  );
+
+  reply.send({ request: updatedRequest });
+}
+
 async function handleUpdateRequestStatus(
   app: { log: { error: (err: unknown) => void } },
   req: FastifyRequest,
@@ -743,6 +782,8 @@ async function handleUpdateRequestStatus(
   }
 
   try {
+    await expireOverdueRequests({ requestId: id });
+
     const existingRequest = await fetchRequestWithItems(id);
 
     if (!existingRequest) {
@@ -795,10 +836,14 @@ async function handleUpdateRequestStatus(
         break;
       }
 
+      case RequestStatus.EXPIRED:
+        await handleExpiredStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+        break;
+
       default:
         reply.code(400).send({
           error:
-            'request status can only be updated when status is PENDING, APPROVED, FULFILLED, REQUESTED_RENEW, or RENEWED',
+            'request status can only be updated when status is PENDING, APPROVED, FULFILLED, REQUESTED_RENEW, RENEWED, or EXPIRED',
         });
     }
   } catch (err) {
@@ -828,6 +873,8 @@ async function handleDeleteRequest(
   }
 
   try {
+    await expireOverdueRequests({ requestId: id });
+
     const existingRequest = await db.query.request.findFirst({
       where: (r, { eq }) => eq(r.id, id),
     });

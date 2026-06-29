@@ -11,6 +11,7 @@ class StatusLabelTest {
         assertEquals("Fulfilled", requestStatusLabel("FULFILLED"))
         assertEquals("Returned", requestStatusLabel("RETURNED"))
         assertEquals("Renewed", requestStatusLabel("RENEWED"))
+        assertEquals("Expired", requestStatusLabel("EXPIRED"))
     }
 
     @Test
