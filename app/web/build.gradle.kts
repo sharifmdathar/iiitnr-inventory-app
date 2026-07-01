@@ -9,9 +9,7 @@ kotlin {
     wasmJs {
         browser {
             commonWebpackConfig {
-                devServer = (devServer ?: org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig.DevServer()).apply {
-                    static?.add(project.rootDir.path)
-                }
+                outputFileName = "web.js"
             }
         }
         binaries.executable()
@@ -27,3 +25,4 @@ kotlin {
         }
     }
 }
+

@@ -31,7 +31,7 @@ jobs:
         working-directory: app
         run: |
           chmod +x ./gradlew
-          ./gradlew :web:wasmJsBrowserProductionExecutableDist --no-configuration-cache
+          ./gradlew :web:wasmJsBrowserDistribution --no-configuration-cache -Pkotlin.native.ignoreDisabledTargets=true
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3

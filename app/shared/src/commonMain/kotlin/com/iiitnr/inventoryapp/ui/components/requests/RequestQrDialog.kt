@@ -54,7 +54,7 @@ fun RequestQrDialog(
                     Text(
                         text =
                             when (request.status) {
-                                "FULFILLED" -> "Return Components"
+                                "FULFILLED", "RENEWED" -> "Return Components"
                                 else -> "Fulfill Request"
                             },
                         style = MaterialTheme.typography.titleLarge,

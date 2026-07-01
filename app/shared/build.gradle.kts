@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.desktop)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
@@ -74,17 +75,7 @@ kotlin {
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {
         browser {
-            commonWebpackConfig {
-                devServer =
-                    (
-                        devServer ?: org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
-                            .DevServer()
-                    ).apply {
-                        static?.add(project.rootDir.path)
-                    }
-            }
         }
-        binaries.executable()
     }
 
     sourceSets {
@@ -97,8 +88,8 @@ kotlin {
                 implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
                 implementation("org.jetbrains.compose.ui:ui:$composeVersion")
                 implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
+                implementation("org.jetbrains.compose.material3:material3:${libs.versions.material3.get()}")
 
-                implementation(libs.jetbrains.material3)
                 implementation(libs.material.icons.extended)
 
                 implementation(libs.ktor.client.core)

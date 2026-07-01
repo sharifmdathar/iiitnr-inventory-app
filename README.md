@@ -10,9 +10,16 @@
 [![Bun Runtime](https://img.shields.io/badge/Bun-1.3.11+-orange?logo=bun)](https://bun.sh/)
 [![Drizzle ORM](https://img.shields.io/badge/Drizzle--ORM-PostgreSQL-blueviolet?logo=postgresql)](https://orm.drizzle.team/)
 [![Compose Multiplatform](https://img.shields.io/badge/Compose-Multiplatform-blue?logo=jetpackcompose)](https://github.com/JetBrains/compose-multiplatform)
+[![Kotlin WASM](https://img.shields.io/badge/Kotlin-WASM-yellow?logo=webassembly)](https://kotlinlang.org/docs/wasm-overview.html)
 [![License](https://img.shields.io/badge/License-Proprietary-red)](#)
 
 A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Management System** custom-built for the **International Institute of Information Technology, Naya Raipur (IIIT-NR)**. This workspace comprises a cross-platform client app built using **Kotlin Multiplatform (KMP) & Compose Multiplatform** paired with a ultra-fast backend engine driven by **Fastify, Bun, Drizzle ORM, and PostgreSQL**.
+
+---
+
+## 📺 Demo Video
+
+[![IIIT-NR Inventory App Demo](https://img.youtube.com/vi/MgsA0b5uwyU/maxresdefault.jpg)](https://youtu.be/MgsA0b5uwyU)
 
 ---
 
@@ -49,6 +56,7 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 
 ### 🔄 Multi-State Issue, Return & Renewal System
 - **Project Nominated Issues:** Students/TAs issue items under specific project titles and name a nominating `FACULTY` supervisor.
+- **QR-Based Fulfillment:** Admins and TAs can fulfill and return requests instantly by scanning a student's unique Request QR code.
 - **Fulfillment & Due Tracking:** Approved requests are fulfilled by admins/TAs, automatically setting a 30-day return due date (`returnDueAt`).
 - **Request Renewals:** Students/TAs can submit renewal requests with a detailed reason, allowing nominating faculty or admins to extend the due date by another 30 days.
 - **Automatic Stock Restocking:** Returning components automatically increments `availableQuantity` on the backend, checking against `totalQuantity`.
@@ -80,6 +88,7 @@ graph TD
         Desktop["💻 Compose Desktop (JVM)"]:::client
         Android["📱 Android Client"]:::client
         iOS["🍏 iOS Client"]:::client
+        Web["🌐 Web (WasmJs)"]:::client
         
         %% Shared Core Module
         subgraph "Shared Core Module (shared)"
@@ -91,7 +100,7 @@ graph TD
     end
 
     %% Network Connection
-    Desktop & Android & iOS -.-> UI
+    Desktop & Android & iOS & Web -.-> UI
     UI --> API
     API --> Cache
     API --> Models
@@ -337,6 +346,14 @@ Open the `app` directory in **Android Studio**. Make sure the target emulator or
 #### 3. Running the iOS Client
 Prerequisites: macOS with Xcode installed. Open the `/app/iosApp` project workspace inside Xcode, configure your developer certs, select a simulated iOS device, and press **Cmd + R**.
 
+#### 4. Running the Web (WasmJs) Client
+You can run the Web application in development mode with hot-reload:
+```bash
+cd app
+./gradlew :web:wasmJsBrowserDevelopmentRun
+```
+*(Or simply run `just web` from the project root)*
+
 ---
 
 ## 🧰 Justfile Task Runner Cheatsheet
@@ -353,6 +370,7 @@ If you have `just` runner installed, you can use the following shortcuts from th
 | `just logs` | Follows logs from the compose container stack | Diagnostics |
 | `just test` | Launches database and executes the backend test suite | Quality / CI |
 | `just desk` | Compiles and launches the desktop app locally | Compose Desktop |
+| `just web` | Launches the Kotlin WasmJs web application | Compose Web |
 | `just lint` | Runs eslint on backend and ktlint checks on client | Quality / Checks |
 | `just lint-fix` | Formats both backend source files and Kotlin source files | Formatters |
 | `just typecheck` | Validates TypeScript configuration and resolves type-errors | Backend TypeScript |
