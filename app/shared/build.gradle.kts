@@ -80,7 +80,7 @@ kotlin {
                         devServer ?: org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
                             .DevServer()
                     ).apply {
-                        static?.add(project.rootDir.path)
+                        static = mutableListOf(project.rootDir.path)
                     }
             }
         }
