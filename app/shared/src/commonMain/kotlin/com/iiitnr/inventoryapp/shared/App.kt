@@ -68,7 +68,7 @@ fun App(
                             uriHandler.openUri("https://github.com/sharifmdathar/iiitnr-inventory-app/releases")
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     // Silently fail on version check
                 }
             }

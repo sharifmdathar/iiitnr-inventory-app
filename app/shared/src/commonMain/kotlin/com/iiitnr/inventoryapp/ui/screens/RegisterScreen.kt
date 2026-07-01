@@ -136,7 +136,7 @@ fun RegisterScreen(
                             )
                         tokenManager.saveToken(response.token)
                         onRegisterSuccess()
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         errorMessage =
                             when {
                                 e.message?.contains("400") == true || e.message?.contains("Bad Request") == true ->
@@ -145,8 +145,10 @@ fun RegisterScreen(
                                 e.message?.contains("409") == true || e.message?.contains("Conflict") == true ->
                                     "Email already exists"
 
-                                e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
-                                    "Network error. Please check your connection."
+                                e.message?.contains("Network") == true ||
+                                    e.message?.contains("timeout") == true ||
+                                    e.message?.contains("fetch") == true ->
+                                    "Network error (CORS or offline). Please check your connection."
 
                                 else ->
                                     "Registration failed: ${e.message ?: "Please try again"}"

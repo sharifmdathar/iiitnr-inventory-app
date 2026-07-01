@@ -188,7 +188,7 @@ fun ComponentsScreen(
                         errorMessage = "No authentication token"
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 if (!pollingMode) {
                     val isAuthError =
                         e is ResponseException &&
@@ -280,7 +280,7 @@ fun ComponentsScreen(
                 } else {
                     cartError = "No authentication token"
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 cartError =
                     when {
                         e.message?.contains(
@@ -503,7 +503,7 @@ fun ComponentsScreen(
                             editingComponent = null
                             loadComponents()
                         }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         errorMessage = "Error: ${e.message ?: "Failed to save component"}"
                     }
                 }
@@ -531,7 +531,7 @@ fun ComponentsScreen(
                                         showDeleteDialog = null
                                         loadComponents()
                                     }
-                                } catch (e: Exception) {
+                                } catch (e: Throwable) {
                                     errorMessage =
                                         "Error: ${e.message ?: "Failed to delete component"}"
                                 }

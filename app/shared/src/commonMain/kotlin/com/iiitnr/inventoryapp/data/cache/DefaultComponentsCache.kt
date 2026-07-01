@@ -5,7 +5,6 @@ import app.cash.sqldelight.coroutines.mapToList
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.db.AppDatabase
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -16,7 +15,7 @@ class DefaultComponentsCache(
     private val queries = database.appDatabaseQueries
 
     override suspend fun getCached(): List<Component> =
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             queries.selectAll().executeAsList().map { dbComponent ->
                 dbComponent.toAppComponent()
             }
@@ -26,13 +25,13 @@ class DefaultComponentsCache(
         queries
             .selectAll()
             .asFlow()
-            .mapToList(Dispatchers.IO)
+            .mapToList(Dispatchers.Default)
             .map { list -> list.map { it.toAppComponent() } }
 
     override suspend fun save(
         components: List<Component>,
         lastModified: String?,
-    ) = withContext(Dispatchers.IO) {
+    ) = withContext(Dispatchers.Default) {
         queries.transaction {
             queries.deleteAllComponents()
             components.forEach { c ->

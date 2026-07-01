@@ -2,6 +2,7 @@ package com.iiitnr.inventoryapp.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +71,37 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+
+private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
+private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
+private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
+private val cardBackgroundRenewedLight = Color(0xFFE0F2F1)
+private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
+private val cardBackgroundRequestedRenewLight = Color(0xFFFFF3E0)
+private val cardBackgroundReturnedLight = Color(0xFFE8EAF6)
+
+private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
+private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
+private val cardBackgroundRejectedDark = Color(0xFF3D2020)
+private val cardBackgroundRenewedDark = Color(0xFF1A2E2C)
+private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
+private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
+private val cardBackgroundReturnedDark = Color(0xFF1E1E2E)
+
+private fun getActionBackground(
+    action: String?,
+    isDark: Boolean,
+): Color =
+    when (action) {
+        "CREATE" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
+        "UPDATE" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
+        "DELETE" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
+        "LOGIN" -> if (isDark) cardBackgroundReturnedDark else cardBackgroundReturnedLight
+        "LOGOUT" -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
+        "REQUEST_STATUS_CHANGE" -> if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
+        "INVENTORY_ADJUST" -> if (isDark) cardBackgroundRenewedDark else cardBackgroundRenewedLight
+        else -> if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
+    }
 
 private val actionColors =
     mapOf(
@@ -140,7 +173,7 @@ fun AuditLogScreen(
                 } else {
                     errorMessage = "No authentication token"
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 errorMessage = e.message ?: "Failed to load audit logs"
             } finally {
                 isLoading = false
@@ -270,12 +303,19 @@ private fun AuditLogCard(
     entry: AuditLogEntry,
     onClick: () -> Unit,
 ) {
+    val isDark = isSystemInDarkTheme()
     val actionColor = actionColors[entry.action] ?: MaterialTheme.colorScheme.primary
+    val cardBackground = getActionBackground(entry.action, isDark)
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         shape = RoundedCornerShape(12.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = cardBackground,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(

@@ -3,7 +3,6 @@ package com.iiitnr.inventoryapp.data.api
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpResponseValidator
-import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -19,7 +18,8 @@ object ApiClient {
 
     val client: HttpClient =
         createHttpClient {
-            install(HttpCache)
+            // HttpCache can cause issues on Web/Wasm with certain server configs
+            // install(HttpCache)
             install(ContentNegotiation) {
                 json(
                     Json {

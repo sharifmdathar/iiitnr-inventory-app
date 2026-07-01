@@ -127,7 +127,7 @@ fun RequestsScreen(
                         errorMessage = "No authentication token"
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 if (!pollingMode) {
                     val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
                     if (isAuthError) return@launch
@@ -162,7 +162,7 @@ fun RequestsScreen(
                 } else {
                     errorMessage = "No authentication token"
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 errorMessage = "Error: ${e.message ?: "Failed to delete request"}"
             }
         }
@@ -192,7 +192,7 @@ fun RequestsScreen(
                 } else {
                     errorMessage = "No authentication token"
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 errorMessage = "Error: ${e.message ?: "Failed to update request status"}"
             }
         }

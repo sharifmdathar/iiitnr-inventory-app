@@ -65,7 +65,7 @@ fun ProfileScreen(
                         val response = ApiClient.authApiService.getMe("Bearer $token")
                         userData = response.user
                         isLoading = false
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         errorMessage =
                             when {
                                 e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true ->
@@ -83,7 +83,7 @@ fun ProfileScreen(
                     errorMessage = "No authentication token found"
                     isLoading = false
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 errorMessage = "Error: ${e.message}"
                 isLoading = false
             }

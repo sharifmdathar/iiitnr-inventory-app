@@ -67,7 +67,7 @@ fun LoginScreen(
                 val authResponse = ApiClient.authApiService.login(LoginRequest(email.trim(), password))
                 tokenManager.saveToken(authResponse.token)
                 onLoginSuccess()
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 errorMessage =
                     when {
                         e.message?.contains(
@@ -101,7 +101,10 @@ fun LoginScreen(
                         e.message?.contains(
                             "Network",
                         ) == true ||
-                            e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                            e.message?.contains("timeout") == true ||
+                            e.message?.contains(
+                                "fetch",
+                            ) == true -> "Network error (CORS or offline). Please check your connection."
 
                         else -> "Login failed: ${e.message ?: "Please check your credentials"}"
                     }
@@ -202,7 +205,7 @@ fun LoginScreen(
                                     )
                                 tokenManager.saveToken(authResponse.token)
                                 onLoginSuccess()
-                            } catch (e: Exception) {
+                            } catch (e: Throwable) {
                                 val errorMsg = e.message ?: "Unknown error"
                                 errorMessage =
                                     when {

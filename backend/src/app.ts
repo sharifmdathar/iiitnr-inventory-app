@@ -186,6 +186,8 @@ async function registerPlugins(app: FastifyInstance, env: AppEnvironment) {
 
   await app.register(cors, {
     origin: buildCorsOrigin(env, allowedOrigins),
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   await app.register(helmet);

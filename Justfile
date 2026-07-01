@@ -94,3 +94,12 @@ detekt:
 [windows]
 detekt:
     cd app && .\gradlew.bat detekt
+
+
+[unix]
+web:
+    cd app && ./gradlew :web:wasmJsBrowserDevelopmentRun
+
+[windows]
+web:
+    cd app && ./gradlew :web:wasmJsBrowserDevelopmentRun

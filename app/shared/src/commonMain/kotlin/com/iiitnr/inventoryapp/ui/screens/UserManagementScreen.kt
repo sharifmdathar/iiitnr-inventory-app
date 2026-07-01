@@ -1,6 +1,7 @@
 package com.iiitnr.inventoryapp.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +67,31 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
+private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
+private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
+private val cardBackgroundRequestedRenewLight = Color(0xFFFFF3E0)
+private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
+
+private val cardBackgroundRejectedDark = Color(0xFF3D2020)
+private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
+private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
+private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
+private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
+
+private fun getRoleBackground(
+    role: String?,
+    isDark: Boolean,
+): Color =
+    when (role?.uppercase()) {
+        "ADMIN" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
+        "FACULTY" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
+        "STUDENT" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
+        "TA" -> if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
+        "PENDING" -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
+        else -> if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
+    }
 
 private val roleColors =
     mapOf(
@@ -112,7 +139,7 @@ fun UserManagementScreen(
                 } else {
                     errorMessage = "No authentication token"
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 errorMessage =
                     when {
                         e is ResponseException && e.response.status == HttpStatusCode.Unauthorized ->
@@ -238,7 +265,7 @@ fun UserManagementScreen(
                             editingUser = null
                             loadUsers()
                         }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         errorMessage = "Failed to update user: ${e.message}"
                     }
                 }
@@ -253,12 +280,19 @@ private fun UserCard(
     user: User,
     onClick: () -> Unit,
 ) {
+    val isDark = isSystemInDarkTheme()
     val roleColor = roleColors[user.role.uppercase()] ?: MaterialTheme.colorScheme.primary
+    val cardBackground = getRoleBackground(user.role, isDark)
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         shape = RoundedCornerShape(12.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = cardBackground,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(

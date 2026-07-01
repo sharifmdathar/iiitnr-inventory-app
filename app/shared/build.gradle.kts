@@ -55,11 +55,12 @@ kotlin {
         withHostTest {}
     }
 
-    val iosTargets = listOf(iosX64(), iosArm64(), iosSimulatorArm64())
-    if (org.gradle.internal.os.OperatingSystem
+    val isMac =
+        org.gradle.internal.os.OperatingSystem
             .current()
             .isMacOsX
-    ) {
+    if (isMac) {
+        val iosTargets = listOf(iosX64(), iosArm64(), iosSimulatorArm64())
         iosTargets.forEach {
             it.binaries.framework {
                 baseName = "shared"
@@ -69,6 +70,22 @@ kotlin {
     }
 
     jvm()
+
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser {
+            commonWebpackConfig {
+                devServer =
+                    (
+                        devServer ?: org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
+                            .DevServer()
+                    ).apply {
+                        static?.add(project.rootDir.path)
+                    }
+            }
+        }
+        binaries.executable()
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -126,11 +143,14 @@ kotlin {
             }
         }
 
-        val iosTargets = listOf(iosX64Main, iosArm64Main, iosSimulatorArm64Main)
-        iosTargets.forEach { target ->
-            target.dependencies {
-                implementation(libs.ktor.client.darwin)
-                implementation(libs.sqldelight.driver.native)
+        if (isMac) {
+            val iosTargets =
+                listOf(getByName("iosX64Main"), getByName("iosArm64Main"), getByName("iosSimulatorArm64Main"))
+            iosTargets.forEach { target ->
+                target.dependencies {
+                    implementation(libs.ktor.client.darwin)
+                    implementation(libs.sqldelight.driver.native)
+                }
             }
         }
 
@@ -138,6 +158,13 @@ kotlin {
             dependencies {
                 implementation(libs.ktor.client.cio)
                 implementation(libs.sqldelight.driver.sqlite)
+            }
+        }
+
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
+                implementation(libs.sqldelight.driver.web.worker)
             }
         }
     }
