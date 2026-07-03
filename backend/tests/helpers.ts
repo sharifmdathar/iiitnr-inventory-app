@@ -27,7 +27,7 @@ export async function createUser(data: {
       updatedAt: n,
     })
     .returning();
-  return u!;
+  return u;
 }
 
 export async function createComponent(data: {
@@ -53,7 +53,7 @@ export async function createComponent(data: {
       updatedAt: n,
     })
     .returning();
-  return c!;
+  return c;
 }
 
 export async function createRequest(data: {
@@ -85,7 +85,7 @@ export async function createRequest(data: {
     })),
   );
   const [r] = await db.select().from(request).where(eq(request.id, requestId)).limit(1);
-  return r!;
+  return r;
 }
 
 export async function deleteAllData() {

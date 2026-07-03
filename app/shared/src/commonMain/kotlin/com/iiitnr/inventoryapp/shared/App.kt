@@ -157,10 +157,6 @@ fun App(
                         composable("requests") {
                             RequestsScreen(tokenManager = tokenManager, onNavigateBack = {
                                 navController.popBackStack()
-                            }, onNavigateToComponents = {
-                                navController.navigate("components") {
-                                    popUpTo("requests") { inclusive = true }
-                                }
                             })
                         }
                         composable("audit_log") {

@@ -36,7 +36,8 @@ describe('deriveIiitnrProfileFromEmail', () => {
 
 describe('pickDerivedProfileUpdates', () => {
   test('fills only missing batch and branch', () => {
-    const derived = deriveIiitnrProfileFromEmail('cseStudent24100@iiitnr.edu.in')!;
+    const derived = deriveIiitnrProfileFromEmail('cseStudent24100@iiitnr.edu.in');
+    if (!derived) throw new Error('Failed to derive profile');
     const updates = pickDerivedProfileUpdates(derived, {
       batch: null,
       branch: null,
@@ -48,7 +49,8 @@ describe('pickDerivedProfileUpdates', () => {
   });
 
   test('skips batch and branch when already stored', () => {
-    const derived = deriveIiitnrProfileFromEmail('cseStudent24100@iiitnr.edu.in')!;
+    const derived = deriveIiitnrProfileFromEmail('cseStudent24100@iiitnr.edu.in');
+    if (!derived) throw new Error('Failed to derive profile');
     const updates = pickDerivedProfileUpdates(derived, {
       batch: '2023-2027',
       branch: 'ECE',

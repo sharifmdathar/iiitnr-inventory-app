@@ -18,7 +18,6 @@ fun RequestsTopBar(
     AppTopBar(
         title = "Requests",
         modifier = modifier,
-        role = role,
         onNavigateBack = onNavigateBack,
         actions = {
             if (onScanRequestClick != null) {

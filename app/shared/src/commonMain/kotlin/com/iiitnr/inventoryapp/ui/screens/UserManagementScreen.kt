@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -29,8 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -56,6 +51,7 @@ import com.iiitnr.inventoryapp.data.models.UpdateUserRequest
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
+import com.iiitnr.inventoryapp.ui.components.common.PaginationBar
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.theme.SemanticDanger
 import com.iiitnr.inventoryapp.ui.theme.SemanticInfo
@@ -67,6 +63,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
 private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
@@ -80,18 +77,26 @@ private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
 private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
 private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
 
+private data class RoleThemePair(
+    val light: Color,
+    val dark: Color,
+)
+
+private val roleBackgrounds =
+    mapOf(
+        "ADMIN" to RoleThemePair(cardBackgroundRejectedLight, cardBackgroundRejectedDark),
+        "FACULTY" to RoleThemePair(cardBackgroundFulfilledLight, cardBackgroundFulfilledDark),
+        "STUDENT" to RoleThemePair(cardBackgroundApprovedLight, cardBackgroundApprovedDark),
+        "TA" to RoleThemePair(cardBackgroundRequestedRenewLight, cardBackgroundRequestedRenewDark),
+        "PENDING" to RoleThemePair(cardBackgroundPendingLight, cardBackgroundPendingDark),
+    )
+
 private fun getRoleBackground(
     role: String?,
     isDark: Boolean,
 ): Color =
-    when (role?.uppercase()) {
-        "ADMIN" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
-        "FACULTY" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
-        "STUDENT" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
-        "TA" -> if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
-        "PENDING" -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
-        else -> if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
-    }
+    roleBackgrounds[role?.uppercase()]?.let { if (isDark) it.dark else it.light }
+        ?: if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
 
 private val roleColors =
     mapOf(
@@ -142,8 +147,9 @@ fun UserManagementScreen(
             } catch (e: Throwable) {
                 errorMessage =
                     when {
-                        e is ResponseException && e.response.status == HttpStatusCode.Unauthorized ->
-                            "Session expired. Please login again."
+                        e is ResponseException &&
+                            e.response.status == HttpStatusCode.Unauthorized
+                        -> "Session expired. Please login again."
 
                         e.message?.contains(
                             "Network",
@@ -162,7 +168,7 @@ fun UserManagementScreen(
 
     LaunchedEffect(currentOffset, searchQuery) {
         if (searchQuery.isNotBlank()) {
-            delay(300)
+            delay(300.milliseconds)
         }
         loadUsers()
     }
@@ -231,7 +237,7 @@ fun UserManagementScreen(
                         }
                     }
 
-                    UserPaginationBar(
+                    PaginationBar(
                         currentOffset = currentOffset,
                         pageSize = pageSize,
                         totalCount = totalCount,
@@ -356,50 +362,6 @@ private fun UserCard(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun UserPaginationBar(
-    currentOffset: Int,
-    pageSize: Int,
-    totalCount: Int,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val currentPage = (currentOffset / pageSize) + 1
-    val totalPages = ((totalCount + pageSize - 1) / pageSize).coerceAtLeast(1)
-
-    Surface(tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onPrevious,
-                enabled = currentOffset > 0,
-            ) {
-                Icon(Icons.Default.ChevronLeft, "Previous")
-            }
-            Text(
-                text = "Page $currentPage of $totalPages",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-            IconButton(
-                onClick = onNext,
-                enabled = currentOffset + pageSize < totalCount,
-            ) {
-                Icon(Icons.Default.ChevronRight, "Next")
-            }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "$totalCount total",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

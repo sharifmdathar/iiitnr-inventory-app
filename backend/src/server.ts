@@ -9,20 +9,17 @@ try {
   await pool.query('SELECT 1');
   app.log.info('Database connection OK');
 } catch {
-  app.log.error('DB connection failed, check your connection string');
-  process.exit(1);
+  throw new Error('DB connection failed, check your connection string');
 }
 
 try {
   const res = await pool.query('SELECT 1 AS n FROM drizzle.__drizzle_migrations LIMIT 1');
   if (!res.rows?.length) {
-    app.log.error('No migrations applied. Run: bun run src/index.ts');
-    process.exit(1);
+    throw new Error('No migrations applied. Run: bun run src/index.ts');
   }
   app.log.info('Migrations applied');
 } catch {
-  app.log.error('Migrations not applied or migration table missing. Run: bun run src/index.ts');
-  process.exit(1);
+  throw new Error('Migrations not applied or migration table missing. Run: bun run src/index.ts');
 }
 
 try {
@@ -30,8 +27,7 @@ try {
   markAppReady();
   app.log.info(`Server listening on http://${host}:${port}`);
 } catch (err) {
-  app.log.error(err);
-  process.exit(1);
+  throw new Error(`Failed to start server: ${err}`);
 }
 
 const signals = ['SIGINT', 'SIGTERM'];
@@ -43,8 +39,7 @@ for (const signal of signals) {
       app.log.info('Server closed successfully.');
       process.exit(0);
     } catch (err) {
-      app.log.error(err, 'Error during graceful shutdown');
-      process.exit(1);
+      throw new Error(`${err} Error during graceful shutdown`);
     }
   });
 }

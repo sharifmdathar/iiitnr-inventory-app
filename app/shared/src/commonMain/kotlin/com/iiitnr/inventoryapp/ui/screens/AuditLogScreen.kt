@@ -21,9 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,8 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -59,6 +54,7 @@ import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.AuditLogEntry
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
+import com.iiitnr.inventoryapp.ui.components.common.PaginationBar
 import com.iiitnr.inventoryapp.ui.theme.SemanticAudit
 import com.iiitnr.inventoryapp.ui.theme.SemanticDanger
 import com.iiitnr.inventoryapp.ui.theme.SemanticIdentity
@@ -88,20 +84,28 @@ private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
 private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
 private val cardBackgroundReturnedDark = Color(0xFF1E1E2E)
 
+private data class ThemePair(
+    val light: Color,
+    val dark: Color,
+)
+
+private val actionBackgrounds =
+    mapOf(
+        "CREATE" to ThemePair(cardBackgroundApprovedLight, cardBackgroundApprovedDark),
+        "UPDATE" to ThemePair(cardBackgroundFulfilledLight, cardBackgroundFulfilledDark),
+        "DELETE" to ThemePair(cardBackgroundRejectedLight, cardBackgroundRejectedDark),
+        "LOGIN" to ThemePair(cardBackgroundReturnedLight, cardBackgroundReturnedDark),
+        "LOGOUT" to ThemePair(cardBackgroundPendingLight, cardBackgroundPendingDark),
+        "REQUEST_STATUS_CHANGE" to ThemePair(cardBackgroundRequestedRenewLight, cardBackgroundRequestedRenewDark),
+        "INVENTORY_ADJUST" to ThemePair(cardBackgroundRenewedLight, cardBackgroundRenewedDark),
+    )
+
 private fun getActionBackground(
     action: String?,
     isDark: Boolean,
 ): Color =
-    when (action) {
-        "CREATE" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
-        "UPDATE" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
-        "DELETE" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
-        "LOGIN" -> if (isDark) cardBackgroundReturnedDark else cardBackgroundReturnedLight
-        "LOGOUT" -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
-        "REQUEST_STATUS_CHANGE" -> if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
-        "INVENTORY_ADJUST" -> if (isDark) cardBackgroundRenewedDark else cardBackgroundRenewedLight
-        else -> if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
-    }
+    actionBackgrounds[action?.uppercase()]?.let { if (isDark) it.dark else it.light }
+        ?: if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
 
 private val actionColors =
     mapOf(
@@ -247,7 +251,7 @@ fun AuditLogScreen(
                         }
                     }
 
-                    AuditPaginationBar(
+                    PaginationBar(
                         currentOffset = currentOffset,
                         pageSize = pageSize,
                         totalCount = totalCount,
@@ -381,50 +385,6 @@ private fun AuditLogCard(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AuditPaginationBar(
-    currentOffset: Int,
-    pageSize: Int,
-    totalCount: Int,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-) {
-    val currentPage = (currentOffset / pageSize) + 1
-    val totalPages = ((totalCount + pageSize - 1) / pageSize).coerceAtLeast(1)
-
-    Surface(tonalElevation = 2.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onPrevious,
-                enabled = currentOffset > 0,
-            ) {
-                Icon(Icons.Default.ChevronLeft, "Previous")
-            }
-            Text(
-                text = "Page $currentPage of $totalPages",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-            IconButton(
-                onClick = onNext,
-                enabled = currentOffset + pageSize < totalCount,
-            ) {
-                Icon(Icons.Default.ChevronRight, "Next")
-            }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "$totalCount total",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

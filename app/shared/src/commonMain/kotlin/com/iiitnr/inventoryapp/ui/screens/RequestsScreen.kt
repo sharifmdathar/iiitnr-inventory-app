@@ -62,7 +62,6 @@ import kotlinx.coroutines.launch
 fun RequestsScreen(
     tokenManager: TokenManager,
     onNavigateBack: () -> Unit,
-    onNavigateToComponents: () -> Unit,
 ) {
     var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -242,93 +241,54 @@ fun RequestsScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (pendingDeleteRequestId != null) {
-            AlertDialog(
-                onDismissRequest = { pendingDeleteRequestId = null },
-                title = { Text("Retract request?") },
-                text = { Text("This will delete the request permanently") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            val id = pendingDeleteRequestId
-                            pendingDeleteRequestId = null
-                            if (id != null) deleteRequest(id)
-                        },
-                    ) {
-                        Text("Retract", color = MaterialTheme.colorScheme.error)
-                    }
+        RequestsDialogs(
+            pendingDeleteRequestId = pendingDeleteRequestId,
+            onDismissDelete = { pendingDeleteRequestId = null },
+            onConfirmDelete = { id -> deleteRequest(id) },
+            requestToShowQr = requestToShowQr,
+            onDismissQr = { requestToShowQr = null },
+            pendingRenewRequestId = pendingRenewRequestId,
+            renewReasonInput = renewReasonInput,
+            onRenewReasonChange = { renewReasonInput = it },
+            onConfirmRenew = {
+                val id = pendingRenewRequestId
+                val reason = renewReasonInput.trim()
+                pendingRenewRequestId = null
+                renewReasonInput = ""
+                if (id != null && reason.isNotEmpty()) {
+                    updateRequestStatus(id, "REQUESTED_RENEW", lastRenewReason = reason)
+                }
+            },
+            onDismissRenew = {
+                pendingRenewRequestId = null
+                renewReasonInput = ""
+            },
+            scannedRequest = scannedRequest,
+            onConfirmScan = { request, nextStatus ->
+                scannedRequest = null
+                requestIdInput = ""
+                updateRequestStatus(request.id, nextStatus)
+            },
+            onDismissScan = {
+                scannedRequest = null
+                requestIdInput = ""
+            },
+            showRequestIdDialog = showRequestIdDialog,
+            showQrScanner = showQrScanner,
+            requestIdInput = requestIdInput,
+            onRequestIdChange = { requestIdInput = it },
+            onConfirmRequestId = { openScannedRequest(requestIdInput) },
+            onDismissRequestId = {
+                showRequestIdDialog = false
+                requestIdInput = ""
+            },
+            onScanClick =
+                if (isAdminOrTA && isQrScanAvailable()) {
+                    { showQrScanner = true }
+                } else {
+                    null
                 },
-                dismissButton = {
-                    TextButton(onClick = { pendingDeleteRequestId = null }) {
-                        Text("Cancel")
-                    }
-                },
-            )
-        }
-
-        requestToShowQr?.let { request ->
-            RequestQrDialog(
-                request = request,
-                onDismiss = { requestToShowQr = null },
-            )
-        }
-
-        if (pendingRenewRequestId != null) {
-            RenewReasonDialog(
-                reason = renewReasonInput,
-                onReasonChange = { renewReasonInput = it },
-                onConfirm = {
-                    val id = pendingRenewRequestId
-                    val reason = renewReasonInput.trim()
-                    pendingRenewRequestId = null
-                    renewReasonInput = ""
-                    if (id != null && reason.isNotEmpty()) {
-                        updateRequestStatus(id, "REQUESTED_RENEW", lastRenewReason = reason)
-                    }
-                },
-                onDismiss = {
-                    pendingRenewRequestId = null
-                    renewReasonInput = ""
-                },
-            )
-        }
-
-        scannedRequest?.let { request ->
-            ScannedRequestDialog(
-                request = request,
-                onConfirm = { nextStatus ->
-                    scannedRequest = null
-                    requestIdInput = ""
-                    updateRequestStatus(request.id, nextStatus)
-                },
-                onDismiss = {
-                    scannedRequest = null
-                    requestIdInput = ""
-                },
-            )
-        }
-
-        if (showRequestIdDialog && !showQrScanner && scannedRequest == null) {
-            FulfillByIdDialog(
-                requestIdInput = requestIdInput,
-                onRequestIdChange = { requestIdInput = it },
-                dialogTitle = "Scan request QR / ID",
-                confirmButtonLabel = "Review",
-                onConfirm = {
-                    openScannedRequest(requestIdInput)
-                },
-                onDismiss = {
-                    showRequestIdDialog = false
-                    requestIdInput = ""
-                },
-                onScanClick =
-                    if (isAdminOrTA && isQrScanAvailable()) {
-                        { showQrScanner = true }
-                    } else {
-                        null
-                    },
-            )
-        }
+        )
 
         Scaffold(
             topBar = {
@@ -348,141 +308,86 @@ fun RequestsScreen(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { paddingValues ->
-            Column(modifier = Modifier.padding(paddingValues)) {
-                SearchBar(
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    placeholder = "Search requests...",
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    val statusOptions =
-                        listOf(
-                            "ALL",
-                            "PENDING",
-                            "APPROVED",
-                            "REJECTED",
-                            "FULFILLED",
-                            "REQUESTED_RENEW",
-                            "RENEWED",
-                            "EXPIRED",
-                            "RETURNED",
+            RequestsScreenBody(
+                paddingValues = paddingValues,
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                statusFilter = statusFilter,
+                onStatusFilterChange = { statusFilter = it },
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                requests = requests,
+                filteredRequests = filteredRequests,
+                onRetry = { loadRequests() },
+                isFaculty = isFaculty,
+                isAdminOrTA = isAdminOrTA,
+                onDeleteRequest =
+                    if (isFaculty) {
+                        null
+                    } else {
+                        { requestId -> pendingDeleteRequestId = requestId }
+                    },
+                onApproveRequest =
+                    if (isFaculty) {
+                        (
+                            { requestId ->
+                                updateRequestStatus(requestId, "APPROVED")
+                            }
                         )
-                    items(statusOptions) { option ->
-                        val isSelected = (statusFilter == null && option == "ALL") || statusFilter == option
-                        TextButton(
-                            onClick = {
-                                statusFilter = if (option == "ALL") null else option
-                            },
-                        ) {
-                            Text(
-                                text = requestStatusDisplayLabel(option),
-                                color =
-                                    if (isSelected) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                            )
+                    } else {
+                        null
+                    },
+                onRejectRequest =
+                    if (isFaculty) {
+                        (
+                            { requestId ->
+                                updateRequestStatus(requestId, "REJECTED")
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onFulfillRequest =
+                    if (isAdminOrTA) {
+                        (
+                            { requestId ->
+                                updateRequestStatus(requestId, "FULFILLED")
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onReturnRequest =
+                    if (isAdminOrTA) {
+                        (
+                            { requestId ->
+                                updateRequestStatus(requestId, "RETURNED")
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onRequestRenew =
+                    if (!isFaculty && !isAdminOrTA) {
+                        { requestId ->
+                            pendingRenewRequestId = requestId
+                            renewReasonInput = ""
                         }
-                    }
-                }
-
-                RequestsContent(
-                    isLoading = isLoading,
-                    errorMessage = errorMessage,
-                    requests = filteredRequests,
-                    allRequests = requests,
-                    statusFilter = statusFilter,
-                    searchQuery = query,
-                    onRetry = { loadRequests() },
-                    onDeleteRequest =
-                        if (isFaculty) {
-                            null
-                        } else {
+                    } else {
+                        null
+                    },
+                onApproveRenew =
+                    if (isFaculty) {
+                        (
                             { requestId ->
-                                pendingDeleteRequestId = requestId
+                                updateRequestStatus(requestId, "RENEWED")
                             }
-                        },
-                    onApproveRequest =
-                        if (isFaculty) {
-                            { requestId ->
-                                updateRequestStatus(
-                                    requestId,
-                                    "APPROVED",
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    onRejectRequest =
-                        if (isFaculty) {
-                            { requestId ->
-                                updateRequestStatus(
-                                    requestId,
-                                    "REJECTED",
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    onFulfillRequest =
-                        if (isAdminOrTA) {
-                            { requestId ->
-                                updateRequestStatus(
-                                    requestId,
-                                    "FULFILLED",
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    onReturnRequest =
-                        if (isAdminOrTA) {
-                            { requestId ->
-                                updateRequestStatus(
-                                    requestId,
-                                    "RETURNED",
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    onRequestRenew =
-                        if (!isFaculty && !isAdminOrTA) {
-                            { requestId ->
-                                pendingRenewRequestId = requestId
-                                renewReasonInput = ""
-                            }
-                        } else {
-                            null
-                        },
-                    onApproveRenew =
-                        if (isFaculty) {
-                            { requestId ->
-                                updateRequestStatus(
-                                    requestId,
-                                    "RENEWED",
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                    onShowQr =
-                        if (!isFaculty) {
-                            { request -> requestToShowQr = request }
-                        } else {
-                            null
-                        },
-                    isFaculty = isFaculty,
-                    modifier = Modifier.padding(),
-                )
-            }
+                        )
+                    } else {
+                        null
+                    },
+                onShowQr = if (!isFaculty) ({ request -> requestToShowQr = request }) else null,
+            )
         }
 
         if (showQrScanner) {
@@ -500,6 +405,189 @@ fun RequestsScreen(
         }
     }
 }
+
+@Composable
+private fun RequestsDialogs(
+    pendingDeleteRequestId: String?,
+    onDismissDelete: () -> Unit,
+    onConfirmDelete: (String) -> Unit,
+    requestToShowQr: Request?,
+    onDismissQr: () -> Unit,
+    pendingRenewRequestId: String?,
+    renewReasonInput: String,
+    onRenewReasonChange: (String) -> Unit,
+    onConfirmRenew: () -> Unit,
+    onDismissRenew: () -> Unit,
+    scannedRequest: Request?,
+    onConfirmScan: (Request, String) -> Unit,
+    onDismissScan: () -> Unit,
+    showRequestIdDialog: Boolean,
+    showQrScanner: Boolean,
+    requestIdInput: String,
+    onRequestIdChange: (String) -> Unit,
+    onConfirmRequestId: () -> Unit,
+    onDismissRequestId: () -> Unit,
+    onScanClick: (() -> Unit)?,
+) {
+    if (pendingDeleteRequestId != null) {
+        AlertDialog(
+            onDismissRequest = onDismissDelete,
+            title = { Text("Retract request?") },
+            text = { Text("This will delete the request permanently") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDismissDelete()
+                        onConfirmDelete(pendingDeleteRequestId)
+                    },
+                ) {
+                    Text("Retract", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDelete) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    requestToShowQr?.let { request ->
+        RequestQrDialog(
+            request = request,
+            onDismiss = onDismissQr,
+        )
+    }
+
+    if (pendingRenewRequestId != null) {
+        RenewReasonDialog(
+            reason = renewReasonInput,
+            onReasonChange = onRenewReasonChange,
+            onConfirm = onConfirmRenew,
+            onDismiss = onDismissRenew,
+        )
+    }
+
+    scannedRequest?.let { request ->
+        ScannedRequestDialog(
+            request = request,
+            onConfirm = { nextStatus -> onConfirmScan(request, nextStatus) },
+            onDismiss = onDismissScan,
+        )
+    }
+
+    if (showRequestIdDialog && !showQrScanner && scannedRequest == null) {
+        FulfillByIdDialog(
+            requestIdInput = requestIdInput,
+            onRequestIdChange = onRequestIdChange,
+            dialogTitle = "Scan request QR / ID",
+            confirmButtonLabel = "Review",
+            onConfirm = onConfirmRequestId,
+            onDismiss = onDismissRequestId,
+            onScanClick = onScanClick,
+        )
+    }
+}
+
+@Composable
+private fun RequestsScreenBody(
+    paddingValues: PaddingValues,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    statusFilter: String?,
+    onStatusFilterChange: (String?) -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?,
+    requests: List<Request>,
+    filteredRequests: List<Request>,
+    onRetry: () -> Unit,
+    isFaculty: Boolean,
+    isAdminOrTA: Boolean,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+    onFulfillRequest: ((String) -> Unit)?,
+    onReturnRequest: ((String) -> Unit)?,
+    onRequestRenew: ((String) -> Unit)?,
+    onApproveRenew: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    Column(modifier = Modifier.padding(paddingValues)) {
+        SearchBar(
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            placeholder = "Search requests...",
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        RequestStatusFilterRow(
+            statusFilter = statusFilter,
+            onStatusFilterChange = onStatusFilterChange,
+        )
+
+        RequestsContent(
+            isLoading = isLoading,
+            errorMessage = errorMessage,
+            requests = filteredRequests,
+            allRequests = requests,
+            statusFilter = statusFilter,
+            searchQuery = searchQuery.trim(),
+            onRetry = onRetry,
+            onDeleteRequest = onDeleteRequest,
+            onApproveRequest = onApproveRequest,
+            onRejectRequest = onRejectRequest,
+            onFulfillRequest = onFulfillRequest,
+            onReturnRequest = onReturnRequest,
+            onRequestRenew = onRequestRenew,
+            onApproveRenew = onApproveRenew,
+            onShowQr = onShowQr,
+            isFaculty = isFaculty,
+            modifier = Modifier.padding(),
+        )
+    }
+}
+
+@Composable
+private fun RequestStatusFilterRow(
+    statusFilter: String?,
+    onStatusFilterChange: (String?) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        items(REQUEST_STATUS_OPTIONS) { option ->
+            val isSelected = (statusFilter == null && option == "ALL") || statusFilter == option
+            TextButton(
+                onClick = { onStatusFilterChange(if (option == "ALL") null else option) },
+            ) {
+                Text(
+                    text = requestStatusDisplayLabel(option),
+                    color =
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            }
+        }
+    }
+}
+
+private val REQUEST_STATUS_OPTIONS =
+    listOf(
+        "ALL",
+        "PENDING",
+        "APPROVED",
+        "REJECTED",
+        "FULFILLED",
+        "REQUESTED_RENEW",
+        "RENEWED",
+        "EXPIRED",
+        "RETURNED",
+    )
 
 @Composable
 private fun ScannedRequestDialog(

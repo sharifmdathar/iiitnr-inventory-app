@@ -6,12 +6,12 @@
 
 
 [![Kotlin Multiplatform](https://img.shields.io/badge/Kotlin-Multiplatform-purple?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
-[![Fastify](https://img.shields.io/badge/Fastify-5.8.5-black?logo=fastify)](https://fastify.dev/)
+[![Fastify](https://img.shields.io/badge/Fastify-5.9.0-black?logo=fastify)](https://fastify.dev/)
 [![Bun Runtime](https://img.shields.io/badge/Bun-1.3.11+-orange?logo=bun)](https://bun.sh/)
 [![Drizzle ORM](https://img.shields.io/badge/Drizzle--ORM-PostgreSQL-blueviolet?logo=postgresql)](https://orm.drizzle.team/)
 [![Compose Multiplatform](https://img.shields.io/badge/Compose-Multiplatform-blue?logo=jetpackcompose)](https://github.com/JetBrains/compose-multiplatform)
 [![Kotlin WASM](https://img.shields.io/badge/Kotlin-WASM-yellow?logo=webassembly)](https://kotlinlang.org/docs/wasm-overview.html)
-[![License](https://img.shields.io/badge/License-Proprietary-red)](#)
+[![License](https://img.shields.io/github/license/sharifmdathar/iiitnr-inventory-app)](LICENSE)
 
 A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Management System** custom-built for the **International Institute of Information Technology, Naya Raipur (IIIT-NR)**. This workspace comprises a cross-platform client app built using **Kotlin Multiplatform (KMP) & Compose Multiplatform** paired with a ultra-fast backend engine driven by **Fastify, Bun, Drizzle ORM, and PostgreSQL**.
 
@@ -58,6 +58,7 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 - **Project Nominated Issues:** Students/TAs issue items under specific project titles and name a nominating `FACULTY` supervisor.
 - **QR-Based Fulfillment:** Admins and TAs can fulfill and return requests instantly by scanning a student's unique Request QR code.
 - **Fulfillment & Due Tracking:** Approved requests are fulfilled by admins/TAs, automatically setting a 30-day return due date (`returnDueAt`).
+- **Auto-Expiry:** Fulfilled or renewed requests past their `returnDueAt` are automatically marked `EXPIRED` by a periodic background sweep.
 - **Request Renewals:** Students/TAs can submit renewal requests with a detailed reason, allowing nominating faculty or admins to extend the due date by another 30 days.
 - **Automatic Stock Restocking:** Returning components automatically increments `availableQuantity` on the backend, checking against `totalQuantity`.
 
@@ -220,12 +221,17 @@ stateDiagram-v2
     APPROVED --> REJECTED : Admin cancels/rejects the pickup
     
     FULFILLED --> RETURNED : Student returns components & Admin validates stock restock
-    
+    FULFILLED --> EXPIRED : Return due date passed without return
     FULFILLED --> REQUESTED_RENEW : Student requests extra time with reason
+    
     REQUESTED_RENEW --> RENEWED : Faculty or Admin approves renewal request
     REQUESTED_RENEW --> FULFILLED : Renewal rejected (original deadline stands)
+    REQUESTED_RENEW --> EXPIRED : Return due date passed without action
     
     RENEWED --> RETURNED : Student returns components after renewal
+    RENEWED --> EXPIRED : Return due date passed without return
+    
+    EXPIRED --> RETURNED : Student returns an overdue request
     
     REJECTED --> [*]
     RETURNED --> [*]

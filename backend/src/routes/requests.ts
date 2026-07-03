@@ -520,6 +520,10 @@ async function handleGetRequests(
   }
 
   try {
+    if (status === RequestStatus.EXPIRED) {
+      await expireOverdueRequests();
+    }
+
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const rows = await db.query.request.findMany({

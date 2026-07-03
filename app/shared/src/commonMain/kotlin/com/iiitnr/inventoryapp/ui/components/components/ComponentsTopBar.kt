@@ -35,7 +35,6 @@ fun ComponentsTopBar(
     AppTopBar(
         title = "Components",
         modifier = modifier,
-        role = role,
         actions = {
             if (showExportCsv && onExportCsv != null) {
                 IconButton(onClick = onExportCsv) {

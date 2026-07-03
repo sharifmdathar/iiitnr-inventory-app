@@ -1,6 +1,5 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
@@ -37,35 +35,6 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.todayIn
 import kotlin.math.abs
 import kotlin.time.Clock
-
-private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
-private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
-private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
-private val cardBackgroundReturnedLight = Color(0xFFE8EAF6)
-private val cardBackgroundRequestedRenewLight = Color(0xFFFFF3E0)
-private val cardBackgroundRenewedLight = Color(0xFFE0F2F1)
-private val cardBackgroundExpiredLight = Color(0xFFFFE4E6)
-private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
-
-private val cardBackgroundRejectedDark = Color(0xFF3D2020)
-private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
-private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
-private val cardBackgroundReturnedDark = Color(0xFF1E1E2E)
-private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
-private val cardBackgroundRenewedDark = Color(0xFF1A2E2C)
-private val cardBackgroundExpiredDark = Color(0xFF3F1D24)
-private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
-
-private val statusApprovedLight = Color(0xFF2E7D32)
-private val statusApprovedDark = Color(0xFF81C784)
-private val statusFulfilledLight = Color(0xFF1976D2)
-private val statusFulfilledDark = Color(0xFF64B5F6)
-private val statusReturnedLight = Color(0xFF5E35B1)
-private val statusReturnedDark = Color(0xFFB39DDB)
-private val statusRequestedRenewLight = Color(0xFFE65100)
-private val statusRequestedRenewDark = Color(0xFFFFB74D)
-private val statusRenewedLight = Color(0xFF00695C)
-private val statusRenewedDark = Color(0xFF4DB6AC)
 
 @Composable
 fun RequestCard(
@@ -81,19 +50,18 @@ fun RequestCard(
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = isSystemInDarkTheme()
     val cardBackground =
         when (request.status) {
-            "REJECTED" -> if (isDark) cardBackgroundRejectedDark else cardBackgroundRejectedLight
-            "APPROVED" -> if (isDark) cardBackgroundApprovedDark else cardBackgroundApprovedLight
-            "FULFILLED" -> if (isDark) cardBackgroundFulfilledDark else cardBackgroundFulfilledLight
-            "RETURNED" -> if (isDark) cardBackgroundReturnedDark else cardBackgroundReturnedLight
-            "REQUESTED_RENEW" -> if (isDark) cardBackgroundRequestedRenewDark else cardBackgroundRequestedRenewLight
-
-            "RENEWED" -> if (isDark) cardBackgroundRenewedDark else cardBackgroundRenewedLight
-            "EXPIRED" -> if (isDark) cardBackgroundExpiredDark else cardBackgroundExpiredLight
-            else -> if (isDark) cardBackgroundPendingDark else cardBackgroundPendingLight
+            "APPROVED" -> MaterialTheme.colorScheme.primaryContainer
+            "FULFILLED" -> MaterialTheme.colorScheme.secondaryContainer
+            "RETURNED" -> MaterialTheme.colorScheme.tertiaryContainer
+            "REQUESTED_RENEW" -> MaterialTheme.colorScheme.surfaceVariant
+            "RENEWED" -> MaterialTheme.colorScheme.tertiaryContainer
+            "EXPIRED" -> MaterialTheme.colorScheme.errorContainer
+            "REJECTED" -> MaterialTheme.colorScheme.errorContainer
+            else -> MaterialTheme.colorScheme.surfaceContainerLow
         }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -103,60 +71,21 @@ fun RequestCard(
                 contentColor = MaterialTheme.colorScheme.onSurface,
             ),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = request.projectTitle,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    StatusChip(status = request.status)
-                }
-                RequestCardActions(
-                    request = request,
-                    isFaculty = isFaculty,
-                    onDeleteRequest = onDeleteRequest,
-                    onApproveRequest = onApproveRequest,
-                    onRejectRequest = onRejectRequest,
-                    onFulfillRequest = onFulfillRequest,
-                    onReturnRequest = onReturnRequest,
-                    onRequestRenew = onRequestRenew,
-                    onApproveRenew = onApproveRenew,
-                    onShowQr = onShowQr,
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = buildDatesLine(request),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            RequestCardHeader(
+                request = request,
+                isFaculty = isFaculty,
+                onDeleteRequest = onDeleteRequest,
+                onApproveRequest = onApproveRequest,
+                onRejectRequest = onRejectRequest,
+                onFulfillRequest = onFulfillRequest,
+                onReturnRequest = onReturnRequest,
+                onRequestRenew = onRequestRenew,
+                onApproveRenew = onApproveRenew,
+                onShowQr = onShowQr,
             )
-            if (request.user != null || request.targetFaculty != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                val requester = request.user?.let { compactUserLabel(it) }
-                val faculty = request.targetFaculty?.let { it.name ?: it.email }
-                val combined =
-                    when {
-                        requester != null && faculty != null -> "$requester  ← $faculty"
-                        requester != null -> requester
-                        faculty != null -> "Requested from: $faculty"
-                        else -> ""
-                    }
-                Text(
-                    text = combined,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
+            Spacer(modifier = Modifier.height(8.dp))
+            RequestCardMeta(request = request)
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Components",
@@ -169,6 +98,75 @@ fun RequestCard(
                 RequestItemRow(item = item)
             }
         }
+    }
+}
+
+@Composable
+private fun RequestCardHeader(
+    request: Request,
+    isFaculty: Boolean,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+    onFulfillRequest: ((String) -> Unit)?,
+    onReturnRequest: ((String) -> Unit)?,
+    onRequestRenew: ((String) -> Unit)?,
+    onApproveRenew: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = request.projectTitle,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            StatusChip(status = request.status)
+        }
+        RequestCardActions(
+            request = request,
+            isFaculty = isFaculty,
+            onDeleteRequest = onDeleteRequest,
+            onApproveRequest = onApproveRequest,
+            onRejectRequest = onRejectRequest,
+            onFulfillRequest = onFulfillRequest,
+            onReturnRequest = onReturnRequest,
+            onRequestRenew = onRequestRenew,
+            onApproveRenew = onApproveRenew,
+            onShowQr = onShowQr,
+        )
+    }
+}
+
+@Composable
+private fun RequestCardMeta(request: Request) {
+    Text(
+        text = buildDatesLine(request),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (request.user != null || request.targetFaculty != null) {
+        Spacer(modifier = Modifier.height(4.dp))
+        val requester = request.user?.let { compactUserLabel(it) }
+        val faculty = request.targetFaculty?.let { it.name ?: it.email }
+        val combined =
+            when {
+                requester != null && faculty != null -> "$requester  ← $faculty"
+                requester != null -> requester
+                faculty != null -> "Requested from: $faculty"
+                else -> ""
+            }
+        Text(
+            text = combined,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 
@@ -311,35 +309,14 @@ private fun FulfilledRequestActions(
     onRequestRenew: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (!isFaculty && onRequestRenew != null) {
-            IconButton(onClick = { onRequestRenew(request.id) }) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Request renewal",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-        if (!isFaculty && onShowQr != null) {
-            IconButton(onClick = { onShowQr(request) }) {
-                Icon(
-                    imageVector = Icons.Default.QrCode2,
-                    contentDescription = "Show QR for TA to scan when returning items",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-        if (onReturnRequest != null) {
-            IconButton(onClick = { onReturnRequest(request.id) }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
-                    contentDescription = "Record return to inventory",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-    }
+    RequestLifecycleActionRow(
+        request = request,
+        isFaculty = isFaculty,
+        onReturnRequest = onReturnRequest,
+        onRequestRenew = onRequestRenew,
+        onShowQr = onShowQr,
+        returnContentDescription = "Record return to inventory",
+    )
 }
 
 @Composable
@@ -367,8 +344,50 @@ private fun RenewedRequestActions(
     onRequestRenew: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
 ) {
+    RequestLifecycleActionRow(
+        request = request,
+        isFaculty = isFaculty,
+        onReturnRequest = onReturnRequest,
+        onRequestRenew = onRequestRenew,
+        onShowQr = onShowQr,
+        returnContentDescription = "Record return to inventory",
+    )
+}
+
+@Composable
+private fun ExpiredRequestActions(
+    request: Request,
+    isFaculty: Boolean,
+    onReturnRequest: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+) {
+    RequestLifecycleActionRow(
+        request = request,
+        isFaculty = isFaculty,
+        onReturnRequest = onReturnRequest,
+        onRequestRenew = null,
+        onShowQr = onShowQr,
+        returnContentDescription = "Record overdue return to inventory",
+        returnTint = MaterialTheme.colorScheme.error,
+        showRenew = false,
+        qrContentDescription = "Show QR for TA to scan when returning overdue items",
+    )
+}
+
+@Composable
+private fun RequestLifecycleActionRow(
+    request: Request,
+    isFaculty: Boolean,
+    onReturnRequest: ((String) -> Unit)?,
+    onRequestRenew: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
+    returnContentDescription: String,
+    returnTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+    showRenew: Boolean = true,
+    qrContentDescription: String = "Show QR for TA to scan when returning items",
+) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (!isFaculty && onRequestRenew != null) {
+        if (showRenew && !isFaculty && onRequestRenew != null) {
             IconButton(onClick = { onRequestRenew(request.id) }) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
@@ -381,7 +400,7 @@ private fun RenewedRequestActions(
             IconButton(onClick = { onShowQr(request) }) {
                 Icon(
                     imageVector = Icons.Default.QrCode2,
-                    contentDescription = "Show QR for TA to scan when returning items",
+                    contentDescription = qrContentDescription,
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -390,37 +409,8 @@ private fun RenewedRequestActions(
             IconButton(onClick = { onReturnRequest(request.id) }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
-                    contentDescription = "Record return to inventory",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExpiredRequestActions(
-    request: Request,
-    isFaculty: Boolean,
-    onReturnRequest: ((String) -> Unit)?,
-    onShowQr: ((Request) -> Unit)?,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (!isFaculty && onShowQr != null) {
-            IconButton(onClick = { onShowQr(request) }) {
-                Icon(
-                    imageVector = Icons.Default.QrCode2,
-                    contentDescription = "Show QR for TA to scan when returning overdue items",
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-        if (onReturnRequest != null) {
-            IconButton(onClick = { onReturnRequest(request.id) }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
-                    contentDescription = "Record overdue return to inventory",
-                    tint = MaterialTheme.colorScheme.error,
+                    contentDescription = returnContentDescription,
+                    tint = returnTint,
                 )
             }
         }
@@ -479,7 +469,7 @@ fun compactUserLabel(user: User): String {
     return if (suffix.isBlank()) displayName else "$displayName ($suffix)"
 }
 
-fun buildDatesLine(request: com.iiitnr.inventoryapp.data.models.Request): String {
+fun buildDatesLine(request: Request): String {
     val tokens = mutableListOf<String>()
     request.returnDueAt?.let {
         var s = getRelativeDays(it)

@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 fun AppTopBar(
     title: String,
     modifier: Modifier = Modifier,
-    role: String? = null,
     onNavigateBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {

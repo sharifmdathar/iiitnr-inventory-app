@@ -48,6 +48,13 @@ function getAllowedOrigins(): string[] | undefined {
   return rawAllowedOrigins
     .split(',')
     .map((origin) => origin.trim())
+    .map((origin) => {
+      try {
+        return new URL(origin).origin;
+      } catch {
+        return origin.replace(/\/$/, '');
+      }
+    })
     .filter(Boolean);
 }
 
@@ -119,13 +126,13 @@ function isLoopbackSocket(request: FastifyRequest): boolean {
   return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1';
 }
 
-async function handleHttpsRedirect(request: FastifyRequest, reply: FastifyReply) {
+function handleHttpsRedirect(request: FastifyRequest, reply: FastifyReply) {
   if (isLoopbackSocket(request)) {
     return;
   }
   if (request.headers['x-forwarded-proto'] === 'http') {
     const host = request.headers.host;
-    return reply.code(301).redirect(`https://${host ?? ''}${request.url}`);
+    reply.code(301).redirect(`https://${host ?? ''}${request.url}`);
   }
 }
 
@@ -163,7 +170,7 @@ export function markAppReady() {
   appReady = true;
 }
 
-async function handleHealthCheck(reply: FastifyReply) {
+function handleHealthCheck(reply: FastifyReply) {
   return reply.code(200).send({ status: 'ok' });
 }
 

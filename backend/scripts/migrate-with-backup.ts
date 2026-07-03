@@ -14,45 +14,36 @@ const APP_TABLES = [
 
 function urlForMigrations(rawUrl: string): string {
   try {
-    const u = new URL(rawUrl);
-    const isSupabasePooler = u.hostname.includes('supabase') && u.port === '6543';
+    const url = new URL(rawUrl);
+    const isSupabasePooler = url.hostname.includes('supabase') && url.port === '6543';
     if (isSupabasePooler) {
-      u.port = '5432';
+      url.port = '5432';
       console.log('   (Using Supabase session port 5432 for schema/migrate steps)');
-      return u.toString();
+      return url.toString();
     }
   } catch {}
   return rawUrl;
 }
 
-function run(cmd: string, env: NodeJS.ProcessEnv = process.env, description: string): void {
+function run(cmd: string, description: string, env: NodeJS.ProcessEnv = process.env): void {
   console.log(`\n▶ ${description}...`);
   try {
-    execSync(cmd, {
-      stdio: 'inherit',
-      env: { ...env },
-      shell: '/bin/bash',
-    });
+    execSync(cmd, { stdio: 'inherit', env: { ...env }, shell: '/bin/bash' });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`\n❌ ${description} failed: ${message}`);
-    const stderr =
-      err && typeof err === 'object' && 'stderr' in err && (err as { stderr?: unknown }).stderr;
-    if (stderr != null && typeof stderr === 'string' && stderr.trim()) {
-      console.error('\nStderr:', stderr.trim());
-    }
-    process.exit(1);
+    throw new Error(`${description} failed: ${message}`);
   }
 }
 
 function getArg(name: string): string | undefined {
   const argv = process.argv.slice(2);
-  const prefix = name + '=';
+  const prefix = `${name}=`;
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === undefined) continue;
-    if (a === name) return argv[i + 1];
-    if (a.startsWith(prefix)) return a.slice(prefix.length);
+    const currentArg = argv[i];
+    if (currentArg === undefined) continue;
+    if (currentArg === name) return argv[i + 1];
+    if (currentArg.startsWith(prefix)) return currentArg.slice(prefix.length);
   }
   return undefined;
 }
@@ -60,8 +51,7 @@ function getArg(name: string): string | undefined {
 function main(): void {
   const url = process.env.DATABASE_URL;
   if (!url || (!url.startsWith('postgresql') && !url.startsWith('postgres://'))) {
-    console.error('❌ DATABASE_URL must be set and point to a PostgreSQL database.');
-    process.exit(1);
+    throw new Error('❌ DATABASE_URL must be set and point to a PostgreSQL database.');
   }
 
   const restoreFrom = getArg('--restore-from');
@@ -71,8 +61,7 @@ function main(): void {
       : path.join(process.cwd(), restoreFrom)
     : null;
   if (restoreFile && !fs.existsSync(restoreFile)) {
-    console.error('❌ Restore file not found:', restoreFile);
-    process.exit(1);
+    throw new Error(`❌ Restore file not found: ${restoreFile}`);
   }
 
   if (!fs.existsSync(BACKUPS_DIR)) {
@@ -91,15 +80,11 @@ function main(): void {
   }
 
   if (!restoreFile) {
-    const tableArgs = APP_TABLES.map((t) => "-t '" + t + "'").join(' ');
+    const tableArgs = APP_TABLES.map((t) => `-t '${t}'`).join(' ');
     run(
-      'pg_dump "$DATABASE_URL" --data-only --no-owner --no-acl ' +
-        tableArgs +
-        ' -f "' +
-        backupFile +
-        '"',
-      process.env,
+      `pg_dump "$DATABASE_URL" --data-only --no-owner --no-acl ${tableArgs} -f "${backupFile}"`,
       'Backing up app data (pg_dump)',
+      process.env,
     );
   }
 
@@ -113,25 +98,24 @@ function main(): void {
   const migrationUrl = urlForMigrations(url);
   try {
     run(
-      'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "' + resetSqlFile + '"',
-      { ...process.env, DATABASE_URL: migrationUrl },
+      `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "${resetSqlFile}"`,
       'Dropping and recreating public schema',
+      { ...process.env, DATABASE_URL: migrationUrl },
     );
   } finally {
     try {
       fs.unlinkSync(resetSqlFile);
     } catch {}
   }
-  run(
-    'bun run migrate',
-    { ...process.env, DATABASE_URL: migrationUrl },
-    'Applying migrations (drizzle migrate)',
-  );
+  run('bun run migrate', 'Applying migrations (drizzle migrate)', {
+    ...process.env,
+    DATABASE_URL: migrationUrl,
+  });
 
   run(
-    'psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f "' + dataToRestore + '"',
-    process.env,
+    `psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f "${dataToRestore}"`,
     'Restoring data (psql)',
+    process.env,
   );
 
   console.log('\n✅ Done. Data backed up, migrations applied, data restored.');

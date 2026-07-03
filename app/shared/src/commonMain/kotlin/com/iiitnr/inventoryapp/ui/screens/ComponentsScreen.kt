@@ -28,6 +28,7 @@ import com.iiitnr.inventoryapp.data.cache.ComponentsCache
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentCategory
 import com.iiitnr.inventoryapp.data.models.ComponentLocation
+import com.iiitnr.inventoryapp.data.models.ComponentRequest
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.RequestItemPayload
 import com.iiitnr.inventoryapp.data.models.User
@@ -44,6 +45,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun ComponentsScreen(
@@ -190,9 +192,7 @@ fun ComponentsScreen(
                 }
             } catch (e: Throwable) {
                 if (!pollingMode) {
-                    val isAuthError =
-                        e is ResponseException &&
-                            e.response.status == HttpStatusCode.Unauthorized
+                    val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
                     if (isAuthError) return@launch
 
                     val hasCachedData = components.isNotEmpty()
@@ -311,7 +311,7 @@ fun ComponentsScreen(
     LaunchedEffect(Unit) {
         loadComponents()
         while (true) {
-            delay(8000)
+            delay(8000.milliseconds)
             if (errorMessage == null && !isLoading && !isRefreshing) {
                 loadComponents(pollingMode = true)
             }
@@ -382,172 +382,244 @@ fun ComponentsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues)) {
-            SearchBar(
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
-                placeholder = "Search components...",
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-
-            LazyRow(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                val categoryOptions = listOf("All") + ComponentCategory.labels
-                items(categoryOptions) { option ->
-                    val isSelected =
-                        (categoryFilter == null && option == "All") ||
-                            categoryFilter.equals(
-                                option,
-                                ignoreCase = true,
-                            )
-                    TextButton(
-                        onClick = {
-                            categoryFilter = if (option == "All") null else option
-                        },
-                    ) {
-                        Text(
-                            text = option,
-                            color =
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
-                    }
-                }
-            }
-
-            LazyRow(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                val locationOptions = listOf("All") + ComponentLocation.labels
-                items(locationOptions) { option ->
-                    val isSelected =
-                        (locationFilter == null && option == "All") ||
-                            locationFilter.equals(
-                                option,
-                                ignoreCase = true,
-                            )
-                    TextButton(
-                        onClick = {
-                            locationFilter = if (option == "All") null else option
-                        },
-                    ) {
-                        Text(
-                            text = option,
-                            color =
-                                if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
-                    }
-                }
-            }
-
-            ComponentsContent(
-                isLoading = isLoading,
-                errorMessage = errorMessage,
-                components = filteredComponents,
-                allComponents = components,
-                searchQuery = searchQuery,
-                isReadOnly = isReadOnly,
-                cartQuantities = cartQuantities,
-                onRetry = { loadComponents() },
-                onEdit = { component ->
-                    editingComponent = component
-                    showDialog = true
-                },
-                onDelete = { component ->
-                    showDeleteDialog = component
-                },
-                onAddToCart = { component ->
-                    updateCartQuantity(component, 1)
-                },
-                onUpdateCartQuantity = { component, delta ->
-                    updateCartQuantity(component, delta)
-                },
-            )
-        }
-    }
-
-    if (showDialog && !isReadOnly) {
-        ComponentDialog(
-            component = editingComponent,
-            onDismiss = { showDialog = false },
-            onSave = { request ->
-                scope.launch {
-                    try {
-                        val token = tokenManager.token.first()
-                        if (token != null) {
-                            if (editingComponent != null) {
-                                ApiClient.componentApiService.updateComponent(
-                                    "Bearer $token",
-                                    editingComponent!!.id,
-                                    request,
-                                )
-                            } else {
-                                ApiClient.componentApiService.createComponent(
-                                    "Bearer $token",
-                                    request,
-                                )
-                            }
-                            showDialog = false
-                            editingComponent = null
-                            loadComponents()
-                        }
-                    } catch (e: Throwable) {
-                        errorMessage = "Error: ${e.message ?: "Failed to save component"}"
-                    }
-                }
+        ComponentsScreenBody(
+            paddingValues = paddingValues,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
+            categoryFilter = categoryFilter,
+            onCategoryFilterChange = { categoryFilter = it },
+            locationFilter = locationFilter,
+            onLocationFilterChange = { locationFilter = it },
+            isLoading = isLoading,
+            errorMessage = errorMessage,
+            components = components,
+            filteredComponents = filteredComponents,
+            isReadOnly = isReadOnly,
+            cartQuantities = cartQuantities,
+            onRetry = { loadComponents() },
+            onEdit = { component ->
+                editingComponent = component
+                showDialog = true
+            },
+            onDelete = { component ->
+                showDeleteDialog = component
+            },
+            onAddToCart = { component ->
+                updateCartQuantity(component, 1)
+            },
+            onUpdateCartQuantity = { component, delta ->
+                updateCartQuantity(component, delta)
             },
         )
     }
 
-    if (!isReadOnly) {
-        showDeleteDialog?.let { component ->
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = null },
-                title = { Text("Delete Component") },
-                text = { Text("Are you sure you want to delete \"${component.name}\"?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                try {
-                                    val token = tokenManager.token.first()
-                                    if (token != null) {
-                                        ApiClient.componentApiService.deleteComponent(
-                                            "Bearer $token",
-                                            component.id,
-                                        )
-                                        showDeleteDialog = null
-                                        loadComponents()
-                                    }
-                                } catch (e: Throwable) {
-                                    errorMessage =
-                                        "Error: ${e.message ?: "Failed to delete component"}"
-                                }
-                            }
+    ComponentsDialogs(
+        showEditDialog = showDialog && !isReadOnly,
+        editingComponent = editingComponent,
+        onDismissEdit = { showDialog = false },
+        onSaveEdit = { request ->
+            scope.launch {
+                try {
+                    val token = tokenManager.token.first()
+                    if (token != null) {
+                        if (editingComponent != null) {
+                            ApiClient.componentApiService.updateComponent(
+                                "Bearer $token",
+                                editingComponent!!.id,
+                                request,
+                            )
+                        } else {
+                            ApiClient.componentApiService.createComponent(
+                                "Bearer $token",
+                                request,
+                            )
+                        }
+                        showDialog = false
+                        editingComponent = null
+                        loadComponents()
+                    }
+                } catch (e: Throwable) {
+                    errorMessage = "Error: ${e.message ?: "Failed to save component"}"
+                }
+            }
+        },
+        showDeleteDialog = if (!isReadOnly) showDeleteDialog else null,
+        onDismissDelete = { showDeleteDialog = null },
+        onConfirmDelete = { component ->
+            scope.launch {
+                try {
+                    val token = tokenManager.token.first()
+                    if (token != null) {
+                        ApiClient.componentApiService.deleteComponent(
+                            "Bearer $token",
+                            component.id,
+                        )
+                        showDeleteDialog = null
+                        loadComponents()
+                    }
+                } catch (e: Throwable) {
+                    errorMessage = "Error: ${e.message ?: "Failed to delete component"}"
+                }
+            }
+        },
+        showCartDialog = showCartDialog,
+        components = components,
+        cartQuantities = cartQuantities,
+        cartError = cartError,
+        isSubmittingRequest = isSubmittingRequest,
+        facultyOptions = facultyOptions,
+        selectedFacultyId = selectedFacultyId,
+        isLoadingFaculty = isLoadingFaculty,
+        onSelectFaculty = { selectedFacultyId = it },
+        projectTitle = projectTitle,
+        onProjectTitleChange = { projectTitle = it },
+        onUpdateQuantity = { component, delta ->
+            updateCartQuantity(component, delta)
+        },
+        onRemoveItem = { component ->
+            cartQuantities = cartQuantities - component.id
+        },
+        onDismissCart = {
+            showCartDialog = false
+            cartError = null
+        },
+        onSubmitCart = { submitRequest() },
+    )
+}
+
+@Composable
+private fun ComponentsScreenBody(
+    paddingValues: PaddingValues,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    categoryFilter: String?,
+    onCategoryFilterChange: (String?) -> Unit,
+    locationFilter: String?,
+    onLocationFilterChange: (String?) -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?,
+    components: List<Component>,
+    filteredComponents: List<Component>,
+    isReadOnly: Boolean,
+    cartQuantities: Map<String, Int>,
+    onRetry: () -> Unit,
+    onEdit: (Component) -> Unit,
+    onDelete: (Component) -> Unit,
+    onAddToCart: (Component) -> Unit,
+    onUpdateCartQuantity: (Component, Int) -> Unit,
+) {
+    Column(modifier = Modifier.padding(paddingValues)) {
+        SearchBar(
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            placeholder = "Search components...",
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        ComponentFilterRow(
+            options = listOf("All") + ComponentCategory.labels,
+            selected = categoryFilter,
+            onSelectedChange = onCategoryFilterChange,
+        )
+
+        ComponentFilterRow(
+            options = listOf("All") + ComponentLocation.labels,
+            selected = locationFilter,
+            onSelectedChange = onLocationFilterChange,
+        )
+
+        ComponentsContent(
+            isLoading = isLoading,
+            errorMessage = errorMessage,
+            components = filteredComponents,
+            allComponents = components,
+            searchQuery = searchQuery,
+            isReadOnly = isReadOnly,
+            cartQuantities = cartQuantities,
+            onRetry = onRetry,
+            onEdit = onEdit,
+            onDelete = onDelete,
+            onAddToCart = onAddToCart,
+            onUpdateCartQuantity = onUpdateCartQuantity,
+        )
+    }
+}
+
+@Composable
+private fun ComponentFilterRow(
+    options: List<String>,
+    selected: String?,
+    onSelectedChange: (String?) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        items(options) { option ->
+            val isSelected = (selected == null && option == "All") || selected.equals(option, ignoreCase = true)
+            TextButton(onClick = { onSelectedChange(if (option == "All") null else option) }) {
+                Text(
+                    text = option,
+                    color =
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                    ) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = null }) {
-                        Text("Cancel")
-                    }
-                },
-            )
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun ComponentsDialogs(
+    showEditDialog: Boolean,
+    editingComponent: Component?,
+    onDismissEdit: () -> Unit,
+    onSaveEdit: (ComponentRequest) -> Unit,
+    showDeleteDialog: Component?,
+    onDismissDelete: () -> Unit,
+    onConfirmDelete: (Component) -> Unit,
+    showCartDialog: Boolean,
+    components: List<Component>,
+    cartQuantities: Map<String, Int>,
+    cartError: String?,
+    isSubmittingRequest: Boolean,
+    facultyOptions: List<User>,
+    selectedFacultyId: String?,
+    isLoadingFaculty: Boolean,
+    onSelectFaculty: (String?) -> Unit,
+    projectTitle: String,
+    onProjectTitleChange: (String) -> Unit,
+    onUpdateQuantity: (Component, Int) -> Unit,
+    onRemoveItem: (Component) -> Unit,
+    onDismissCart: () -> Unit,
+    onSubmitCart: () -> Unit,
+) {
+    if (showEditDialog) {
+        ComponentDialog(
+            component = editingComponent,
+            onDismiss = onDismissEdit,
+            onSave = { onSaveEdit(it) },
+        )
+    }
+
+    if (showDeleteDialog != null) {
+        AlertDialog(
+            onDismissRequest = onDismissDelete,
+            title = { Text("Delete Component") },
+            text = { Text("Are you sure you want to delete \"${showDeleteDialog.name}\"?") },
+            confirmButton = {
+                TextButton(onClick = { onConfirmDelete(showDeleteDialog) }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDelete) { Text("Cancel") }
+            },
+        )
     }
 
     if (showCartDialog) {
@@ -559,20 +631,13 @@ fun ComponentsScreen(
             facultyOptions = facultyOptions,
             selectedFacultyId = selectedFacultyId,
             isLoadingFaculty = isLoadingFaculty,
-            onSelectFaculty = { selectedFacultyId = it },
+            onSelectFaculty = onSelectFaculty,
             projectTitle = projectTitle,
-            onProjectTitleChange = { projectTitle = it },
-            onUpdateQuantity = { component, delta ->
-                updateCartQuantity(component, delta)
-            },
-            onRemoveItem = { component ->
-                cartQuantities = cartQuantities - component.id
-            },
-            onDismiss = {
-                showCartDialog = false
-                cartError = null
-            },
-            onSubmit = { submitRequest() },
+            onProjectTitleChange = onProjectTitleChange,
+            onUpdateQuantity = onUpdateQuantity,
+            onRemoveItem = onRemoveItem,
+            onDismiss = onDismissCart,
+            onSubmit = onSubmitCart,
         )
     }
 }

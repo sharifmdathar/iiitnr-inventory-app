@@ -45,8 +45,9 @@ if (process.env.TEST_DATABASE_URL && process.env.DATABASE_URL) {
 const dbUrlForMigrations = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 
 if (!dbUrlForMigrations) {
-  console.error('❌ TEST_DATABASE_URL (or DATABASE_URL for derivation) must be set to run tests.');
-  process.exit(1);
+  throw new Error(
+    '❌ TEST_DATABASE_URL (or DATABASE_URL for derivation) must be set to run tests.',
+  );
 }
 
 async function waitForDb(url: string, maxAttempts = 30): Promise<void> {

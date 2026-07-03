@@ -16,7 +16,7 @@ let studentToken: string;
 let adminUserId: string;
 let taUserId: string;
 let studentUserId: string;
-let otherUserIds: string[] = [];
+const otherUserIds: string[] = [];
 
 beforeAll(async () => {
   app = await buildApp();
