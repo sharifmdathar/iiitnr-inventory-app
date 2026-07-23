@@ -31,7 +31,9 @@ import com.iiitnr.inventoryapp.data.models.ComponentLocation
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.RequestItemPayload
+import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.components.components.AddComponentFAB
@@ -62,7 +64,7 @@ fun ComponentsScreen(
     var showDialog by remember { mutableStateOf(false) }
     var editingComponent by remember { mutableStateOf<Component?>(null) }
     var showDeleteDialog by remember { mutableStateOf<Component?>(null) }
-    var userRole by remember { mutableStateOf<String?>(null) }
+    var userRole by remember { mutableStateOf<UserRole?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var categoryFilter by remember { mutableStateOf<String?>(null) }
     var locationFilter by remember { mutableStateOf<String?>(null) }
@@ -79,18 +81,16 @@ fun ComponentsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val isFaculty = userRole?.uppercase() == "FACULTY"
+    val isFaculty = userRole == UserRole.FACULTY
 
     val canExportCsv =
         userRole?.let { role ->
-            val roleUpper = role.uppercase()
-            roleUpper == "ADMIN" || roleUpper == "LA" || roleUpper == "FACULTY"
+            role == UserRole.ADMIN || role == UserRole.LA || role == UserRole.FACULTY
         } ?: false
 
     val isReadOnly =
         userRole?.let { role ->
-            val roleUpper = role.uppercase()
-            roleUpper != "LA" && roleUpper != "ADMIN"
+            role != UserRole.LA && role != UserRole.ADMIN
         } ?: true
 
     fun exportComponentsCsv() {
@@ -319,10 +319,10 @@ fun ComponentsScreen(
     }
 
     LaunchedEffect(userRole) {
-        if (userRole?.uppercase() != "FACULTY") return@LaunchedEffect
+        if (userRole != UserRole.FACULTY) return@LaunchedEffect
         try {
             val token = tokenManager.token.first() ?: return@LaunchedEffect
-            val response = ApiClient.requestApiService.getRequests("Bearer $token", "PENDING")
+            val response = ApiClient.requestApiService.getRequests("Bearer $token", RequestStatus.PENDING.name)
             pendingRequestsCount = response.requests.size
         } catch (_: Exception) {
             pendingRequestsCount = 0

@@ -1,12 +1,14 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
-fun requestStatusActionSnackbarMessage(status: String): String? =
+import com.iiitnr.inventoryapp.data.models.RequestStatus
+
+fun requestStatusActionSnackbarMessage(status: RequestStatus): String? =
     when (status) {
-        "APPROVED" -> "Request approved"
-        "REJECTED" -> "Request rejected"
-        "ISSUED" -> "Request issued"
-        "RETURNED" -> "Request marked returned"
-        "REQUESTED_RENEW" -> "Renewal requested"
-        "RENEWED" -> "Renewal approved"
+        RequestStatus.APPROVED -> "Request approved"
+        RequestStatus.REJECTED -> "Request rejected"
+        RequestStatus.ISSUED -> "Request issued"
+        RequestStatus.RETURNED -> "Request marked returned"
+        RequestStatus.REQUESTED_RENEW -> "Renewal requested"
+        RequestStatus.RENEWED -> "Renewal approved"
         else -> null
     }

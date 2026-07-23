@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,8 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
+import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.ui.components.common.StatusChip
+import com.iiitnr.inventoryapp.ui.components.common.requestStatusColor
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
@@ -50,17 +53,8 @@ fun RequestCard(
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val cardBackground =
-        when (request.status) {
-            "APPROVED" -> MaterialTheme.colorScheme.primaryContainer
-            "ISSUED" -> MaterialTheme.colorScheme.secondaryContainer
-            "RETURNED" -> MaterialTheme.colorScheme.tertiaryContainer
-            "REQUESTED_RENEW" -> MaterialTheme.colorScheme.surfaceVariant
-            "RENEWED" -> MaterialTheme.colorScheme.tertiaryContainer
-            "EXPIRED" -> MaterialTheme.colorScheme.errorContainer
-            "REJECTED" -> MaterialTheme.colorScheme.errorContainer
-            else -> MaterialTheme.colorScheme.surfaceContainerLow
-        }
+    val isDark = isSystemInDarkTheme()
+    val cardBackground = requestStatusColor(request.status, isDark).copy(alpha = 0.12f)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -184,7 +178,7 @@ private fun RequestCardActions(
     onShowQr: ((Request) -> Unit)?,
 ) {
     when (request.status) {
-        "PENDING" ->
+        RequestStatus.PENDING ->
             PendingRequestActions(
                 request = request,
                 isFaculty = isFaculty,
@@ -193,7 +187,7 @@ private fun RequestCardActions(
                 onRejectRequest = onRejectRequest,
             )
 
-        "APPROVED" ->
+        RequestStatus.APPROVED ->
             ApprovedRequestActions(
                 request = request,
                 isFaculty = isFaculty,
@@ -201,7 +195,7 @@ private fun RequestCardActions(
                 onShowQr = onShowQr,
             )
 
-        "ISSUED" ->
+        RequestStatus.ISSUED ->
             IssuedRequestActions(
                 request = request,
                 isFaculty = isFaculty,
@@ -210,14 +204,14 @@ private fun RequestCardActions(
                 onShowQr = onShowQr,
             )
 
-        "REQUESTED_RENEW" ->
+        RequestStatus.REQUESTED_RENEW ->
             RequestedRenewActions(
                 request = request,
                 isFaculty = isFaculty,
                 onApproveRenew = onApproveRenew,
             )
 
-        "RENEWED" ->
+        RequestStatus.RENEWED ->
             RenewedRequestActions(
                 request = request,
                 isFaculty = isFaculty,
@@ -226,13 +220,15 @@ private fun RequestCardActions(
                 onShowQr = onShowQr,
             )
 
-        "EXPIRED" ->
+        RequestStatus.EXPIRED ->
             ExpiredRequestActions(
                 request = request,
                 isFaculty = isFaculty,
                 onReturnRequest = onReturnRequest,
                 onShowQr = onShowQr,
             )
+
+        else -> {}
     }
 }
 
@@ -437,11 +433,11 @@ fun getRelativeDays(dateTimeString: String?): String {
 fun String.toDisplayLabel(): String =
     lowercase().split('_').joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }
 
-fun requestStatusDisplayLabel(status: String): String =
+fun requestStatusDisplayLabel(status: RequestStatus): String =
     when (status) {
-        "REQUESTED_RENEW" -> "Renewal Requested"
-        "RENEWED" -> "Renewed"
-        else -> status.toDisplayLabel()
+        RequestStatus.REQUESTED_RENEW -> "Renewal Requested"
+        RequestStatus.RENEWED -> "Renewed"
+        else -> status.name.toDisplayLabel()
     }
 
 fun buildUserDetailsLabel(

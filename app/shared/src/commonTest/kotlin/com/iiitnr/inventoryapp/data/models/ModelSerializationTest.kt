@@ -75,7 +75,7 @@ class ModelSerializationTest {
 
     @Test
     fun updateRequestStatusPayloadOmitsNullRenewReason() {
-        val encoded = json.encodeToString(UpdateRequestStatusPayload(status = "RETURNED"))
+        val encoded = json.encodeToString(UpdateRequestStatusPayload(status = RequestStatus.RETURNED))
 
         assertTrue(encoded.contains("\"status\":\"RETURNED\""))
         assertTrue(!encoded.contains("lastRenewReason"))

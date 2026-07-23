@@ -34,8 +34,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.Request
+import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
 import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.components.common.requestStatusColor
@@ -77,11 +79,11 @@ fun RequestsScreen(
     var requestIdInput by remember { mutableStateOf("") }
     var currentUser by remember { mutableStateOf<User?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    var statusFilter by remember { mutableStateOf<String?>(null) }
+    var statusFilter by remember { mutableStateOf<RequestStatus?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val isFaculty = currentUser?.role == "FACULTY"
-    val isAdminOrLA = currentUser?.role?.uppercase() == "ADMIN" || currentUser?.role?.uppercase() == "LA"
+    val isFaculty = currentUser?.role == UserRole.FACULTY
+    val isAdminOrLA = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.LA
 
     val query: String = searchQuery.trim()
     val filteredRequests =
@@ -169,7 +171,7 @@ fun RequestsScreen(
 
     fun updateRequestStatus(
         requestId: String,
-        status: String,
+        status: RequestStatus,
         lastRenewReason: String? = null,
     ) {
         scope.launch {
@@ -256,7 +258,7 @@ fun RequestsScreen(
                 pendingRenewRequestId = null
                 renewReasonInput = ""
                 if (id != null && reason.isNotEmpty()) {
-                    updateRequestStatus(id, "REQUESTED_RENEW", lastRenewReason = reason)
+                    updateRequestStatus(id, RequestStatus.REQUESTED_RENEW, lastRenewReason = reason)
                 }
             },
             onDismissRenew = {
@@ -331,7 +333,7 @@ fun RequestsScreen(
                     if (isFaculty) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, "APPROVED")
+                                updateRequestStatus(requestId, RequestStatus.APPROVED)
                             }
                         )
                     } else {
@@ -341,7 +343,7 @@ fun RequestsScreen(
                     if (isFaculty) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, "REJECTED")
+                                updateRequestStatus(requestId, RequestStatus.REJECTED)
                             }
                         )
                     } else {
@@ -351,7 +353,7 @@ fun RequestsScreen(
                     if (isAdminOrLA) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, "ISSUED")
+                                updateRequestStatus(requestId, RequestStatus.ISSUED)
                             }
                         )
                     } else {
@@ -361,7 +363,7 @@ fun RequestsScreen(
                     if (isAdminOrLA) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, "RETURNED")
+                                updateRequestStatus(requestId, RequestStatus.RETURNED)
                             }
                         )
                     } else {
@@ -380,7 +382,7 @@ fun RequestsScreen(
                     if (isFaculty) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, "RENEWED")
+                                updateRequestStatus(requestId, RequestStatus.RENEWED)
                             }
                         )
                     } else {
@@ -419,7 +421,7 @@ private fun RequestsDialogs(
     onConfirmRenew: () -> Unit,
     onDismissRenew: () -> Unit,
     scannedRequest: Request?,
-    onConfirmScan: (Request, String) -> Unit,
+    onConfirmScan: (Request, RequestStatus) -> Unit,
     onDismissScan: () -> Unit,
     showRequestIdDialog: Boolean,
     showQrScanner: Boolean,
@@ -494,8 +496,8 @@ private fun RequestsScreenBody(
     paddingValues: PaddingValues,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    statusFilter: String?,
-    onStatusFilterChange: (String?) -> Unit,
+    statusFilter: RequestStatus?,
+    onStatusFilterChange: (RequestStatus?) -> Unit,
     isLoading: Boolean,
     errorMessage: String?,
     requests: List<Request>,
@@ -549,8 +551,8 @@ private fun RequestsScreenBody(
 
 @Composable
 private fun RequestStatusFilterRow(
-    statusFilter: String?,
-    onStatusFilterChange: (String?) -> Unit,
+    statusFilter: RequestStatus?,
+    onStatusFilterChange: (RequestStatus?) -> Unit,
 ) {
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -558,12 +560,12 @@ private fun RequestStatusFilterRow(
         horizontalArrangement = Arrangement.Center,
     ) {
         items(REQUEST_STATUS_OPTIONS) { option ->
-            val isSelected = (statusFilter == null && option == "ALL") || statusFilter == option
+            val isSelected = statusFilter == option
             TextButton(
-                onClick = { onStatusFilterChange(if (option == "ALL") null else option) },
+                onClick = { onStatusFilterChange(option) },
             ) {
                 Text(
-                    text = requestStatusDisplayLabel(option),
+                    text = if (option != null) requestStatusDisplayLabel(option) else "All",
                     color =
                         if (isSelected) {
                             MaterialTheme.colorScheme.primary
@@ -576,23 +578,13 @@ private fun RequestStatusFilterRow(
     }
 }
 
-private val REQUEST_STATUS_OPTIONS =
-    listOf(
-        "ALL",
-        "PENDING",
-        "APPROVED",
-        "REJECTED",
-        "ISSUED",
-        "REQUESTED_RENEW",
-        "RENEWED",
-        "EXPIRED",
-        "RETURNED",
-    )
+private val REQUEST_STATUS_OPTIONS: List<RequestStatus?> =
+    listOf(null) + RequestStatus.FILTER_OPTIONS
 
 @Composable
 private fun ScannedRequestDialog(
     request: Request,
-    onConfirm: (String) -> Unit,
+    onConfirm: (RequestStatus) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val nextStatus = nextScannedRequestStatus(request.status)
@@ -600,8 +592,8 @@ private fun ScannedRequestDialog(
     val nextStatusColor = nextStatus?.let { requestStatusColor(status = it) }
     val nextAction =
         when (nextStatus) {
-            "ISSUED" -> "Issue Request"
-            "RETURNED" -> "Mark Returned"
+            RequestStatus.ISSUED -> "Issue Request"
+            RequestStatus.RETURNED -> "Mark Returned"
             else -> null
         }
     val statusTransition =
@@ -627,8 +619,8 @@ private fun ScannedRequestDialog(
         }
     val itemsTitle =
         when (nextStatus) {
-            "ISSUED" -> "Issuing items"
-            "RETURNED" -> "Returning items"
+            RequestStatus.ISSUED -> "Issuing items"
+            RequestStatus.RETURNED -> "Returning items"
             else -> ""
         }
 

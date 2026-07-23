@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import kotlinx.coroutines.flow.first
@@ -146,7 +147,7 @@ fun ProfileScreen(
 
                             InfoRow("Email", userData!!.email)
                             InfoRow("Name", userData!!.name ?: "Not provided")
-                            InfoRow("Role", userData!!.role)
+                            InfoRow("Role", userData!!.role.name)
                             userData!!.batch?.let { InfoRow("Batch", it) }
                             userData!!.branch?.let { InfoRow("Branch", it) }
                         }
@@ -161,8 +162,8 @@ fun ProfileScreen(
                     }
 
                     val isAdmin =
-                        userData!!.role.uppercase().let {
-                            it == "ADMIN" || it == "LA"
+                        userData!!.role.let {
+                            it == UserRole.ADMIN || it == UserRole.LA
                         }
                     if (isAdmin) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -174,7 +175,7 @@ fun ProfileScreen(
                         }
                     }
 
-                    if (userData!!.role.uppercase() == "ADMIN") {
+                    if (userData!!.role == UserRole.ADMIN) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = onNavigateToUserManagement,

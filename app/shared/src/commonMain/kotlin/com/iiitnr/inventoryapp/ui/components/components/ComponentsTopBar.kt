@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 
 @Composable
@@ -27,7 +28,7 @@ fun ComponentsTopBar(
     onNavigateToHome: () -> Unit,
     onNavigateToRequests: () -> Unit,
     pendingRequestsCount: Int? = null,
-    role: String? = null,
+    role: UserRole? = null,
     showExportCsv: Boolean = false,
     onExportCsv: (() -> Unit)? = null,
     modifier: Modifier = Modifier,

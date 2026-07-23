@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.iiitnr.inventoryapp.data.models.Request
+import com.iiitnr.inventoryapp.data.models.RequestStatus
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 
 const val REQUEST_QR_PREFIX = "inventoryapp://fulfill/"
@@ -54,7 +55,7 @@ fun RequestQrDialog(
                     Text(
                         text =
                             when (request.status) {
-                                "ISSUED", "RENEWED" -> "Return Components"
+                                RequestStatus.ISSUED, RequestStatus.RENEWED -> "Return Components"
                                 else -> "Issue Request"
                             },
                         style = MaterialTheme.typography.titleLarge,
@@ -84,7 +85,7 @@ fun RequestQrDialog(
                         painter = qrPainter,
                         contentDescription =
                             when (request.status) {
-                                "ISSUED" ->
+                                RequestStatus.ISSUED ->
                                     "QR for LA to scan and record return to inventory"
 
                                 else -> "Request QR code for LA to scan"

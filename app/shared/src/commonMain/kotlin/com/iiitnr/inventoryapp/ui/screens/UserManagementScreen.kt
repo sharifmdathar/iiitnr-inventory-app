@@ -41,7 +41,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,15 +48,12 @@ import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.UpdateUserRequest
 import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.PaginationBar
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
-import com.iiitnr.inventoryapp.ui.theme.SemanticDanger
-import com.iiitnr.inventoryapp.ui.theme.SemanticInfo
-import com.iiitnr.inventoryapp.ui.theme.SemanticNeutral
-import com.iiitnr.inventoryapp.ui.theme.SemanticSuccess
-import com.iiitnr.inventoryapp.ui.theme.SemanticWarning
+import com.iiitnr.inventoryapp.ui.components.common.userRoleColor
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
@@ -65,49 +61,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
-private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
-private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
-private val cardBackgroundRequestedRenewLight = Color(0xFFFFF3E0)
-private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
-
-private val cardBackgroundRejectedDark = Color(0xFF3D2020)
-private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
-private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
-private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
-private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
-
-private data class RoleThemePair(
-    val light: Color,
-    val dark: Color,
-)
-
-private val roleBackgrounds =
-    mapOf(
-        "ADMIN" to RoleThemePair(cardBackgroundRejectedLight, cardBackgroundRejectedDark),
-        "FACULTY" to RoleThemePair(cardBackgroundFulfilledLight, cardBackgroundFulfilledDark),
-        "STUDENT" to RoleThemePair(cardBackgroundApprovedLight, cardBackgroundApprovedDark),
-        "LA" to RoleThemePair(cardBackgroundRequestedRenewLight, cardBackgroundRequestedRenewDark),
-        "PENDING" to RoleThemePair(cardBackgroundPendingLight, cardBackgroundPendingDark),
-    )
-
-private fun getRoleBackground(
-    role: String?,
-    isDark: Boolean,
-): Color =
-    roleBackgrounds[role?.uppercase()]?.let { if (isDark) it.dark else it.light }
-        ?: if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
-
-private val roleColors =
-    mapOf(
-        "ADMIN" to SemanticDanger,
-        "FACULTY" to SemanticInfo,
-        "STUDENT" to SemanticSuccess,
-        "LA" to SemanticWarning,
-        "PENDING" to SemanticNeutral,
-    )
-
-private val allRoles = listOf("ADMIN", "FACULTY", "STUDENT", "LA", "PENDING")
+private val allRoles: List<UserRole> = UserRole.ALL
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -287,8 +241,8 @@ private fun UserCard(
     onClick: () -> Unit,
 ) {
     val isDark = isSystemInDarkTheme()
-    val roleColor = roleColors[user.role.uppercase()] ?: MaterialTheme.colorScheme.primary
-    val cardBackground = getRoleBackground(user.role, isDark)
+    val roleColor = userRoleColor(user.role, isDark)
+    val cardBackground = roleColor.copy(alpha = 0.12f)
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -320,7 +274,7 @@ private fun UserCard(
                     color = roleColor.copy(alpha = 0.12f),
                 ) {
                     Text(
-                        text = user.role,
+                        text = user.role.name,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         color = roleColor,
                         fontSize = 12.sp,
@@ -370,7 +324,7 @@ private fun UserCard(
 @Composable
 private fun EditUserDialog(
     user: User,
-    onSave: (name: String, role: String, batch: String, branch: String) -> Unit,
+    onSave: (name: String, role: UserRole, batch: String, branch: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf(user.name ?: "") }
@@ -404,7 +358,7 @@ private fun EditUserDialog(
                     onExpandedChange = { roleDropdownExpanded = it },
                 ) {
                     OutlinedTextField(
-                        value = role,
+                        value = role.name,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Role") },
@@ -417,7 +371,7 @@ private fun EditUserDialog(
                     ) {
                         allRoles.forEach { roleOption ->
                             DropdownMenuItem(
-                                text = { Text(roleOption) },
+                                text = { Text(roleOption.name) },
                                 onClick = {
                                     role = roleOption
                                     roleDropdownExpanded = false

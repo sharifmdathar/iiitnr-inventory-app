@@ -44,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -55,68 +54,14 @@ import com.iiitnr.inventoryapp.data.models.AuditLogEntry
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.PaginationBar
-import com.iiitnr.inventoryapp.ui.theme.SemanticAudit
+import com.iiitnr.inventoryapp.ui.components.common.auditActionColor
 import com.iiitnr.inventoryapp.ui.theme.SemanticDanger
-import com.iiitnr.inventoryapp.ui.theme.SemanticIdentity
-import com.iiitnr.inventoryapp.ui.theme.SemanticInfo
-import com.iiitnr.inventoryapp.ui.theme.SemanticNeutral
 import com.iiitnr.inventoryapp.ui.theme.SemanticSuccess
-import com.iiitnr.inventoryapp.ui.theme.SemanticWarning
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-
-private val cardBackgroundApprovedLight = Color(0xFFE8F5E9)
-private val cardBackgroundFulfilledLight = Color(0xFFE3F2FD)
-private val cardBackgroundRejectedLight = Color(0xFFFFEBEE)
-private val cardBackgroundRenewedLight = Color(0xFFE0F2F1)
-private val cardBackgroundPendingLight = Color(0xFFFFF8E1)
-private val cardBackgroundRequestedRenewLight = Color(0xFFFFF3E0)
-private val cardBackgroundReturnedLight = Color(0xFFE8EAF6)
-
-private val cardBackgroundApprovedDark = Color(0xFF1E2E20)
-private val cardBackgroundFulfilledDark = Color(0xFF1A2332)
-private val cardBackgroundRejectedDark = Color(0xFF3D2020)
-private val cardBackgroundRenewedDark = Color(0xFF1A2E2C)
-private val cardBackgroundPendingDark = Color(0xFF2E2A1A)
-private val cardBackgroundRequestedRenewDark = Color(0xFF2E241A)
-private val cardBackgroundReturnedDark = Color(0xFF1E1E2E)
-
-private data class ThemePair(
-    val light: Color,
-    val dark: Color,
-)
-
-private val actionBackgrounds =
-    mapOf(
-        "CREATE" to ThemePair(cardBackgroundApprovedLight, cardBackgroundApprovedDark),
-        "UPDATE" to ThemePair(cardBackgroundFulfilledLight, cardBackgroundFulfilledDark),
-        "DELETE" to ThemePair(cardBackgroundRejectedLight, cardBackgroundRejectedDark),
-        "LOGIN" to ThemePair(cardBackgroundReturnedLight, cardBackgroundReturnedDark),
-        "LOGOUT" to ThemePair(cardBackgroundPendingLight, cardBackgroundPendingDark),
-        "REQUEST_STATUS_CHANGE" to ThemePair(cardBackgroundRequestedRenewLight, cardBackgroundRequestedRenewDark),
-        "INVENTORY_ADJUST" to ThemePair(cardBackgroundRenewedLight, cardBackgroundRenewedDark),
-    )
-
-private fun getActionBackground(
-    action: String?,
-    isDark: Boolean,
-): Color =
-    actionBackgrounds[action?.uppercase()]?.let { if (isDark) it.dark else it.light }
-        ?: if (isDark) Color(0xFF1F1F1F) else Color(0xFFFAFAFA)
-
-private val actionColors =
-    mapOf(
-        "CREATE" to SemanticSuccess,
-        "UPDATE" to SemanticInfo,
-        "DELETE" to SemanticDanger,
-        "LOGIN" to SemanticIdentity,
-        "LOGOUT" to SemanticNeutral,
-        "REQUEST_STATUS_CHANGE" to SemanticWarning,
-        "INVENTORY_ADJUST" to SemanticAudit,
-    )
 
 private val actionLabels =
     mapOf(
@@ -285,7 +230,7 @@ private fun AuditFilterBar(
             label = { Text("All", fontSize = 12.sp) },
         )
         allActions.forEach { action ->
-            val color = actionColors[action] ?: MaterialTheme.colorScheme.primary
+            val color = auditActionColor(action, isSystemInDarkTheme()) ?: MaterialTheme.colorScheme.primary
             FilterChip(
                 selected = selectedAction == action,
                 onClick = {
@@ -308,8 +253,8 @@ private fun AuditLogCard(
     onClick: () -> Unit,
 ) {
     val isDark = isSystemInDarkTheme()
-    val actionColor = actionColors[entry.action] ?: MaterialTheme.colorScheme.primary
-    val cardBackground = getActionBackground(entry.action, isDark)
+    val actionColor = auditActionColor(entry.action, isDark) ?: MaterialTheme.colorScheme.primary
+    val cardBackground = actionColor.copy(alpha = 0.12f)
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -394,7 +339,7 @@ private fun AuditDetailDialog(
     entry: AuditLogEntry,
     onDismiss: () -> Unit,
 ) {
-    val actionColor = actionColors[entry.action] ?: MaterialTheme.colorScheme.primary
+    val actionColor = auditActionColor(entry.action, isSystemInDarkTheme()) ?: MaterialTheme.colorScheme.primary
 
     AlertDialog(
         onDismissRequest = onDismiss,

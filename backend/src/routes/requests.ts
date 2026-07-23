@@ -1,5 +1,5 @@
 import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastify';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { component, request, requestItem, user } from '../drizzle/schema.js';
 import { requireAuth, isAdminOrLA } from '../middleware/auth.js';
@@ -36,13 +36,6 @@ interface RequestQuery {
 interface NormalizedItem {
   componentId: string;
   quantity: number;
-}
-
-interface LockedComponent {
-  id: string;
-  name: string;
-  availableQuantity: number;
-  totalQuantity: number;
 }
 
 type RequestWithRelations = Awaited<ReturnType<typeof fetchRequestWithItems>>;
@@ -260,10 +253,16 @@ async function issueRequestTransaction(existingRequest: NonNullable<RequestWithR
   const fulfilledAt = new Date().toISOString();
   await db.transaction(async (tx) => {
     for (const item of existingRequest.requestItems) {
-      const lockResult = await tx.execute(
-        sql`SELECT "id", "name", "availableQuantity", "totalQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
-      );
-      const lockedComp = lockResult.rows[0] as unknown as LockedComponent | undefined;
+      const [lockedComp] = await tx
+        .select({
+          id: component.id,
+          name: component.name,
+          availableQuantity: component.availableQuantity,
+          totalQuantity: component.totalQuantity,
+        })
+        .from(component)
+        .where(eq(component.id, item.componentId))
+        .for('update');
 
       if (!lockedComp || lockedComp.availableQuantity < item.quantity) {
         const name = lockedComp?.name ?? item.component?.name ?? 'unknown';
@@ -330,10 +329,16 @@ async function returnRequestTransaction(existingRequest: NonNullable<RequestWith
   const returnedAt = new Date().toISOString();
   await db.transaction(async (tx) => {
     for (const item of existingRequest.requestItems) {
-      const lockResult = await tx.execute(
-        sql`SELECT "id", "name", "availableQuantity", "totalQuantity" FROM "Component" WHERE "id" = ${item.componentId} FOR UPDATE`,
-      );
-      const lockedComp = lockResult.rows[0] as unknown as LockedComponent | undefined;
+      const [lockedComp] = await tx
+        .select({
+          id: component.id,
+          name: component.name,
+          availableQuantity: component.availableQuantity,
+          totalQuantity: component.totalQuantity,
+        })
+        .from(component)
+        .where(eq(component.id, item.componentId))
+        .for('update');
 
       if (!lockedComp) {
         const name = item.component?.name ?? 'unknown';

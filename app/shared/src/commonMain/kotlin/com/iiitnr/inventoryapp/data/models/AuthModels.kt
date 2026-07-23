@@ -26,7 +26,7 @@ data class User(
     val email: String,
     val name: String? = null,
     val imageUrl: String? = null,
-    val role: String,
+    val role: UserRole,
     val batch: String? = null,
     val branch: String? = null,
     val createdAt: String? = null,
@@ -70,7 +70,7 @@ data class UserPagination(
 @Serializable
 data class UpdateUserRequest(
     val name: String? = null,
-    val role: String? = null,
+    val role: UserRole? = null,
     val batch: String? = null,
     val branch: String? = null,
 )

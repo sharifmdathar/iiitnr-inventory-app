@@ -13,11 +13,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.iiitnr.inventoryapp.data.models.RequestStatus
+import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.ui.theme.SemanticWarning
 
 @Composable
 fun StatusChip(
-    status: String,
+    status: RequestStatus,
     modifier: Modifier = Modifier,
 ) {
     val isDark = isSystemInDarkTheme()
@@ -42,27 +44,55 @@ fun StatusChip(
 
 @Composable
 fun requestStatusColor(
-    status: String,
+    status: RequestStatus,
     isDark: Boolean = isSystemInDarkTheme(),
 ): Color =
-    when (status.uppercase()) {
-        "PENDING" -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)
-        "APPROVED" -> if (isDark) Color(0xFF93C5FD) else Color(0xFF1A56DB)
-        "ISSUED" -> if (isDark) Color(0xFF86EFAC) else Color(0xFF15803D)
-        "REQUESTED_RENEW" -> if (isDark) Color(0xFFFDBA74) else Color(0xFFEA580C)
-        "RENEWED" -> if (isDark) Color(0xFF5EEAD4) else Color(0xFF0F766E)
-        "RETURNED" -> if (isDark) Color(0xFFD1D5DB) else Color(0xFF6B7280)
-        "EXPIRED" -> if (isDark) Color(0xFFFCA5A5) else Color(0xFFB91C1C)
-        "REJECTED" -> MaterialTheme.colorScheme.error
-        else -> SemanticWarning
+    when (status) {
+        RequestStatus.PENDING -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)
+        RequestStatus.APPROVED -> if (isDark) Color(0xFF93C5FD) else Color(0xFF1A56DB)
+        RequestStatus.ISSUED -> if (isDark) Color(0xFF86EFAC) else Color(0xFF15803D)
+        RequestStatus.REQUESTED_RENEW -> if (isDark) Color(0xFFFDBA74) else Color(0xFFEA580C)
+        RequestStatus.RENEWED -> if (isDark) Color(0xFF5EEAD4) else Color(0xFF0F766E)
+        RequestStatus.RETURNED -> if (isDark) Color(0xFFD1D5DB) else Color(0xFF6B7280)
+        RequestStatus.EXPIRED -> if (isDark) Color(0xFFFCA5A5) else Color(0xFFB91C1C)
+        RequestStatus.REJECTED -> MaterialTheme.colorScheme.error
     }
 
-fun requestStatusLabel(status: String): String =
-    when (status.uppercase()) {
-        "REQUESTED_RENEW" -> "Renewal Requested"
+fun requestStatusLabel(status: RequestStatus): String =
+    when (status) {
+        RequestStatus.REQUESTED_RENEW -> "Renewal Requested"
         else ->
-            status
+            status.name
                 .lowercase()
                 .split('_')
                 .joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }
+    }
+
+@Composable
+fun userRoleColor(
+    role: UserRole,
+    isDark: Boolean = isSystemInDarkTheme(),
+): Color =
+    when (role) {
+        UserRole.ADMIN -> if (isDark) Color(0xFFEF5350) else Color(0xFFC62828)
+        UserRole.FACULTY -> if (isDark) Color(0xFF42A5F5) else Color(0xFF1565C0)
+        UserRole.STUDENT -> if (isDark) Color(0xFF66BB6A) else Color(0xFF2E7D32)
+        UserRole.LA -> if (isDark) Color(0xFFFF9800) else Color(0xFFE65100)
+        UserRole.PENDING -> if (isDark) Color(0xFFB0BEC5) else Color(0xFF78909C)
+    }
+
+@Composable
+fun auditActionColor(
+    action: String?,
+    isDark: Boolean = isSystemInDarkTheme(),
+): Color? =
+    when (action?.uppercase()) {
+        "CREATE" -> if (isDark) Color(0xFF66BB6A) else Color(0xFF2E7D32)
+        "UPDATE" -> if (isDark) Color(0xFF42A5F5) else Color(0xFF1565C0)
+        "DELETE" -> if (isDark) Color(0xFFEF5350) else Color(0xFFC62828)
+        "LOGIN" -> if (isDark) Color(0xFFCE93D8) else Color(0xFF6A1B9A)
+        "LOGOUT" -> if (isDark) Color(0xFFB0BEC5) else Color(0xFF78909C)
+        "REQUEST_STATUS_CHANGE" -> if (isDark) Color(0xFFFF9800) else Color(0xFFE65100)
+        "INVENTORY_ADJUST" -> if (isDark) Color(0xFF26C6DA) else Color(0xFF00838F)
+        else -> null
     }

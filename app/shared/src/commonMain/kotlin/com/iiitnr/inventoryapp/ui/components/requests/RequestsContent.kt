@@ -5,28 +5,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.iiitnr.inventoryapp.data.models.Request
+import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.ui.components.common.EmptyState
 import com.iiitnr.inventoryapp.ui.components.common.ErrorContent
 import com.iiitnr.inventoryapp.ui.components.common.LoadingIndicator
 
 private fun filteredEmptyMessage(
-    statusFilter: String?,
+    statusFilter: RequestStatus?,
     searchQuery: String,
 ): String? {
     if (searchQuery.isNotBlank()) {
         return "No requests match your search"
     }
     return when (statusFilter) {
-        "PENDING" -> "No pending requests"
-        "APPROVED" -> "No approved requests"
-        "REJECTED" -> "No rejected requests"
-        "ISSUED" -> "No issued requests"
-        "REQUESTED_RENEW" -> "No renewal requests"
-        "RENEWED" -> "No renewed requests"
-        "RETURNED" -> "No returned requests"
-        "EXPIRED" -> "No expired requests"
+        RequestStatus.PENDING -> "No pending requests"
+        RequestStatus.APPROVED -> "No approved requests"
+        RequestStatus.REJECTED -> "No rejected requests"
+        RequestStatus.ISSUED -> "No issued requests"
+        RequestStatus.REQUESTED_RENEW -> "No renewal requests"
+        RequestStatus.RENEWED -> "No renewed requests"
+        RequestStatus.RETURNED -> "No returned requests"
+        RequestStatus.EXPIRED -> "No expired requests"
         null -> null
-        else -> "No matching requests"
     }
 }
 
@@ -36,7 +36,7 @@ fun RequestsContent(
     errorMessage: String?,
     requests: List<Request>,
     allRequests: List<Request> = requests,
-    statusFilter: String? = null,
+    statusFilter: RequestStatus? = null,
     searchQuery: String = "",
     onRetry: () -> Unit,
     onDeleteRequest: ((String) -> Unit)? = null,
