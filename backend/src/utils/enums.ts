@@ -3,14 +3,14 @@ export const UserRole = {
   FACULTY: 'FACULTY',
   PENDING: 'PENDING',
   STUDENT: 'STUDENT',
-  TA: 'TA',
+  LA: 'LA',
 } as const;
 
 export const RequestStatus = {
   PENDING: 'PENDING',
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
-  FULFILLED: 'FULFILLED',
+  ISSUED: 'ISSUED',
   RETURNED: 'RETURNED',
   EXPIRED: 'EXPIRED',
   REQUESTED_RENEW: 'REQUESTED_RENEW',

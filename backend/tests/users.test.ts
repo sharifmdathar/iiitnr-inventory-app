@@ -36,8 +36,8 @@ beforeAll(async () => {
   const taUser = await createUser({
     email: `ta_users_${crypto.randomUUID()}@example.com`,
     passwordHash,
-    name: 'TA User',
-    role: UserRole.TA,
+    name: 'LA User',
+    role: UserRole.LA,
   });
   taUserId = taUser.id;
   taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1h' });
@@ -148,7 +148,7 @@ describe('User Management API', () => {
       assert.equal(body.pagination.offset, 0);
     });
 
-    test('allows admin but rejects TA', async () => {
+    test('allows admin but rejects LA', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/admin/users',
@@ -289,7 +289,7 @@ describe('User Management API', () => {
       assert.equal(response.statusCode, 404);
     });
 
-    test('rejects TA', async () => {
+    test('rejects LA', async () => {
       const targetUser = await createUser({
         email: `tareject_${crypto.randomUUID()}@example.com`,
         role: UserRole.PENDING,

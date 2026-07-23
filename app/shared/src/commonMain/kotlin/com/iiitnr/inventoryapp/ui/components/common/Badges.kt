@@ -48,7 +48,7 @@ fun requestStatusColor(
     when (status.uppercase()) {
         "PENDING" -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)
         "APPROVED" -> if (isDark) Color(0xFF93C5FD) else Color(0xFF1A56DB)
-        "FULFILLED" -> if (isDark) Color(0xFF86EFAC) else Color(0xFF15803D)
+        "ISSUED" -> if (isDark) Color(0xFF86EFAC) else Color(0xFF15803D)
         "REQUESTED_RENEW" -> if (isDark) Color(0xFFFDBA74) else Color(0xFFEA580C)
         "RENEWED" -> if (isDark) Color(0xFF5EEAD4) else Color(0xFF0F766E)
         "RETURNED" -> if (isDark) Color(0xFFD1D5DB) else Color(0xFF6B7280)

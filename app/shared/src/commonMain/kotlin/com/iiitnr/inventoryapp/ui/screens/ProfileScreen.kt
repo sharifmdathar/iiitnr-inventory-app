@@ -162,7 +162,7 @@ fun ProfileScreen(
 
                     val isAdmin =
                         userData!!.role.uppercase().let {
-                            it == "ADMIN" || it == "TA"
+                            it == "ADMIN" || it == "LA"
                         }
                     if (isAdmin) {
                         Spacer(modifier = Modifier.height(12.dp))

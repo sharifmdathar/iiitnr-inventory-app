@@ -57,8 +57,8 @@ beforeAll(async () => {
   const taUser = await createUser({
     email: `ta_audit_${crypto.randomUUID()}@example.com`,
     passwordHash,
-    name: 'TA User',
-    role: UserRole.TA,
+    name: 'LA User',
+    role: UserRole.LA,
   });
   taUserId = taUser.id;
   taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1h' });

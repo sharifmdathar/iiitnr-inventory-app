@@ -16,14 +16,14 @@ class RequestFormattingTest {
     fun requestStatusDisplayLabelUsesProductCopy() {
         assertEquals("Renewal Requested", requestStatusDisplayLabel("REQUESTED_RENEW"))
         assertEquals("Renewed", requestStatusDisplayLabel("RENEWED"))
-        assertEquals("Fulfilled", requestStatusDisplayLabel("FULFILLED"))
+        assertEquals("Issued", requestStatusDisplayLabel("ISSUED"))
         assertEquals("Expired", requestStatusDisplayLabel("EXPIRED"))
     }
 
     @Test
     fun snackbarMessageMatchesKnownStatusActions() {
         assertEquals("Request approved", requestStatusActionSnackbarMessage("APPROVED"))
-        assertEquals("Request marked fulfilled", requestStatusActionSnackbarMessage("FULFILLED"))
+        assertEquals("Request issued", requestStatusActionSnackbarMessage("ISSUED"))
         assertEquals("Request marked returned", requestStatusActionSnackbarMessage("RETURNED"))
         assertEquals("Renewal requested", requestStatusActionSnackbarMessage("REQUESTED_RENEW"))
         assertEquals("Renewal approved", requestStatusActionSnackbarMessage("RENEWED"))
@@ -55,7 +55,7 @@ class RequestFormattingTest {
             User(
                 id = "user-1",
                 email = "ta@iiitnr.edu.in",
-                role = "TA",
+                role = "LA",
             )
 
         assertEquals("ta@iiitnr.edu.in", compactUserLabel(user))

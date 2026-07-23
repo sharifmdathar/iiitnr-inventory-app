@@ -8,7 +8,7 @@ export const REQUEST_RETURN_LIMIT_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const REQUEST_EXPIRY_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 const expirableStatuses: RequestStatusValue[] = [
-  RequestStatus.FULFILLED,
+  RequestStatus.ISSUED,
   RequestStatus.REQUESTED_RENEW,
   RequestStatus.RENEWED,
 ];

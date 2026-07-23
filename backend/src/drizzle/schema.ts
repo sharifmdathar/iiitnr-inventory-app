@@ -23,13 +23,13 @@ export const requestStatus = pgEnum('RequestStatus', [
   'PENDING',
   'APPROVED',
   'REJECTED',
-  'FULFILLED',
+  'ISSUED',
   'RETURNED',
   'EXPIRED',
   'RENEWED',
   'REQUESTED_RENEW',
 ]);
-export const userRole = pgEnum('UserRole', ['ADMIN', 'FACULTY', 'PENDING', 'STUDENT', 'TA']);
+export const userRole = pgEnum('UserRole', ['ADMIN', 'FACULTY', 'PENDING', 'STUDENT', 'LA']);
 
 export const prismaMigrations = pgTable('_prisma_migrations', {
   id: varchar({ length: 36 }).primaryKey().notNull(),

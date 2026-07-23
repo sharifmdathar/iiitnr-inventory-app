@@ -20,7 +20,7 @@ private fun filteredEmptyMessage(
         "PENDING" -> "No pending requests"
         "APPROVED" -> "No approved requests"
         "REJECTED" -> "No rejected requests"
-        "FULFILLED" -> "No fulfilled requests"
+        "ISSUED" -> "No issued requests"
         "REQUESTED_RENEW" -> "No renewal requests"
         "RENEWED" -> "No renewed requests"
         "RETURNED" -> "No returned requests"

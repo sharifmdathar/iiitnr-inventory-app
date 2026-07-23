@@ -684,7 +684,7 @@
         "PENDING",
         "APPROVED",
         "REJECTED",
-        "FULFILLED",
+        "ISSUED",
         "RETURNED",
         "RENEWED",
         "REQUESTED_RENEW"
@@ -693,7 +693,7 @@
     "public.UserRole": {
       "name": "UserRole",
       "schema": "public",
-      "values": ["ADMIN", "FACULTY", "PENDING", "STUDENT", "TA"]
+      "values": ["ADMIN", "FACULTY", "PENDING", "STUDENT", "LA"]
     }
   },
   "schemas": {},

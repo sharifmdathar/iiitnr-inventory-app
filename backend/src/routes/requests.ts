@@ -2,7 +2,7 @@ import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastif
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { component, request, requestItem, user } from '../drizzle/schema.js';
-import { requireAuth, isAdminOrTA } from '../middleware/auth.js';
+import { requireAuth, isAdminOrLA } from '../middleware/auth.js';
 import { RequestStatus, requestStatusValues, UserRole, AuditActionType } from '../utils/enums.js';
 import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
@@ -223,19 +223,19 @@ function canRenewApproveOrRejectRequest(
     return null;
   }
 
-  if (!isAdminOrTA(currentUser.role)) {
+  if (!isAdminOrLA(currentUser.role)) {
     return {
       code: 403,
-      message: 'forbidden: only faculty, admin, or TA can approve/reject requests',
+      message: 'forbidden: only faculty, admin, or LA can approve/reject requests',
     };
   }
 
   return null;
 }
 
-function canFulfillRequest(currentUser: CurrentUser): ValidationError | null {
-  if (!isAdminOrTA(currentUser.role)) {
-    return { code: 403, message: 'forbidden: only admin or TA can fulfill requests' };
+function canIssueRequest(currentUser: CurrentUser): ValidationError | null {
+  if (!isAdminOrLA(currentUser.role)) {
+    return { code: 403, message: 'forbidden: only admin or LA can issue requests' };
   }
   return null;
 }
@@ -245,7 +245,7 @@ function canDeleteRequest(
   existingRequest: { userId: string; status: string },
 ): ValidationError | null {
   const isOwner = existingRequest.userId === currentUser.sub;
-  const isPrivileged = isAdminOrTA(currentUser.role);
+  const isPrivileged = isAdminOrLA(currentUser.role);
 
   if (!isOwner && !isPrivileged) {
     return { code: 403, message: 'forbidden: cannot delete this request' };
@@ -256,7 +256,7 @@ function canDeleteRequest(
   return null;
 }
 
-async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
+async function issueRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
   const fulfilledAt = new Date().toISOString();
   await db.transaction(async (tx) => {
     for (const item of existingRequest.requestItems) {
@@ -283,7 +283,7 @@ async function fulfillRequestTransaction(existingRequest: NonNullable<RequestWit
     await tx
       .update(request)
       .set({
-        status: RequestStatus.FULFILLED,
+        status: RequestStatus.ISSUED,
         updatedAt: fulfilledAt,
         fulfilledAt,
         returnDueAt,
@@ -511,7 +511,7 @@ async function handleGetRequests(
 
   if (currentUser.role === UserRole.FACULTY) {
     conditions.push(eq(request.targetFacultyId, currentUserId));
-  } else if (isAdminOrTA(currentUser.role)) {
+  } else if (isAdminOrLA(currentUser.role)) {
     if (requestedUserId) {
       conditions.push(eq(request.userId, requestedUserId));
     }
@@ -596,19 +596,19 @@ async function handleApprovedStatusUpdate(
   newStatus: RequestStatusValue,
   currentUser: CurrentUser,
 ) {
-  if (newStatus !== RequestStatus.FULFILLED) {
-    reply.code(400).send({ error: 'approved request can only be set to FULFILLED' });
+  if (newStatus !== RequestStatus.ISSUED) {
+    reply.code(400).send({ error: 'approved request can only be set to ISSUED' });
     return;
   }
 
-  const authError = canFulfillRequest(currentUser);
+  const authError = canIssueRequest(currentUser);
   if (authError) {
     reply.code(authError.code).send({ error: authError.message });
     return;
   }
 
   try {
-    await fulfillRequestTransaction(existingRequest);
+    await issueRequestTransaction(existingRequest);
     const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
 
     await logAudit(
@@ -672,7 +672,7 @@ async function handleRequestedRenewalStatusUpdate(
   reply.send({ request: updatedRequest });
 }
 
-async function handleFulfilledStatusUpdate(
+async function handleIssuedStatusUpdate(
   req: FastifyRequest,
   reply: FastifyReply,
   existingRequest: NonNullable<RequestWithRelations>,
@@ -682,12 +682,12 @@ async function handleFulfilledStatusUpdate(
 ) {
   if (newStatus !== RequestStatus.RETURNED && newStatus !== RequestStatus.REQUESTED_RENEW) {
     reply.code(400).send({
-      error: 'fulfilled request can only be set to RETURNED, RENEWED, or REQUESTED_RENEW',
+      error: 'issued request can only be set to RETURNED, RENEWED, or REQUESTED_RENEW',
     });
     return;
   }
   if (newStatus === RequestStatus.RETURNED) {
-    const authError = canFulfillRequest(currentUser);
+    const authError = canIssueRequest(currentUser);
     if (authError) {
       reply.code(authError.code).send({ error: authError.message });
       return;
@@ -727,7 +727,7 @@ async function handleExpiredStatusUpdate(
     return;
   }
 
-  const authError = canFulfillRequest(currentUser);
+  const authError = canIssueRequest(currentUser);
   if (authError) {
     reply.code(authError.code).send({ error: authError.message });
     return;
@@ -804,9 +804,9 @@ async function handleUpdateRequestStatus(
         await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
         break;
 
-      case RequestStatus.FULFILLED: {
+      case RequestStatus.ISSUED: {
         const lastRenewReason = body.lastRenewReason?.trim();
-        await handleFulfilledStatusUpdate(
+        await handleIssuedStatusUpdate(
           req,
           reply,
           existingRequest,
@@ -829,7 +829,7 @@ async function handleUpdateRequestStatus(
 
       case RequestStatus.RENEWED: {
         const renewedLastRenewReason = body.lastRenewReason?.trim();
-        await handleFulfilledStatusUpdate(
+        await handleIssuedStatusUpdate(
           req,
           reply,
           existingRequest,
@@ -847,7 +847,7 @@ async function handleUpdateRequestStatus(
       default:
         reply.code(400).send({
           error:
-            'request status can only be updated when status is PENDING, APPROVED, FULFILLED, REQUESTED_RENEW, RENEWED, or EXPIRED',
+            'request status can only be updated when status is PENDING, APPROVED, ISSUED, REQUESTED_RENEW, RENEWED, or EXPIRED',
         });
     }
   } catch (err) {

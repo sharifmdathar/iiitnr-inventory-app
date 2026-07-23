@@ -2,7 +2,7 @@ import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastif
 import { eq, desc, sql, and, type SQL, ilike } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { auditLog, user } from '../drizzle/schema.js';
-import { requireAdminOrTA, requireAdmin } from '../middleware/auth.js';
+import { requireAdminOrLA, requireAdmin } from '../middleware/auth.js';
 import type { AuditActionTypeValue, UserRoleValue } from '../utils/enums.js';
 import { userRoleValues, AuditActionType } from '../utils/enums.js';
 
@@ -277,7 +277,7 @@ async function logUserUpdateAudit(
 }
 
 const adminRoutes: FastifyPluginCallback = (app, _opts, done) => {
-  app.get('/audit-logs', { preHandler: requireAdminOrTA }, (req, reply) =>
+  app.get('/audit-logs', { preHandler: requireAdminOrLA }, (req, reply) =>
     handleGetAuditLogs(app, req, reply),
   );
 

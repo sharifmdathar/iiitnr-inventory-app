@@ -54,8 +54,8 @@ fun RequestQrDialog(
                     Text(
                         text =
                             when (request.status) {
-                                "FULFILLED", "RENEWED" -> "Return Components"
-                                else -> "Fulfill Request"
+                                "ISSUED", "RENEWED" -> "Return Components"
+                                else -> "Issue Request"
                             },
                         style = MaterialTheme.typography.titleLarge,
                     )
@@ -84,10 +84,10 @@ fun RequestQrDialog(
                         painter = qrPainter,
                         contentDescription =
                             when (request.status) {
-                                "FULFILLED" ->
-                                    "QR for TA to scan and record return to inventory"
+                                "ISSUED" ->
+                                    "QR for LA to scan and record return to inventory"
 
-                                else -> "Request QR code for TA to scan"
+                                else -> "Request QR code for LA to scan"
                             },
                         modifier = Modifier.fillMaxWidth(),
                         contentScale = ContentScale.FillWidth,

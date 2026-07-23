@@ -46,8 +46,8 @@ beforeAll(async () => {
   const taUser = await createUser({
     email: `ta_${crypto.randomUUID()}@example.com`,
     passwordHash,
-    name: 'TA User',
-    role: UserRole.TA,
+    name: 'LA User',
+    role: UserRole.LA,
   });
   taToken = app.jwt.sign({ sub: taUser.id, role: taUser.role }, { expiresIn: '1h' });
   taUserId = taUser.id;
@@ -123,7 +123,7 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 204);
     });
 
-    test('returns 200 with components (TA)', async () => {
+    test('returns 200 with components (LA)', async () => {
       const component1 = await createComponent({
         name: 'Resistor 10k',
         description: '10k ohm resistor',
@@ -163,7 +163,7 @@ describe('Component CRUD API', () => {
       await deleteComponents([component1.id, component2.id]);
     });
 
-    test('returns 304 Not Modified when If-Modified-Since is up to date (TA)', async () => {
+    test('returns 304 Not Modified when If-Modified-Since is up to date (LA)', async () => {
       const comp = await createComponent({
         name: 'Conditional GET Component',
         description: 'For If-Modified-Since testing',
@@ -394,7 +394,7 @@ describe('Component CRUD API', () => {
       assert.ok(body.error.includes('totalQuantity'));
     });
 
-    test('creates component with all fields (TA)', async () => {
+    test('creates component with all fields (LA)', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/components',
@@ -636,7 +636,7 @@ describe('Component CRUD API', () => {
       await deleteAllData();
     });
 
-    test('updates component partially (TA)', async () => {
+    test('updates component partially (LA)', async () => {
       const component = await createComponent({
         name: 'Original Name',
         description: 'Original description',
@@ -708,7 +708,7 @@ describe('Component CRUD API', () => {
       await deleteAllData();
     });
 
-    test('can set optional fields to null (TA)', async () => {
+    test('can set optional fields to null (LA)', async () => {
       const component = await createComponent({
         name: 'Test Component',
         description: 'Has description',
@@ -868,7 +868,7 @@ describe('Component CRUD API', () => {
       assert.equal(deletedComponent, null);
     });
 
-    test('deletes component successfully (TA)', async () => {
+    test('deletes component successfully (LA)', async () => {
       const component = await createComponent({
         name: 'Component to Delete',
         totalQuantity: 5,

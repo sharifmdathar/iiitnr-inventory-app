@@ -44,7 +44,7 @@ class ModelSerializationTest {
                     "userId": "user-1",
                     "targetFacultyId": "faculty-1",
                     "projectTitle": "Line following car",
-                    "status": "FULFILLED",
+                    "status": "ISSUED",
                     "createdAt": "2026-06-01T10:00:00Z",
                     "updatedAt": "2026-06-01T10:00:00Z",
                     "items": [

@@ -8,7 +8,7 @@ class StatusLabelTest {
     fun statusLabelFormatsKnownRequestStatuses() {
         assertEquals("Pending", requestStatusLabel("PENDING"))
         assertEquals("Approved", requestStatusLabel("APPROVED"))
-        assertEquals("Fulfilled", requestStatusLabel("FULFILLED"))
+        assertEquals("Issued", requestStatusLabel("ISSUED"))
         assertEquals("Returned", requestStatusLabel("RETURNED"))
         assertEquals("Renewed", requestStatusLabel("RENEWED"))
         assertEquals("Expired", requestStatusLabel("EXPIRED"))
@@ -21,7 +21,7 @@ class StatusLabelTest {
 
     @Test
     fun statusLabelIsCaseInsensitive() {
-        assertEquals("Fulfilled", requestStatusLabel("fulfilled"))
+        assertEquals("Issued", requestStatusLabel("issued"))
         assertEquals("Renewal Requested", requestStatusLabel("requested_renew"))
     }
 }

@@ -53,7 +53,7 @@ fun RequestCard(
     val cardBackground =
         when (request.status) {
             "APPROVED" -> MaterialTheme.colorScheme.primaryContainer
-            "FULFILLED" -> MaterialTheme.colorScheme.secondaryContainer
+            "ISSUED" -> MaterialTheme.colorScheme.secondaryContainer
             "RETURNED" -> MaterialTheme.colorScheme.tertiaryContainer
             "REQUESTED_RENEW" -> MaterialTheme.colorScheme.surfaceVariant
             "RENEWED" -> MaterialTheme.colorScheme.tertiaryContainer
@@ -201,8 +201,8 @@ private fun RequestCardActions(
                 onShowQr = onShowQr,
             )
 
-        "FULFILLED" ->
-            FulfilledRequestActions(
+        "ISSUED" ->
+            IssuedRequestActions(
                 request = request,
                 isFaculty = isFaculty,
                 onReturnRequest = onReturnRequest,
@@ -284,7 +284,7 @@ private fun ApprovedRequestActions(
             IconButton(onClick = { onShowQr(request) }) {
                 Icon(
                     imageVector = Icons.Default.QrCode2,
-                    contentDescription = "Show QR for TA to scan",
+                    contentDescription = "Show QR for LA to scan",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -293,7 +293,7 @@ private fun ApprovedRequestActions(
             IconButton(onClick = { onFulfillRequest(request.id) }) {
                 Icon(
                     imageVector = Icons.Default.DoneAll,
-                    contentDescription = "Fulfill request",
+                    contentDescription = "Issue request",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -302,7 +302,7 @@ private fun ApprovedRequestActions(
 }
 
 @Composable
-private fun FulfilledRequestActions(
+private fun IssuedRequestActions(
     request: Request,
     isFaculty: Boolean,
     onReturnRequest: ((String) -> Unit)?,
@@ -370,7 +370,7 @@ private fun ExpiredRequestActions(
         returnContentDescription = "Record overdue return to inventory",
         returnTint = MaterialTheme.colorScheme.error,
         showRenew = false,
-        qrContentDescription = "Show QR for TA to scan when returning overdue items",
+        qrContentDescription = "Show QR for LA to scan when returning overdue items",
     )
 }
 
@@ -384,7 +384,7 @@ private fun RequestLifecycleActionRow(
     returnContentDescription: String,
     returnTint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
     showRenew: Boolean = true,
-    qrContentDescription: String = "Show QR for TA to scan when returning items",
+    qrContentDescription: String = "Show QR for LA to scan when returning items",
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (showRenew && !isFaculty && onRequestRenew != null) {

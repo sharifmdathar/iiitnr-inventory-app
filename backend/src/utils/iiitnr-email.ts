@@ -37,7 +37,7 @@ export function deriveIiitnrProfileFromEmail(email: string): IiitnrDerivedProfil
 
   if (NON_STUDENT_LOCAL_RE.test(local)) {
     return {
-      role: UserRole.TA,
+      role: UserRole.LA,
       batch: null,
       branch: null,
     };

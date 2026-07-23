@@ -554,7 +554,7 @@ describe('Request API', () => {
         userId: studentId,
         targetFacultyId: facultyId,
         projectTitle: 'Overdue Checkout',
-        status: 'FULFILLED',
+        status: 'ISSUED',
         items: [{ componentId: item.id, quantity: 1 }],
       });
       const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
@@ -855,7 +855,7 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 403);
     });
 
-    test('FULFILLED cannot be set directly from PENDING', async () => {
+    test('ISSUED cannot be set directly from PENDING', async () => {
       const item = await createComponent({
         name: 'Sensor',
         totalQuantity: 10,
@@ -875,14 +875,14 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
 
       assert.equal(response.statusCode, 400);
       assert.ok(response.json().error.includes('PENDING requests can only be'));
     });
 
-    test('FULFILLED requires Admin or TA role', async () => {
+    test('ISSUED requires Admin or LA role', async () => {
       const item = await createComponent({
         name: 'Sensor',
         totalQuantity: 10,
@@ -902,13 +902,13 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${facultyToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
 
       assert.equal(response.statusCode, 403);
     });
 
-    test('successful FULFILLED decrements availableQuantity', async () => {
+    test('successful ISSUED decrements availableQuantity', async () => {
       const item = await createComponent({
         name: 'Sensor',
         totalQuantity: 10,
@@ -928,7 +928,7 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
 
       assert.equal(response.statusCode, 200);
@@ -936,7 +936,7 @@ describe('Request API', () => {
       assert.equal(updatedComponent?.availableQuantity, 7);
     });
 
-    test('returns 400 for insufficient quantity during FULFILLED', async () => {
+    test('returns 400 for insufficient quantity during ISSUED', async () => {
       const item = await createComponent({
         name: 'Sensor',
         totalQuantity: 10,
@@ -956,7 +956,7 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
 
       assert.equal(response.statusCode, 400);
@@ -983,7 +983,7 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
       assert.equal(fulfillRes.statusCode, 200);
       assert.equal((await findComponentById(item.id))?.availableQuantity, 6);
@@ -1003,7 +1003,7 @@ describe('Request API', () => {
       assert.equal(updatedComponent?.availableQuantity, 10);
     });
 
-    test('RETURNED requires Admin or TA role', async () => {
+    test('RETURNED requires Admin or LA role', async () => {
       const item = await createComponent({
         name: 'Sensor',
         totalQuantity: 10,
@@ -1023,7 +1023,7 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
 
       const response = await app.inject({
@@ -1060,7 +1060,7 @@ describe('Request API', () => {
       });
 
       assert.equal(response.statusCode, 400);
-      assert.ok(response.json().error.includes('FULFILLED'));
+      assert.ok(response.json().error.includes('ISSUED'));
     });
 
     test('returnDueAt is set to 1 month from fulfilled time', async () => {
@@ -1082,7 +1082,7 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
       const { returnDueAt } = res.json().request;
       const actualTime = new Date(returnDueAt).getTime();
@@ -1116,7 +1116,7 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
 
       const now = new Date().toISOString();
@@ -1149,7 +1149,7 @@ describe('Request API', () => {
         userId: studentId,
         targetFacultyId: facultyId,
         projectTitle: 'Renewal Request Test',
-        status: 'FULFILLED',
+        status: 'ISSUED',
         items: [{ componentId: item.id, quantity: 1 }],
       });
       const response = await app.inject({
@@ -1232,7 +1232,7 @@ describe('Request API', () => {
         userId: studentId,
         targetFacultyId: facultyId,
         projectTitle: 'Expired Return Test',
-        status: 'FULFILLED',
+        status: 'ISSUED',
         items: [{ componentId: item.id, quantity: 4 }],
       });
       const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
@@ -1252,7 +1252,7 @@ describe('Request API', () => {
       assert.equal(updatedComponent?.availableQuantity, 10);
     });
 
-    test('RENEWED request cannot be set to FULFILLED', async () => {
+    test('RENEWED request cannot be set to ISSUED', async () => {
       const item = await createComponent({
         name: 'Sensor',
         totalQuantity: 10,
@@ -1272,7 +1272,7 @@ describe('Request API', () => {
         method: 'PUT',
         url: `/requests/${req.id}`,
         headers: { authorization: `Bearer ${adminToken}` },
-        payload: { status: 'FULFILLED' },
+        payload: { status: 'ISSUED' },
       });
 
       assert.equal(response.statusCode, 400);

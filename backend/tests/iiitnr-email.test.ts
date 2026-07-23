@@ -20,10 +20,10 @@ describe('deriveIiitnrProfileFromEmail', () => {
     expect(deriveIiitnrProfileFromEmail('dsaiStudent24102@iiitnr.edu.in')?.branch).toBe('DSAI');
   });
 
-  test('parses non-student email as TA', () => {
+  test('parses non-student email as LA', () => {
     const profile = deriveIiitnrProfileFromEmail('faculty@iiitnr.edu.in');
     expect(profile).toEqual({
-      role: UserRole.TA,
+      role: UserRole.LA,
       batch: null,
       branch: null,
     });

@@ -42,7 +42,7 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 ## ✨ Key Features
 
 ### 👤 Role-Based Auth & Profiles (RBAC)
-- **Multi-Role Matrix:** Features strict role-based verification supporting five tiers: `STUDENT`, `TA` (Teaching Assistant), `FACULTY`, `ADMIN`, and `PENDING`.
+- **Multi-Role Matrix:** Features strict role-based verification supporting five tiers: `STUDENT`, `LA` (Lab Assistant), `FACULTY`, `ADMIN`, and `PENDING`.
 - **Automatic Batch/Branch Derivation:** Student batch (graduation range, e.g., `2024-2028`) and branch (`CSE`, `ECE`, `DSAI`) are derived automatically from their institutional email address during signup or profile fetches.
 - **Domain Gatekeeping:** Restricts registration/login to IIIT-NR emails via `ALLOWED_EMAIL_DOMAIN` configuration (e.g., `@iiitnr.edu.in`), protecting college resources.
 - **Dual Authentication:** Supports traditional email-password credentials alongside secure Google Sign-in.
@@ -217,15 +217,15 @@ stateDiagram-v2
     PENDING --> REJECTED : Faculty or Admin disapproves Request
     PENDING --> APPROVED : Faculty Supervisor approves Request
     
-    APPROVED --> FULFILLED : Admin hands over components & deducts stock
+    APPROVED --> ISSUED : Admin/LA hands over components & deducts stock
     APPROVED --> REJECTED : Admin cancels/rejects the pickup
     
-    FULFILLED --> RETURNED : Student returns components & Admin validates stock restock
-    FULFILLED --> EXPIRED : Return due date passed without return
-    FULFILLED --> REQUESTED_RENEW : Student requests extra time with reason
+    ISSUED --> RETURNED : Student returns components & Admin/LA validates stock restock
+    ISSUED --> EXPIRED : Return due date passed without return
+    ISSUED --> REQUESTED_RENEW : Student requests extra time with reason
     
     REQUESTED_RENEW --> RENEWED : Faculty or Admin approves renewal request
-    REQUESTED_RENEW --> FULFILLED : Renewal rejected (original deadline stands)
+    REQUESTED_RENEW --> ISSUED : Renewal rejected (original deadline stands)
     REQUESTED_RENEW --> EXPIRED : Return due date passed without action
     
     RENEWED --> RETURNED : Student returns components after renewal

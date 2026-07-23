@@ -81,7 +81,7 @@ fun RequestsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val isFaculty = currentUser?.role == "FACULTY"
-    val isAdminOrTA = currentUser?.role?.uppercase() == "ADMIN" || currentUser?.role?.uppercase() == "TA"
+    val isAdminOrLA = currentUser?.role?.uppercase() == "ADMIN" || currentUser?.role?.uppercase() == "LA"
 
     val query: String = searchQuery.trim()
     val filteredRequests =
@@ -283,7 +283,7 @@ fun RequestsScreen(
                 requestIdInput = ""
             },
             onScanClick =
-                if (isAdminOrTA && isQrScanAvailable()) {
+                if (isAdminOrLA && isQrScanAvailable()) {
                     { showQrScanner = true }
                 } else {
                     null
@@ -296,7 +296,7 @@ fun RequestsScreen(
                     onNavigateBack = onNavigateBack,
                     role = currentUser?.role,
                     onScanRequestClick =
-                        if (isAdminOrTA) {
+                        if (isAdminOrLA) {
                             {
                                 showRequestIdDialog = true
                                 requestIdInput = ""
@@ -320,7 +320,7 @@ fun RequestsScreen(
                 filteredRequests = filteredRequests,
                 onRetry = { loadRequests() },
                 isFaculty = isFaculty,
-                isAdminOrTA = isAdminOrTA,
+                isAdminOrLA = isAdminOrLA,
                 onDeleteRequest =
                     if (isFaculty) {
                         null
@@ -348,17 +348,17 @@ fun RequestsScreen(
                         null
                     },
                 onFulfillRequest =
-                    if (isAdminOrTA) {
+                    if (isAdminOrLA) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, "FULFILLED")
+                                updateRequestStatus(requestId, "ISSUED")
                             }
                         )
                     } else {
                         null
                     },
                 onReturnRequest =
-                    if (isAdminOrTA) {
+                    if (isAdminOrLA) {
                         (
                             { requestId ->
                                 updateRequestStatus(requestId, "RETURNED")
@@ -368,7 +368,7 @@ fun RequestsScreen(
                         null
                     },
                 onRequestRenew =
-                    if (!isFaculty && !isAdminOrTA) {
+                    if (!isFaculty && !isAdminOrLA) {
                         { requestId ->
                             pendingRenewRequestId = requestId
                             renewReasonInput = ""
@@ -502,7 +502,7 @@ private fun RequestsScreenBody(
     filteredRequests: List<Request>,
     onRetry: () -> Unit,
     isFaculty: Boolean,
-    isAdminOrTA: Boolean,
+    isAdminOrLA: Boolean,
     onDeleteRequest: ((String) -> Unit)?,
     onApproveRequest: ((String) -> Unit)?,
     onRejectRequest: ((String) -> Unit)?,
@@ -582,7 +582,7 @@ private val REQUEST_STATUS_OPTIONS =
         "PENDING",
         "APPROVED",
         "REJECTED",
-        "FULFILLED",
+        "ISSUED",
         "REQUESTED_RENEW",
         "RENEWED",
         "EXPIRED",
@@ -600,7 +600,7 @@ private fun ScannedRequestDialog(
     val nextStatusColor = nextStatus?.let { requestStatusColor(status = it) }
     val nextAction =
         when (nextStatus) {
-            "FULFILLED" -> "Fulfill Request"
+            "ISSUED" -> "Issue Request"
             "RETURNED" -> "Mark Returned"
             else -> null
         }
@@ -627,7 +627,7 @@ private fun ScannedRequestDialog(
         }
     val itemsTitle =
         when (nextStatus) {
-            "FULFILLED" -> "Requesting items"
+            "ISSUED" -> "Issuing items"
             "RETURNED" -> "Returning items"
             else -> ""
         }

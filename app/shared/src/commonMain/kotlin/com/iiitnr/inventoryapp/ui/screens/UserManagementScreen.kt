@@ -87,7 +87,7 @@ private val roleBackgrounds =
         "ADMIN" to RoleThemePair(cardBackgroundRejectedLight, cardBackgroundRejectedDark),
         "FACULTY" to RoleThemePair(cardBackgroundFulfilledLight, cardBackgroundFulfilledDark),
         "STUDENT" to RoleThemePair(cardBackgroundApprovedLight, cardBackgroundApprovedDark),
-        "TA" to RoleThemePair(cardBackgroundRequestedRenewLight, cardBackgroundRequestedRenewDark),
+        "LA" to RoleThemePair(cardBackgroundRequestedRenewLight, cardBackgroundRequestedRenewDark),
         "PENDING" to RoleThemePair(cardBackgroundPendingLight, cardBackgroundPendingDark),
     )
 
@@ -103,11 +103,11 @@ private val roleColors =
         "ADMIN" to SemanticDanger,
         "FACULTY" to SemanticInfo,
         "STUDENT" to SemanticSuccess,
-        "TA" to SemanticWarning,
+        "LA" to SemanticWarning,
         "PENDING" to SemanticNeutral,
     )
 
-private val allRoles = listOf("ADMIN", "FACULTY", "STUDENT", "TA", "PENDING")
+private val allRoles = listOf("ADMIN", "FACULTY", "STUDENT", "LA", "PENDING")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

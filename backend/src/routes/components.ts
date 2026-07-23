@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '../drizzle/db.js';
 import { component, requestItem } from '../drizzle/schema.js';
 import type { InferSelectModel } from 'drizzle-orm';
-import { requireAuth, requireAdminOrTA } from '../middleware/auth.js';
+import { requireAuth, requireAdminOrLA } from '../middleware/auth.js';
 import {
   UserRole,
   categoryValues,
@@ -298,7 +298,7 @@ function buildUpdateData(
 }
 
 function canExportCsv(role: UserRoleValue | undefined): boolean {
-  return role === UserRole.ADMIN || role === UserRole.TA || role === UserRole.FACULTY;
+  return role === UserRole.ADMIN || role === UserRole.LA || role === UserRole.FACULTY;
 }
 
 async function handleGetComponents(
@@ -345,7 +345,7 @@ async function handleExportCsv(
   const userRole = (req.user as { role?: UserRoleValue })?.role;
 
   if (!canExportCsv(userRole)) {
-    return reply.code(403).send({ error: 'forbidden: admin, TA, or faculty role required' });
+    return reply.code(403).send({ error: 'forbidden: admin, LA, or faculty role required' });
   }
 
   try {
@@ -551,15 +551,15 @@ const componentsRoutes: FastifyPluginCallback = (app, _opts, done) => {
     handleGetComponentById(app, req, reply),
   );
 
-  app.post('/', { preHandler: requireAdminOrTA, schema: createComponentSchema }, (req, reply) =>
+  app.post('/', { preHandler: requireAdminOrLA, schema: createComponentSchema }, (req, reply) =>
     handleCreateComponent(app, req, reply),
   );
 
-  app.put('/:id', { preHandler: requireAdminOrTA, schema: updateComponentSchema }, (req, reply) =>
+  app.put('/:id', { preHandler: requireAdminOrLA, schema: updateComponentSchema }, (req, reply) =>
     handleUpdateComponent(app, req, reply),
   );
 
-  app.delete('/:id', { preHandler: requireAdminOrTA }, (req, reply) =>
+  app.delete('/:id', { preHandler: requireAdminOrLA }, (req, reply) =>
     handleDeleteComponent(app, req, reply),
   );
 

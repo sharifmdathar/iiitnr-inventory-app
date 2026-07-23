@@ -84,13 +84,13 @@ fun ComponentsScreen(
     val canExportCsv =
         userRole?.let { role ->
             val roleUpper = role.uppercase()
-            roleUpper == "ADMIN" || roleUpper == "TA" || roleUpper == "FACULTY"
+            roleUpper == "ADMIN" || roleUpper == "LA" || roleUpper == "FACULTY"
         } ?: false
 
     val isReadOnly =
         userRole?.let { role ->
             val roleUpper = role.uppercase()
-            roleUpper != "TA" && roleUpper != "ADMIN"
+            roleUpper != "LA" && roleUpper != "ADMIN"
         } ?: true
 
     fun exportComponentsCsv() {

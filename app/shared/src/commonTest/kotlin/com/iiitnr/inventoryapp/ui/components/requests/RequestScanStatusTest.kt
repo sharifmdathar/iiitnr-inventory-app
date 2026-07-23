@@ -6,13 +6,13 @@ import kotlin.test.assertNull
 
 class RequestScanStatusTest {
     @Test
-    fun approvedScansToFulfilled() {
-        assertEquals("FULFILLED", nextScannedRequestStatus("APPROVED"))
+    fun approvedScansToIssued() {
+        assertEquals("ISSUED", nextScannedRequestStatus("APPROVED"))
     }
 
     @Test
-    fun fulfilledScansToReturned() {
-        assertEquals("RETURNED", nextScannedRequestStatus("FULFILLED"))
+    fun issuedScansToReturned() {
+        assertEquals("RETURNED", nextScannedRequestStatus("ISSUED"))
     }
 
     @Test
