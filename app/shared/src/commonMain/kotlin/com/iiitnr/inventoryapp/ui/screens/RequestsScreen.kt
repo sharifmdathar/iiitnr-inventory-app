@@ -59,6 +59,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun RequestsScreen(
@@ -235,7 +236,7 @@ fun RequestsScreen(
         loadUserData()
         loadRequests(pollingMode = false)
         while (true) {
-            delay(8000)
+            delay(8000.milliseconds)
             if (errorMessage == null && !isLoading && !isRefreshing) {
                 loadRequests(pollingMode = true)
             }
@@ -296,7 +297,6 @@ fun RequestsScreen(
             topBar = {
                 RequestsTopBar(
                     onNavigateBack = onNavigateBack,
-                    role = currentUser?.role,
                     onScanRequestClick =
                         if (isAdminOrLA) {
                             {
@@ -322,7 +322,6 @@ fun RequestsScreen(
                 filteredRequests = filteredRequests,
                 onRetry = { loadRequests() },
                 isFaculty = isFaculty,
-                isAdminOrLA = isAdminOrLA,
                 onDeleteRequest =
                     if (isFaculty) {
                         null
@@ -504,7 +503,6 @@ private fun RequestsScreenBody(
     filteredRequests: List<Request>,
     onRetry: () -> Unit,
     isFaculty: Boolean,
-    isAdminOrLA: Boolean,
     onDeleteRequest: ((String) -> Unit)?,
     onApproveRequest: ((String) -> Unit)?,
     onRejectRequest: ((String) -> Unit)?,

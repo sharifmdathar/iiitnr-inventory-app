@@ -13,7 +13,7 @@ const migrationsFolder = process.env.MIGRATIONS_FOLDER ?? join(__dirname, 'drizz
     await migrate(db, { migrationsFolder });
     console.log('Migrations complete');
   } catch (err) {
-    throw new Error(`Migration failed: ${err}`);
+    throw new Error(`Migration failed: ${err}`, { cause: err });
   } finally {
     await pool.end();
   }

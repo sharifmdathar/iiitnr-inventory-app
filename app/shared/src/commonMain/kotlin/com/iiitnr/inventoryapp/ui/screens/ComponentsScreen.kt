@@ -356,7 +356,6 @@ fun ComponentsScreen(
                 onNavigateToHome = onNavigateToProfile,
                 onNavigateToRequests = onNavigateToRequests,
                 pendingRequestsCount = if (isFaculty) pendingRequestsCount else null,
-                role = userRole,
                 showExportCsv = canExportCsv && components.isNotEmpty(),
                 onExportCsv = { exportComponentsCsv() },
             )

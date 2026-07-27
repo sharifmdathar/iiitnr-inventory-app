@@ -15,7 +15,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.UserRole
-import com.iiitnr.inventoryapp.ui.theme.SemanticWarning
 
 @Composable
 fun StatusChip(

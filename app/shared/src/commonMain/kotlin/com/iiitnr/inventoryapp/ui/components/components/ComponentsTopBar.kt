@@ -28,7 +28,6 @@ fun ComponentsTopBar(
     onNavigateToHome: () -> Unit,
     onNavigateToRequests: () -> Unit,
     pendingRequestsCount: Int? = null,
-    role: UserRole? = null,
     showExportCsv: Boolean = false,
     onExportCsv: (() -> Unit)? = null,
     modifier: Modifier = Modifier,

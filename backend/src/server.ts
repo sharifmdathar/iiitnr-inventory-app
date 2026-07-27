@@ -27,7 +27,7 @@ try {
   markAppReady();
   app.log.info(`Server listening on http://${host}:${port}`);
 } catch (err) {
-  throw new Error(`Failed to start server: ${err}`);
+  throw new Error(`Failed to start server: ${err}`, { cause: err });
 }
 
 const signals = ['SIGINT', 'SIGTERM'];
@@ -39,7 +39,7 @@ for (const signal of signals) {
       app.log.info('Server closed successfully.');
       process.exit(0);
     } catch (err) {
-      throw new Error(`${err} Error during graceful shutdown`);
+      throw new Error(`${err} Error during graceful shutdown`, { cause: err });
     }
   });
 }

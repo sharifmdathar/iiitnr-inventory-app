@@ -13,7 +13,6 @@ import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 fun RequestsTopBar(
     onNavigateBack: () -> Unit,
     onScanRequestClick: (() -> Unit)? = null,
-    role: UserRole? = null,
     modifier: Modifier = Modifier,
 ) {
     AppTopBar(
