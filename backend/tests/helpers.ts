@@ -61,7 +61,7 @@ export async function createRequest(data: {
   targetFacultyId: string;
   projectTitle: string;
   status?: RequestStatusValue;
-  items: { componentId: string; quantity: number }[];
+  items: { componentId: string; quantity: number; fulfilledQuantity?: number }[];
 }) {
   const n = now();
   const requestId = crypto.randomUUID();
@@ -80,6 +80,7 @@ export async function createRequest(data: {
       requestId,
       componentId: item.componentId,
       quantity: item.quantity,
+      fulfilledQuantity: item.fulfilledQuantity ?? 0,
       createdAt: n,
       updatedAt: n,
     })),
@@ -114,8 +115,19 @@ export async function deleteAllRequests() {
 }
 
 export async function findRequestById(id: string) {
-  const [r] = await db.select().from(request).where(eq(request.id, id)).limit(1);
-  return r ?? null;
+  const row = await db.query.request.findFirst({
+    where: eq(request.id, id),
+    with: { requestItems: true },
+  });
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    ...row,
+    items: row.requestItems,
+  };
 }
 
 export async function findComponentById(id: string) {

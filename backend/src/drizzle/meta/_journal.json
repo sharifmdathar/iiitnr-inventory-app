@@ -50,6 +50,13 @@
       "when": 1785982200000,
       "tag": "0006_rename_fulfilled_and_ta",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785990000000,
+      "tag": "0007_add_partial_issue_return",
+      "breakpoints": true
     }
   ]
 }

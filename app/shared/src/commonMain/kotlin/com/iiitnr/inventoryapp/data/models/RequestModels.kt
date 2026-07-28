@@ -8,6 +8,7 @@ data class RequestItem(
     val requestId: String? = null,
     val componentId: String? = null,
     val quantity: Int,
+    val fulfilledQuantity: Int = 0,
     val component: Component? = null,
 )
 
@@ -32,6 +33,18 @@ data class Request(
 
 @Serializable
 data class RequestItemPayload(
+    val componentId: String,
+    val quantity: Int,
+)
+
+@Serializable
+data class IssueItemPayload(
+    val componentId: String,
+    val quantity: Int,
+)
+
+@Serializable
+data class ReturnItemPayload(
     val componentId: String,
     val quantity: Int,
 )
@@ -62,4 +75,6 @@ data class RequestsResponse(
 data class UpdateRequestStatusPayload(
     val status: RequestStatus,
     val lastRenewReason: String? = null,
+    val issueItems: List<IssueItemPayload>? = null,
+    val returnItems: List<ReturnItemPayload>? = null,
 )

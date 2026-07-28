@@ -4,14 +4,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -27,29 +30,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
+import com.iiitnr.inventoryapp.data.models.IssueItemPayload
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestStatus
+import com.iiitnr.inventoryapp.data.models.ReturnItemPayload
 import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
-import com.iiitnr.inventoryapp.ui.components.common.requestStatusColor
 import com.iiitnr.inventoryapp.ui.components.requests.FulfillByIdDialog
 import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
 import com.iiitnr.inventoryapp.ui.components.requests.RenewReasonDialog
-import com.iiitnr.inventoryapp.ui.components.requests.RequestItemRow
 import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
-import com.iiitnr.inventoryapp.ui.components.requests.compactUserLabel
-import com.iiitnr.inventoryapp.ui.components.requests.nextScannedRequestStatus
+
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusDisplayLabel
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
@@ -75,12 +77,15 @@ fun RequestsScreen(
     var renewReasonInput by remember { mutableStateOf("") }
     var requestToShowQr by remember { mutableStateOf<Request?>(null) }
     var showRequestIdDialog by remember { mutableStateOf(false) }
-    var scannedRequest by remember { mutableStateOf<Request?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
     var requestIdInput by remember { mutableStateOf("") }
     var currentUser by remember { mutableStateOf<User?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf<RequestStatus?>(null) }
+    var pendingPartialIssueRequest by remember { mutableStateOf<Request?>(null) }
+    var issueItemsInput by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var pendingPartialReturnRequest by remember { mutableStateOf<Request?>(null) }
+    var returnItemsInput by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val isFaculty = currentUser?.role == UserRole.FACULTY
@@ -174,6 +179,8 @@ fun RequestsScreen(
         requestId: String,
         status: RequestStatus,
         lastRenewReason: String? = null,
+        issueItems: List<IssueItemPayload>? = null,
+        returnItems: List<ReturnItemPayload>? = null,
     ) {
         scope.launch {
             try {
@@ -185,6 +192,8 @@ fun RequestsScreen(
                         UpdateRequestStatusPayload(
                             status = status,
                             lastRenewReason = lastRenewReason,
+                            issueItems = issueItems,
+                            returnItems = returnItems,
                         ),
                     )
                     loadRequests()
@@ -200,24 +209,84 @@ fun RequestsScreen(
         }
     }
 
-    fun openScannedRequest(rawValue: String) {
-        val requestId = rawValue.trim().removePrefix(REQUEST_QR_PREFIX).trim()
-        if (requestId.isBlank()) {
-            return
-        }
-
-        val request = requests.firstOrNull { it.id == requestId }
-        if (request == null) {
-            scope.launch {
-                snackbarHostState.showSnackbar("Request not found. Refresh and try again.")
+    fun updateRequestStatusPartialIssue(request: Request) {
+        pendingPartialIssueRequest = request
+        issueItemsInput =
+            request.items.associate { item ->
+                val componentId = item.componentId ?: ""
+                val remainingQuantity = (item.quantity - item.fulfilledQuantity).coerceAtLeast(0)
+                componentId to remainingQuantity
             }
-            return
-        }
-
-        scannedRequest = request
-        requestIdInput = requestId
-        showRequestIdDialog = false
     }
+
+    fun updateRequestStatusPartialReturn(request: Request) {
+        pendingPartialReturnRequest = request
+        returnItemsInput =
+            request.items
+                .filter { it.fulfilledQuantity > 0 }
+                .associate { item ->
+                    val componentId = item.componentId ?: ""
+                    componentId to item.fulfilledQuantity
+                }
+    }
+
+    fun confirmPartialIssue() {
+        val request = pendingPartialIssueRequest
+        if (request == null) return
+        val items =
+            issueItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
+                IssueItemPayload(componentId = componentId, quantity = quantity)
+            }
+        pendingPartialIssueRequest = null
+        issueItemsInput = emptyMap()
+        updateRequestStatus(request.id, RequestStatus.ISSUED, issueItems = items)
+    }
+
+    fun confirmPartialReturn() {
+        val request = pendingPartialReturnRequest
+        if (request == null) return
+        val items =
+            returnItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
+                ReturnItemPayload(componentId = componentId, quantity = quantity)
+            }
+        pendingPartialReturnRequest = null
+        returnItemsInput = emptyMap()
+        updateRequestStatus(request.id, RequestStatus.RETURNED, returnItems = items)
+    }
+
+  fun openScannedRequest(rawValue: String) {
+  val requestId = rawValue.trim().removePrefix(REQUEST_QR_PREFIX).trim()
+  if (requestId.isBlank()) {
+    return
+  }
+
+  val request = requests.firstOrNull { it.id == requestId }
+  if (request == null) {
+    scope.launch {
+      snackbarHostState.showSnackbar("Request not found. Refresh and try again.")
+    }
+    return
+  }
+
+  requestIdInput = requestId
+  showRequestIdDialog = false
+
+  when (request.status) {
+    RequestStatus.APPROVED,
+    RequestStatus.PARTIALLY_ISSUED,
+    -> updateRequestStatusPartialIssue(request)
+    RequestStatus.ISSUED,
+    RequestStatus.RENEWED,
+    RequestStatus.EXPIRED,
+    RequestStatus.PARTIALLY_RETURNED,
+    -> updateRequestStatusPartialReturn(request)
+    else -> {
+      scope.launch {
+        snackbarHostState.showSnackbar("No action available for status: ${requestStatusDisplayLabel(request.status)}")
+      }
+    }
+  }
+}
 
     fun loadUserData() {
         scope.launch {
@@ -266,16 +335,6 @@ fun RequestsScreen(
                 pendingRenewRequestId = null
                 renewReasonInput = ""
             },
-            scannedRequest = scannedRequest,
-            onConfirmScan = { request, nextStatus ->
-                scannedRequest = null
-                requestIdInput = ""
-                updateRequestStatus(request.id, nextStatus)
-            },
-            onDismissScan = {
-                scannedRequest = null
-                requestIdInput = ""
-            },
             showRequestIdDialog = showRequestIdDialog,
             showQrScanner = showQrScanner,
             requestIdInput = requestIdInput,
@@ -291,6 +350,26 @@ fun RequestsScreen(
                 } else {
                     null
                 },
+            pendingPartialIssueRequest = pendingPartialIssueRequest,
+            issueItemsInput = issueItemsInput,
+            onIssueItemQtyChange = { componentId, quantity ->
+                issueItemsInput = issueItemsInput + (componentId to quantity)
+            },
+            onConfirmPartialIssue = { confirmPartialIssue() },
+            onDismissPartialIssue = {
+                pendingPartialIssueRequest = null
+                issueItemsInput = emptyMap()
+            },
+            pendingPartialReturnRequest = pendingPartialReturnRequest,
+            returnItemsInput = returnItemsInput,
+            onReturnItemQtyChange = { componentId, quantity ->
+                returnItemsInput = returnItemsInput + (componentId to quantity)
+            },
+            onConfirmPartialReturn = { confirmPartialReturn() },
+            onDismissPartialReturn = {
+                pendingPartialReturnRequest = null
+                returnItemsInput = emptyMap()
+            },
         )
 
         Scaffold(
@@ -352,7 +431,7 @@ fun RequestsScreen(
                     if (isAdminOrLA) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.ISSUED)
+                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
                             }
                         )
                     } else {
@@ -362,7 +441,7 @@ fun RequestsScreen(
                     if (isAdminOrLA) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.RETURNED)
+                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
                             }
                         )
                     } else {
@@ -419,9 +498,6 @@ private fun RequestsDialogs(
     onRenewReasonChange: (String) -> Unit,
     onConfirmRenew: () -> Unit,
     onDismissRenew: () -> Unit,
-    scannedRequest: Request?,
-    onConfirmScan: (Request, RequestStatus) -> Unit,
-    onDismissScan: () -> Unit,
     showRequestIdDialog: Boolean,
     showQrScanner: Boolean,
     requestIdInput: String,
@@ -429,6 +505,17 @@ private fun RequestsDialogs(
     onConfirmRequestId: () -> Unit,
     onDismissRequestId: () -> Unit,
     onScanClick: (() -> Unit)?,
+    // Partial issue/return dialogs
+    pendingPartialIssueRequest: Request?,
+    issueItemsInput: Map<String, Int>,
+    onIssueItemQtyChange: (String, Int) -> Unit,
+    onConfirmPartialIssue: () -> Unit,
+    onDismissPartialIssue: () -> Unit,
+    pendingPartialReturnRequest: Request?,
+    returnItemsInput: Map<String, Int>,
+    onReturnItemQtyChange: (String, Int) -> Unit,
+    onConfirmPartialReturn: () -> Unit,
+    onDismissPartialReturn: () -> Unit,
 ) {
     if (pendingDeleteRequestId != null) {
         AlertDialog(
@@ -469,15 +556,7 @@ private fun RequestsDialogs(
         )
     }
 
-    scannedRequest?.let { request ->
-        ScannedRequestDialog(
-            request = request,
-            onConfirm = { nextStatus -> onConfirmScan(request, nextStatus) },
-            onDismiss = onDismissScan,
-        )
-    }
-
-    if (showRequestIdDialog && !showQrScanner && scannedRequest == null) {
+    if (showRequestIdDialog && !showQrScanner) {
         FulfillByIdDialog(
             requestIdInput = requestIdInput,
             onRequestIdChange = onRequestIdChange,
@@ -486,6 +565,26 @@ private fun RequestsDialogs(
             onConfirm = onConfirmRequestId,
             onDismiss = onDismissRequestId,
             onScanClick = onScanClick,
+        )
+    }
+
+    pendingPartialIssueRequest?.let { request ->
+        PartialIssueDialog(
+            request = request,
+            itemsInput = issueItemsInput,
+            onItemQtyChange = onIssueItemQtyChange,
+            onConfirm = onConfirmPartialIssue,
+            onDismiss = onDismissPartialIssue,
+        )
+    }
+
+    pendingPartialReturnRequest?.let { request ->
+        PartialReturnDialog(
+            request = request,
+            itemsInput = returnItemsInput,
+            onItemQtyChange = onReturnItemQtyChange,
+            onConfirm = onConfirmPartialReturn,
+            onDismiss = onDismissPartialReturn,
         )
     }
 }
@@ -580,107 +679,148 @@ private val REQUEST_STATUS_OPTIONS: List<RequestStatus?> =
     listOf(null) + RequestStatus.FILTER_OPTIONS
 
 @Composable
-private fun ScannedRequestDialog(
+fun PartialIssueDialog(
     request: Request,
-    onConfirm: (RequestStatus) -> Unit,
+    itemsInput: Map<String, Int>,
+    onItemQtyChange: (String, Int) -> Unit,
+    onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val nextStatus = nextScannedRequestStatus(request.status)
-    val currentStatusColor = requestStatusColor(status = request.status)
-    val nextStatusColor = nextStatus?.let { requestStatusColor(status = it) }
-    val nextAction =
-        when (nextStatus) {
-            RequestStatus.ISSUED -> "Issue Request"
-            RequestStatus.RETURNED -> "Mark Returned"
-            else -> null
-        }
-    val statusTransition =
-        buildAnnotatedString {
-            withStyle(SpanStyle(color = currentStatusColor)) {
-                append(requestStatusDisplayLabel(request.status))
-            }
-            nextStatus?.let {
-                append(" → ")
-                withStyle(SpanStyle(color = nextStatusColor ?: currentStatusColor)) {
-                    append(requestStatusDisplayLabel(it))
-                }
-            }
-        }
-    val requester = request.user?.let { compactUserLabel(it) }
-    val faculty = request.targetFaculty?.let { it.name ?: it.email }
-    val userLine =
-        when {
-            requester != null && faculty != null -> "$requester  ←  $faculty"
-            requester != null -> requester
-            faculty != null -> "From: $faculty"
-            else -> null
-        }
-    val itemsTitle =
-        when (nextStatus) {
-            RequestStatus.ISSUED -> "Issuing items"
-            RequestStatus.RETURNED -> "Returning items"
-            else -> ""
-        }
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(nextAction ?: "Request scanned") },
+        title = { Text("Issue Items (Partial)") },
         text = {
-            Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
                 Text(
                     text = request.projectTitle,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = statusTransition,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Adjust quantities to issue (0 to skip item)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                userLine?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = itemsTitle,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (request.items.isEmpty()) {
-                    Text(
-                        text = "No items found for this request.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    request.items.forEach { item ->
-                        RequestItemRow(item = item)
+                Spacer(modifier = Modifier.height(12.dp))
+                request.items.forEach { item ->
+                    val compId = item.componentId ?: ""
+                    val qty = itemsInput[compId] ?: item.quantity
+                    val available = item.quantity
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = item.component?.name ?: compId,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                text = "Available: $available",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        androidx.compose.material3.OutlinedTextField(
+                            value = qty.toString(),
+                            onValueChange = { text ->
+                                val newQty = text.toIntOrNull() ?: 0
+                                if (newQty in 0..available) {
+                                    onItemQtyChange(compId, newQty)
+                                }
+                            },
+                            modifier = Modifier.width(80.dp),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text("Qty") },
+                        )
                     }
                 }
             }
         },
         confirmButton = {
-            if (nextStatus != null && nextAction != null) {
-                TextButton(onClick = { onConfirm(nextStatus) }) {
-                    Text(nextAction)
-                }
-            } else {
-                TextButton(onClick = onDismiss) {
-                    Text("Close")
-                }
+            TextButton(onClick = onConfirm) {
+                Text("Issue", color = MaterialTheme.colorScheme.primary)
             }
         },
         dismissButton = {
-            if (nextStatus != null) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+fun PartialReturnDialog(
+    request: Request,
+    itemsInput: Map<String, Int>,
+    onItemQtyChange: (String, Int) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Return Items (Partial)") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
+                Text(
+                    text = request.projectTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = "Adjust quantities to return (0 to skip item)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                request.items.filter { it.fulfilledQuantity > 0 }.forEach { item ->
+                    val compId = item.componentId ?: ""
+                    val fulfilled = item.fulfilledQuantity
+                    val qty = itemsInput[compId] ?: fulfilled
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = item.component?.name ?: compId,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                text = "Issued: $fulfilled",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        androidx.compose.material3.OutlinedTextField(
+                            value = qty.toString(),
+                            onValueChange = { text ->
+                                val newQty = text.toIntOrNull() ?: 0
+                                if (newQty in 0..fulfilled) {
+                                    onItemQtyChange(compId, newQty)
+                                }
+                            },
+                            modifier = Modifier.width(80.dp),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            label = { Text("Qty") },
+                        )
+                    }
                 }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Return", color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         },
     )

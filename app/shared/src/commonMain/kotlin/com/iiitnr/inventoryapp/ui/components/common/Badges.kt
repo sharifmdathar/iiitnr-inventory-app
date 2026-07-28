@@ -50,9 +50,11 @@ fun requestStatusColor(
         RequestStatus.PENDING -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)
         RequestStatus.APPROVED -> if (isDark) Color(0xFF93C5FD) else Color(0xFF1A56DB)
         RequestStatus.ISSUED -> if (isDark) Color(0xFF86EFAC) else Color(0xFF15803D)
+        RequestStatus.PARTIALLY_ISSUED -> if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
         RequestStatus.REQUESTED_RENEW -> if (isDark) Color(0xFFFDBA74) else Color(0xFFEA580C)
         RequestStatus.RENEWED -> if (isDark) Color(0xFF5EEAD4) else Color(0xFF0F766E)
         RequestStatus.RETURNED -> if (isDark) Color(0xFFD1D5DB) else Color(0xFF6B7280)
+        RequestStatus.PARTIALLY_RETURNED -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)
         RequestStatus.EXPIRED -> if (isDark) Color(0xFFFCA5A5) else Color(0xFFB91C1C)
         RequestStatus.REJECTED -> MaterialTheme.colorScheme.error
     }
@@ -60,6 +62,8 @@ fun requestStatusColor(
 fun requestStatusLabel(status: RequestStatus): String =
     when (status) {
         RequestStatus.REQUESTED_RENEW -> "Renewal Requested"
+        RequestStatus.PARTIALLY_ISSUED -> "Partially Issued"
+        RequestStatus.PARTIALLY_RETURNED -> "Partially Returned"
         else ->
             status.name
                 .lowercase()

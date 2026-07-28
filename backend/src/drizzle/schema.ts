@@ -24,7 +24,9 @@ export const requestStatus = pgEnum('RequestStatus', [
   'APPROVED',
   'REJECTED',
   'ISSUED',
+  'PARTIALLY_ISSUED',
   'RETURNED',
+  'PARTIALLY_RETURNED',
   'EXPIRED',
   'RENEWED',
   'REQUESTED_RENEW',
@@ -132,6 +134,7 @@ export const requestItem = pgTable(
     requestId: text().notNull(),
     componentId: text().notNull(),
     quantity: integer().notNull(),
+    fulfilledQuantity: integer().default(0).notNull(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

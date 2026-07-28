@@ -23,11 +23,6 @@ interface CreateRequestBody {
   projectTitle?: string;
 }
 
-interface UpdateStatusBody {
-  status?: string;
-  lastRenewReason?: string;
-}
-
 interface RequestQuery {
   userId?: string;
   status?: string;
@@ -36,6 +31,23 @@ interface RequestQuery {
 interface NormalizedItem {
   componentId: string;
   quantity: number;
+}
+
+interface IssueItemInput {
+  componentId: string;
+  quantity: number;
+}
+
+interface ReturnItemInput {
+  componentId: string;
+  quantity: number;
+}
+
+interface UpdateStatusBody {
+  status?: string;
+  lastRenewReason?: string;
+  issueItems?: IssueItemInput[];
+  returnItems?: ReturnItemInput[];
 }
 
 type RequestWithRelations = Awaited<ReturnType<typeof fetchRequestWithItems>>;
@@ -72,6 +84,30 @@ const updateRequestStatusSchema = {
     properties: {
       status: { type: 'string', maxLength: 50 },
       lastRenewReason: { type: 'string', maxLength: 500 },
+      issueItems: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            componentId: { type: 'string', maxLength: 100 },
+            quantity: { type: 'integer', minimum: 1 },
+          },
+          required: ['componentId', 'quantity'],
+          additionalProperties: false,
+        },
+      },
+      returnItems: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            componentId: { type: 'string', maxLength: 100 },
+            quantity: { type: 'integer', minimum: 1 },
+          },
+          required: ['componentId', 'quantity'],
+          additionalProperties: false,
+        },
+      },
     },
     additionalProperties: false,
   },
@@ -249,10 +285,36 @@ function canDeleteRequest(
   return null;
 }
 
-async function issueRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
+async function issueRequestTransaction(
+  existingRequest: NonNullable<RequestWithRelations>,
+  issueItems?: IssueItemInput[],
+) {
   const fulfilledAt = new Date().toISOString();
   await db.transaction(async (tx) => {
-    for (const item of existingRequest.requestItems) {
+    const requestItems = existingRequest.requestItems;
+    let hasRemainingToFulfill = false;
+
+    for (const item of requestItems) {
+      const requestedQty = item.quantity;
+      const alreadyFulfilled = item.fulfilledQuantity ?? 0;
+      const remainingToFulfill = requestedQty - alreadyFulfilled;
+
+      if (remainingToFulfill <= 0) {
+        continue;
+      }
+
+      const issueItem = issueItems?.find((i) => i.componentId === item.componentId);
+      const issueQty = issueItem
+        ? Math.min(issueItem.quantity, remainingToFulfill)
+        : issueItems
+          ? 0
+          : remainingToFulfill;
+
+      if (issueQty <= 0) {
+        hasRemainingToFulfill = true;
+        continue;
+      }
+
       const [lockedComp] = await tx
         .select({
           id: component.id,
@@ -264,25 +326,40 @@ async function issueRequestTransaction(existingRequest: NonNullable<RequestWithR
         .where(eq(component.id, item.componentId))
         .for('update');
 
-      if (!lockedComp || lockedComp.availableQuantity < item.quantity) {
+      if (!lockedComp || lockedComp.availableQuantity < issueQty) {
         const name = lockedComp?.name ?? item.component?.name ?? 'unknown';
-        throw new Error(`INSUFFICIENT_QUANTITY:${name}:${item.quantity}`);
+        throw new Error(`INSUFFICIENT_QUANTITY:${name}:${issueQty}`);
       }
+
+      const newFulfilled = alreadyFulfilled + issueQty;
+      await tx
+        .update(requestItem)
+        .set({
+          fulfilledQuantity: newFulfilled,
+          updatedAt: fulfilledAt,
+        })
+        .where(eq(requestItem.id, item.id));
 
       await tx
         .update(component)
         .set({
-          availableQuantity: lockedComp.availableQuantity - item.quantity,
+          availableQuantity: lockedComp.availableQuantity - issueQty,
           updatedAt: fulfilledAt,
         })
         .where(eq(component.id, item.componentId));
+
+      if (newFulfilled < requestedQty) {
+        hasRemainingToFulfill = true;
+      }
     }
 
     const returnDueAt = new Date(Date.now() + REQUEST_RETURN_LIMIT_MS).toISOString();
+    const newStatus = hasRemainingToFulfill ? RequestStatus.PARTIALLY_ISSUED : RequestStatus.ISSUED;
+
     await tx
       .update(request)
       .set({
-        status: RequestStatus.ISSUED,
+        status: newStatus,
         updatedAt: fulfilledAt,
         fulfilledAt,
         returnDueAt,
@@ -325,10 +402,35 @@ async function approveRenewRequestTransaction(existingRequest: NonNullable<Reque
   });
 }
 
-async function returnRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
+async function returnRequestTransaction(
+  existingRequest: NonNullable<RequestWithRelations>,
+  returnItems?: ReturnItemInput[],
+) {
   const returnedAt = new Date().toISOString();
   await db.transaction(async (tx) => {
+    let hasFulfilledRemaining = false;
+    let hasAnyReturned = false;
+
     for (const item of existingRequest.requestItems) {
+      const fulfilledQty = item.fulfilledQuantity ?? 0;
+      if (fulfilledQty <= 0) {
+        continue;
+      }
+
+      const returnItem = returnItems?.find((i) => i.componentId === item.componentId);
+      const returnQty = returnItem
+        ? Math.min(returnItem.quantity, fulfilledQty)
+        : returnItems
+          ? 0
+          : fulfilledQty;
+
+      if (returnQty <= 0) {
+        hasFulfilledRemaining = true;
+        continue;
+      }
+
+      hasAnyReturned = true;
+
       const [lockedComp] = await tx
         .select({
           id: component.id,
@@ -345,7 +447,16 @@ async function returnRequestTransaction(existingRequest: NonNullable<RequestWith
         throw new Error(`COMPONENT_NOT_FOUND:${name}`);
       }
 
-      const nextAvailable = lockedComp.availableQuantity + item.quantity;
+      const newFulfilled = fulfilledQty - returnQty;
+      await tx
+        .update(requestItem)
+        .set({
+          fulfilledQuantity: newFulfilled,
+          updatedAt: returnedAt,
+        })
+        .where(eq(requestItem.id, item.id));
+
+      const nextAvailable = lockedComp.availableQuantity + returnQty;
       const nextTotal = Math.max(lockedComp.totalQuantity, nextAvailable);
 
       await tx
@@ -356,14 +467,23 @@ async function returnRequestTransaction(existingRequest: NonNullable<RequestWith
           updatedAt: returnedAt,
         })
         .where(eq(component.id, item.componentId));
+
+      if (newFulfilled > 0) {
+        hasFulfilledRemaining = true;
+      }
     }
+
+    const newStatus =
+      hasFulfilledRemaining && hasAnyReturned
+        ? RequestStatus.PARTIALLY_RETURNED
+        : RequestStatus.RETURNED;
 
     await tx
       .update(request)
       .set({
-        status: RequestStatus.RETURNED,
+        status: newStatus,
         updatedAt: returnedAt,
-        returnedAt,
+        returnedAt: newStatus === RequestStatus.RETURNED ? returnedAt : null,
       })
       .where(eq(request.id, existingRequest.id));
   });
@@ -612,8 +732,11 @@ async function handleApprovedStatusUpdate(
     return;
   }
 
+  const body = req.body as UpdateStatusBody;
+  const issueItems = body.issueItems;
+
   try {
-    await issueRequestTransaction(existingRequest);
+    await issueRequestTransaction(existingRequest, issueItems);
     const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
 
     await logAudit(
@@ -685,19 +808,26 @@ async function handleIssuedStatusUpdate(
   currentUser: CurrentUser,
   lastRenewReason: string | undefined,
 ) {
-  if (newStatus !== RequestStatus.RETURNED && newStatus !== RequestStatus.REQUESTED_RENEW) {
+  if (
+    newStatus !== RequestStatus.RETURNED &&
+    newStatus !== RequestStatus.REQUESTED_RENEW &&
+    newStatus !== RequestStatus.PARTIALLY_RETURNED
+  ) {
     reply.code(400).send({
-      error: 'issued request can only be set to RETURNED, RENEWED, or REQUESTED_RENEW',
+      error:
+        'issued request can only be set to RETURNED, PARTIALLY_RETURNED, RENEWED, or REQUESTED_RENEW',
     });
     return;
   }
-  if (newStatus === RequestStatus.RETURNED) {
+  if (newStatus === RequestStatus.RETURNED || newStatus === RequestStatus.PARTIALLY_RETURNED) {
     const authError = canIssueRequest(currentUser);
     if (authError) {
       reply.code(authError.code).send({ error: authError.message });
       return;
     }
-    await returnRequestTransaction(existingRequest);
+    const body = req.body as UpdateStatusBody;
+    const returnItems = body.returnItems;
+    await returnRequestTransaction(existingRequest, returnItems);
   } else if (newStatus === RequestStatus.REQUESTED_RENEW) {
     await requestForRenewalTransaction(existingRequest, lastRenewReason);
   }
@@ -822,6 +952,23 @@ async function handleUpdateRequestStatus(
         break;
       }
 
+      case RequestStatus.PARTIALLY_ISSUED: {
+        if (newStatus === RequestStatus.ISSUED) {
+          await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+        } else {
+          const lastRenewReason = body.lastRenewReason?.trim();
+          await handleIssuedStatusUpdate(
+            req,
+            reply,
+            existingRequest,
+            newStatus,
+            currentUser,
+            lastRenewReason,
+          );
+        }
+        break;
+      }
+
       case RequestStatus.REQUESTED_RENEW:
         await handleRequestedRenewalStatusUpdate(
           req,
@@ -832,7 +979,8 @@ async function handleUpdateRequestStatus(
         );
         break;
 
-      case RequestStatus.RENEWED: {
+      case RequestStatus.RENEWED:
+      case RequestStatus.PARTIALLY_RETURNED: {
         const renewedLastRenewReason = body.lastRenewReason?.trim();
         await handleIssuedStatusUpdate(
           req,
@@ -852,7 +1000,7 @@ async function handleUpdateRequestStatus(
       default:
         reply.code(400).send({
           error:
-            'request status can only be updated when status is PENDING, APPROVED, ISSUED, REQUESTED_RENEW, RENEWED, or EXPIRED',
+            'request status can only be updated when status is PENDING, APPROVED, ISSUED, PARTIALLY_ISSUED, REQUESTED_RENEW, RENEWED, PARTIALLY_RETURNED, or EXPIRED',
         });
     }
   } catch (err) {

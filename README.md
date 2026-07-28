@@ -61,6 +61,7 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 - **Auto-Expiry:** Fulfilled or renewed requests past their `returnDueAt` are automatically marked `EXPIRED` by a periodic background sweep.
 - **Request Renewals:** Students/TAs can submit renewal requests with a detailed reason, allowing nominating faculty or admins to extend the due date by another 30 days.
 - **Automatic Stock Restocking:** Returning components automatically increments `availableQuantity` on the backend, checking against `totalQuantity`.
+- **Partial Issue & Return:** Admins/LAs can issue/return specific quantities per item when stock is limited or partial returns occur. Requests track `fulfilledQuantity` per item with `PARTIALLY_ISSUED` and `PARTIALLY_RETURNED` statuses, enabling multi-step fulfillment and granular inventory control.
 
 ### 🛡️ Enterprise-Grade Admin Audit Logging
 - **Immutable Ledger:** Records all system activities like `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`, `REQUEST_STATUS_CHANGE`, and `INVENTORY_ADJUST`.
@@ -179,6 +180,7 @@ erDiagram
         text requestId FK
         text componentId FK
         integer quantity
+        integer fulfilledQuantity
         timestamp createdAt
         timestamp updatedAt
     }
@@ -217,21 +219,34 @@ stateDiagram-v2
     PENDING --> REJECTED : Faculty or Admin disapproves Request
     PENDING --> APPROVED : Faculty Supervisor approves Request
     
-    APPROVED --> ISSUED : Admin/LA hands over components & deducts stock
+    APPROVED --> ISSUED : Admin/LA hands over all components & deducts stock
+    APPROVED --> PARTIALLY_ISSUED : Admin/LA hands over some components (partial stock)
     APPROVED --> REJECTED : Admin cancels/rejects the pickup
     
-    ISSUED --> RETURNED : Student returns components & Admin/LA validates stock restock
+    ISSUED --> RETURNED : Student returns all components & Admin/LA validates stock restock
+    ISSUED --> PARTIALLY_RETURNED : Student returns some components (partial return)
     ISSUED --> EXPIRED : Return due date passed without return
     ISSUED --> REQUESTED_RENEW : Student requests extra time with reason
     
+    PARTIALLY_ISSUED --> ISSUED : Admin/LA hands over remaining components
+    PARTIALLY_ISSUED --> PARTIALLY_RETURNED : Student returns some of the issued components
+    PARTIALLY_ISSUED --> EXPIRED : Return due date passed without return
+    PARTIALLY_ISSUED --> REQUESTED_RENEW : Student requests extra time with reason
+    
+    PARTIALLY_RETURNED --> RETURNED : Student returns remaining components
+    PARTIALLY_RETURNED --> EXPIRED : Return due date passed without return
+    PARTIALLY_RETURNED --> REQUESTED_RENEW : Student requests extra time with reason
+    
     REQUESTED_RENEW --> RENEWED : Faculty or Admin approves renewal request
     REQUESTED_RENEW --> ISSUED : Renewal rejected (original deadline stands)
+    REQUESTED_RENEW --> PARTIALLY_ISSUED : Renewal rejected (partially issued deadline stands)
     REQUESTED_RENEW --> EXPIRED : Return due date passed without action
     
     RENEWED --> RETURNED : Student returns components after renewal
     RENEWED --> EXPIRED : Return due date passed without return
     
     EXPIRED --> RETURNED : Student returns an overdue request
+    EXPIRED --> PARTIALLY_RETURNED : Student returns some overdue components
     
     REJECTED --> [*]
     RETURNED --> [*]

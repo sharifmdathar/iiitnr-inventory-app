@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.data.models.RequestItem
 import com.iiitnr.inventoryapp.ui.components.components.ComponentImage
 
@@ -19,9 +20,12 @@ import com.iiitnr.inventoryapp.ui.components.components.ComponentImage
 fun RequestItemRow(
     item: RequestItem,
     modifier: Modifier = Modifier,
+    showFulfilled: Boolean = false,
 ) {
     val itemName = item.component?.name ?: item.componentId ?: "Unknown Component"
     val componentImageUrl = item.component?.imageUrl
+    val fulfilledQty = item.fulfilledQuantity
+    val isPartiallyFulfilled = showFulfilled && fulfilledQty > 0 && fulfilledQty < item.quantity
     Row(
         modifier =
             modifier
@@ -44,12 +48,31 @@ fun RequestItemRow(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
             )
-            Text(
-                text = "x${item.quantity}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            if (showFulfilled && fulfilledQty > 0) {
+                Text(
+                    text =
+                        if (isPartiallyFulfilled) {
+                            "x$fulfilledQty/${item.quantity}"
+                        } else {
+                            "x${item.quantity}"
+                        },
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    fontWeight = FontWeight.Bold,
+                    color =
+                        if (isPartiallyFulfilled) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                )
+            } else {
+                Text(
+                    text = "x${item.quantity}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }

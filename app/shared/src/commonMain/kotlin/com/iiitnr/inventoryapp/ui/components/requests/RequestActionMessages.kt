@@ -7,7 +7,9 @@ fun requestStatusActionSnackbarMessage(status: RequestStatus): String? =
         RequestStatus.APPROVED -> "Request approved"
         RequestStatus.REJECTED -> "Request rejected"
         RequestStatus.ISSUED -> "Request issued"
+        RequestStatus.PARTIALLY_ISSUED -> "Request partially issued"
         RequestStatus.RETURNED -> "Request marked returned"
+        RequestStatus.PARTIALLY_RETURNED -> "Request partially returned"
         RequestStatus.REQUESTED_RENEW -> "Renewal requested"
         RequestStatus.RENEWED -> "Renewal approved"
         else -> null

@@ -31,6 +31,10 @@ let createdComponentIds: string[] = [];
 const createdOtherUserIds: string[] = [];
 const requestStatus = {
   APPROVED: 'APPROVED',
+  ISSUED: 'ISSUED',
+  PARTIALLY_ISSUED: 'PARTIALLY_ISSUED',
+  RETURNED: 'RETURNED',
+  PARTIALLY_RETURNED: 'PARTIALLY_RETURNED',
 } as const;
 
 beforeAll(async () => {
@@ -1202,7 +1206,7 @@ describe('Request API', () => {
         targetFacultyId: facultyId,
         projectTitle: 'Renewed Return Test',
         status: 'RENEWED',
-        items: [{ componentId: item.id, quantity: 4 }],
+        items: [{ componentId: item.id, quantity: 4, fulfilledQuantity: 4 }],
       });
 
       const response = await app.inject({
@@ -1233,7 +1237,7 @@ describe('Request API', () => {
         targetFacultyId: facultyId,
         projectTitle: 'Expired Return Test',
         status: 'ISSUED',
-        items: [{ componentId: item.id, quantity: 4 }],
+        items: [{ componentId: item.id, quantity: 4, fulfilledQuantity: 4 }],
       });
       const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
       await db.update(request).set({ returnDueAt: overdueAt }).where(eq(request.id, req.id));
@@ -1279,6 +1283,367 @@ describe('Request API', () => {
       assert.ok(response.json().error.includes('RETURNED'));
       assert.equal((await findRequestById(req.id))?.status, 'RENEWED');
       assert.equal((await findComponentById(item.id))?.availableQuantity, 6);
+    });
+  });
+
+  describe('Partial Issue/Return', () => {
+    test('partial issue when stock insufficient for some items sets PARTIALLY_ISSUED', async () => {
+      const item1 = await createComponent({
+        name: 'Component A',
+        totalQuantity: 5,
+        availableQuantity: 2,
+      });
+      const item2 = await createComponent({
+        name: 'Component B',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item1.id, item2.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Partial Issue Test',
+        status: 'APPROVED',
+        items: [
+          { componentId: item1.id, quantity: 5 },
+          { componentId: item2.id, quantity: 3 },
+        ],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'ISSUED',
+          issueItems: [
+            { componentId: item1.id, quantity: 2 },
+            { componentId: item2.id, quantity: 3 },
+          ],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'PARTIALLY_ISSUED');
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'PARTIALLY_ISSUED');
+
+      const item1Row = updatedReq.items.find((i: any) => i.componentId === item1.id);
+      const item2Row = updatedReq.items.find((i: any) => i.componentId === item2.id);
+      assert.equal(item1Row?.fulfilledQuantity, 2);
+      assert.equal(item2Row?.fulfilledQuantity, 3);
+
+      const comp1 = await findComponentById(item1.id);
+      const comp2 = await findComponentById(item2.id);
+      assert.equal(comp1?.availableQuantity, 0);
+      assert.equal(comp2?.availableQuantity, 7);
+    });
+
+    test('partial issue with issueItems matching requested qty sets ISSUED', async () => {
+      const item = await createComponent({
+        name: 'Full Issue',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Full Issue Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 3 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'ISSUED',
+          issueItems: [{ componentId: item.id, quantity: 3 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'ISSUED');
+    });
+
+    test('re-issue on PARTIALLY_ISSUED completes remaining quantity', async () => {
+      const item = await createComponent({
+        name: 'Reissue Component',
+        totalQuantity: 10,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Reissue Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 5 }],
+      });
+
+      await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'ISSUED',
+          issueItems: [{ componentId: item.id, quantity: 2 }],
+        },
+      });
+
+      let updated = await findRequestById(req.id);
+      assert.equal(updated?.status, 'PARTIALLY_ISSUED');
+      assert.equal(updated?.items[0].fulfilledQuantity, 2);
+
+      const itemAfterFirst = await findComponentById(item.id);
+      assert.equal(itemAfterFirst?.availableQuantity, 8);
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'ISSUED',
+          issueItems: [{ componentId: item.id, quantity: 3 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      updated = await findRequestById(req.id);
+      assert.equal(updated?.status, 'ISSUED');
+      assert.equal(updated?.items[0].fulfilledQuantity, 5);
+
+      const itemAfterSecond = await findComponentById(item.id);
+      assert.equal(itemAfterSecond?.availableQuantity, 5);
+    });
+
+    test('partial return sets PARTIALLY_RETURNED when some items remain', async () => {
+      const item1 = await createComponent({
+        name: 'Return Comp A',
+        totalQuantity: 10,
+        availableQuantity: 8,
+      });
+      const item2 = await createComponent({
+        name: 'Return Comp B',
+        totalQuantity: 10,
+        availableQuantity: 7,
+      });
+      createdComponentIds.push(item1.id, item2.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Partial Return Test',
+        status: 'ISSUED',
+        items: [
+          { componentId: item1.id, quantity: 3, fulfilledQuantity: 3 },
+          { componentId: item2.id, quantity: 2, fulfilledQuantity: 2 },
+        ],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'RETURNED',
+          returnItems: [{ componentId: item1.id, quantity: 2 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'PARTIALLY_RETURNED');
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'PARTIALLY_RETURNED');
+
+      const item1Row = updatedReq.items.find((i: any) => i.componentId === item1.id);
+      const item2Row = updatedReq.items.find((i: any) => i.componentId === item2.id);
+      assert.equal(item1Row?.fulfilledQuantity, 1);
+      assert.equal(item2Row?.fulfilledQuantity, 2);
+
+      const comp1 = await findComponentById(item1.id);
+      const comp2 = await findComponentById(item2.id);
+      assert.equal(comp1?.availableQuantity, 10);
+      assert.equal(comp2?.availableQuantity, 7);
+    });
+
+    test('partial return of all fulfilled quantity sets RETURNED', async () => {
+      const item = await createComponent({
+        name: 'Full Return',
+        totalQuantity: 10,
+        availableQuantity: 7,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Full Return Test',
+        status: 'ISSUED',
+        items: [{ componentId: item.id, quantity: 3, fulfilledQuantity: 3 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'RETURNED',
+          returnItems: [{ componentId: item.id, quantity: 3 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'RETURNED');
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'RETURNED');
+      assert.equal(updatedReq.items[0].fulfilledQuantity, 0);
+
+      const comp = await findComponentById(item.id);
+      assert.equal(comp?.availableQuantity, 10);
+    });
+
+    test('returns 400 when issueItems exceeds available stock', async () => {
+      const item = await createComponent({
+        name: 'Low Stock',
+        totalQuantity: 5,
+        availableQuantity: 2,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Exceed Stock Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 3 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'ISSUED',
+          issueItems: [{ componentId: item.id, quantity: 3 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error.includes('insufficient quantity'));
+    });
+
+    test('returns 400 when returnItems exceeds fulfilled quantity', async () => {
+      const item = await createComponent({
+        name: 'Return Exceed',
+        totalQuantity: 10,
+        availableQuantity: 8,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Exceed Return Test',
+        status: 'ISSUED',
+        items: [{ componentId: item.id, quantity: 2, fulfilledQuantity: 2 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'RETURNED',
+          returnItems: [{ componentId: item.id, quantity: 5 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'RETURNED');
+      const updatedReq = await findRequestById(req.id);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 0);
+    });
+
+    test('PARTIALLY_ISSUED can transition to RETURNED', async () => {
+      const item = await createComponent({
+        name: 'Partial Issued Return',
+        totalQuantity: 10,
+        availableQuantity: 8,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Partial Issued Return',
+        status: 'PARTIALLY_ISSUED',
+        items: [{ componentId: item.id, quantity: 5, fulfilledQuantity: 3 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'RETURNED',
+          returnItems: [{ componentId: item.id, quantity: 3 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'RETURNED');
+      const updatedReq = await findRequestById(req.id);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 0);
+    });
+
+    test('PARTIALLY_RETURNED can transition to RETURNED', async () => {
+      const item = await createComponent({
+        name: 'Partial Returned Return',
+        totalQuantity: 10,
+        availableQuantity: 8,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Partial Returned Return',
+        status: 'PARTIALLY_RETURNED',
+        items: [{ componentId: item.id, quantity: 5, fulfilledQuantity: 2 }],
+      });
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/requests/${req.id}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          status: 'RETURNED',
+          returnItems: [{ componentId: item.id, quantity: 2 }],
+        },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.equal(body.request.status, 'RETURNED');
+      const updatedReq = await findRequestById(req.id);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 0);
     });
   });
 

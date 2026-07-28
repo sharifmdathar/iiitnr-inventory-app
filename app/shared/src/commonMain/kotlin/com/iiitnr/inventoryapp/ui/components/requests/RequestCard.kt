@@ -195,7 +195,9 @@ private fun RequestCardActions(
                 onShowQr = onShowQr,
             )
 
-        RequestStatus.ISSUED ->
+        RequestStatus.ISSUED,
+        RequestStatus.PARTIALLY_ISSUED,
+        ->
             IssuedRequestActions(
                 request = request,
                 isFaculty = isFaculty,
@@ -211,7 +213,9 @@ private fun RequestCardActions(
                 onApproveRenew = onApproveRenew,
             )
 
-        RequestStatus.RENEWED ->
+        RequestStatus.RENEWED,
+        RequestStatus.PARTIALLY_RETURNED,
+        ->
             RenewedRequestActions(
                 request = request,
                 isFaculty = isFaculty,
