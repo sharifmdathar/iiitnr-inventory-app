@@ -69,3 +69,5 @@ docker-data/
 # Runtime / Fastify
 # =========================
 .fastify/
+
+certs/

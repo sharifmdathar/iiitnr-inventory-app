@@ -1,15 +1,16 @@
-inventory.iiitnr.edu.in
+inventory.iiitnr.ac.in {
+    tls /etc/caddy/certs/acnew.pem /etc/caddy/certs/ac.key
 
-# Proxy to backend
-reverse_proxy backend:4000
+    reverse_proxy backend:4000
 
-encode zstd gzip
+    encode zstd gzip
 
-log {
-    output file /var/log/caddy/access.log {
-        roll_size 100mb
-        roll_keep 10
-        roll_keep_for 720h
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
     }
-    format json
 }

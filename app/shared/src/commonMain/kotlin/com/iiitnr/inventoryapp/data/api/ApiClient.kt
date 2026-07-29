@@ -11,7 +11,7 @@ import kotlinx.serialization.json.Json
 expect fun createHttpClient(block: HttpClientConfig<*>.() -> Unit = {}): HttpClient
 
 object ApiClient {
-    private const val BASE_URL = "https://iiitnr-inventory-backend.onrender.com"
+    private const val BASE_URL = "https://inventory.iiitnr.ac.in"
     // For Release Build: "https://iiitnr-inventory-backend.onrender.com"
     // For Android Emulator: "http://10.0.2.2:4000"
     // For Desktop: "http://localhost:4000"

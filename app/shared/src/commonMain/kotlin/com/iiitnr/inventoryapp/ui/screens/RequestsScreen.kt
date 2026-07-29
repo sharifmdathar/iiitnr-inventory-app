@@ -51,7 +51,6 @@ import com.iiitnr.inventoryapp.ui.components.requests.RenewReasonDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
-
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusDisplayLabel
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
@@ -254,39 +253,41 @@ fun RequestsScreen(
         updateRequestStatus(request.id, RequestStatus.RETURNED, returnItems = items)
     }
 
-  fun openScannedRequest(rawValue: String) {
-  val requestId = rawValue.trim().removePrefix(REQUEST_QR_PREFIX).trim()
-  if (requestId.isBlank()) {
-    return
-  }
+    fun openScannedRequest(rawValue: String) {
+        val requestId = rawValue.trim().removePrefix(REQUEST_QR_PREFIX).trim()
+        if (requestId.isBlank()) {
+            return
+        }
 
-  val request = requests.firstOrNull { it.id == requestId }
-  if (request == null) {
-    scope.launch {
-      snackbarHostState.showSnackbar("Request not found. Refresh and try again.")
+        val request = requests.firstOrNull { it.id == requestId }
+        if (request == null) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Request not found. Refresh and try again.")
+            }
+            return
+        }
+
+        requestIdInput = requestId
+        showRequestIdDialog = false
+
+        when (request.status) {
+            RequestStatus.APPROVED,
+            RequestStatus.PARTIALLY_ISSUED,
+            -> updateRequestStatusPartialIssue(request)
+            RequestStatus.ISSUED,
+            RequestStatus.RENEWED,
+            RequestStatus.EXPIRED,
+            RequestStatus.PARTIALLY_RETURNED,
+            -> updateRequestStatusPartialReturn(request)
+            else -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        "No action available for status: ${requestStatusDisplayLabel(request.status)}",
+                    )
+                }
+            }
+        }
     }
-    return
-  }
-
-  requestIdInput = requestId
-  showRequestIdDialog = false
-
-  when (request.status) {
-    RequestStatus.APPROVED,
-    RequestStatus.PARTIALLY_ISSUED,
-    -> updateRequestStatusPartialIssue(request)
-    RequestStatus.ISSUED,
-    RequestStatus.RENEWED,
-    RequestStatus.EXPIRED,
-    RequestStatus.PARTIALLY_RETURNED,
-    -> updateRequestStatusPartialReturn(request)
-    else -> {
-      scope.launch {
-        snackbarHostState.showSnackbar("No action available for status: ${requestStatusDisplayLabel(request.status)}")
-      }
-    }
-  }
-}
 
     fun loadUserData() {
         scope.launch {

@@ -1331,8 +1331,12 @@ describe('Request API', () => {
       assert.ok(updatedReq);
       assert.equal(updatedReq.status, 'PARTIALLY_ISSUED');
 
-      const item1Row = updatedReq.items.find((i: any) => i.componentId === item1.id);
-      const item2Row = updatedReq.items.find((i: any) => i.componentId === item2.id);
+      const item1Row = updatedReq.items.find(
+        (i: { componentId: string; fulfilledQuantity: number }) => i.componentId === item1.id,
+      );
+      const item2Row = updatedReq.items.find(
+        (i: { componentId: string; fulfilledQuantity: number }) => i.componentId === item2.id,
+      );
       assert.equal(item1Row?.fulfilledQuantity, 2);
       assert.equal(item2Row?.fulfilledQuantity, 3);
 
@@ -1467,8 +1471,12 @@ describe('Request API', () => {
       assert.ok(updatedReq);
       assert.equal(updatedReq.status, 'PARTIALLY_RETURNED');
 
-      const item1Row = updatedReq.items.find((i: any) => i.componentId === item1.id);
-      const item2Row = updatedReq.items.find((i: any) => i.componentId === item2.id);
+      const item1Row = updatedReq.items.find(
+        (i: { componentId: string; fulfilledQuantity: number }) => i.componentId === item1.id,
+      );
+      const item2Row = updatedReq.items.find(
+        (i: { componentId: string; fulfilledQuantity: number }) => i.componentId === item2.id,
+      );
       assert.equal(item1Row?.fulfilledQuantity, 1);
       assert.equal(item2Row?.fulfilledQuantity, 2);
 
