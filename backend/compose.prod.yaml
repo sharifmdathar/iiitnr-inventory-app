@@ -41,6 +41,8 @@ services:
           memory: 512M
     networks:
       - app
+    volumes:
+      - ./uploads:/app/uploads
 
 volumes:
   caddy_data:

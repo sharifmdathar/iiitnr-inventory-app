@@ -91,6 +91,7 @@ kotlin {
                 implementation("org.jetbrains.compose.material3:material3:${libs.versions.material3.get()}")
 
                 implementation(libs.material.icons.extended)
+                implementation("org.jetbrains.compose.components:components-resources:$composeVersion")
 
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)

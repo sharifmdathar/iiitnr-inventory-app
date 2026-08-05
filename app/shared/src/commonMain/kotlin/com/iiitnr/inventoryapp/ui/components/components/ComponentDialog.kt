@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,6 +22,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +45,8 @@ fun ComponentDialog(
     component: Component?,
     onDismiss: () -> Unit,
     onSave: (ComponentRequest) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
 ) {
     var name by remember { mutableStateOf(component?.name.orEmpty()) }
     var description by remember { mutableStateOf(component?.description.orEmpty()) }
@@ -90,6 +96,8 @@ fun ComponentDialog(
                 },
                 onCategoryChange = { category = it },
                 onLocationChange = { location = it },
+                onPickImage = onPickImage,
+                onRemoveImage = { imageUrl = "" },
             )
         },
         confirmButton = {
@@ -142,6 +150,8 @@ private fun ComponentDialogFields(
     onAvailableQuantityChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
     onLocationChange: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -170,13 +180,33 @@ private fun ComponentDialogFields(
             maxLines = 3,
         )
 
-        OutlinedTextField(
-            value = imageUrl,
-            onValueChange = onImageUrlChange,
-            label = { Text("Image URL (optional)") },
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = imageUrl,
+                onValueChange = onImageUrlChange,
+                label = { Text("Image URL (optional") },
+                modifier = Modifier.weight(1f),
+                singleLine = true
+            )
+            Button(onClick = onPickImage) {
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = "Pick Image"
+                )
+            }
+            if (imageUrl.isNotBlank()) {
+                Button(onClick = onRemoveImage) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Remove Image"
+                    )
+                }
+            }
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

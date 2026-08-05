@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,12 +34,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.GoogleSignInRequest
 import com.iiitnr.inventoryapp.data.models.LoginRequest
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import iiitnr_inventory_app.shared.generated.resources.Google__G__logo
+import iiitnr_inventory_app.shared.generated.resources.Res
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -262,8 +265,8 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    AsyncImage(
-                        model = "https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png",
+                    Image(
+                        painter = painterResource(Res.drawable.Google__G__logo),
                         contentDescription = "Google",
                         modifier = Modifier.size(20.dp),
                     )

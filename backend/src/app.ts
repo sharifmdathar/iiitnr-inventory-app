@@ -199,9 +199,12 @@ async function registerPlugins(app: FastifyInstance, env: AppEnvironment) {
     origin: buildCorsOrigin(env, allowedOrigins),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Last-Modified'],
   });
 
-  await app.register(helmet);
+  await app.register(helmet, {
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
 
   if (!env.isTest) {
     await app.register(rateLimit, buildRateLimitConfig());

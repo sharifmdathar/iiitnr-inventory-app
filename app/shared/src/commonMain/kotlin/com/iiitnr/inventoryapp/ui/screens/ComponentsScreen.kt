@@ -442,6 +442,47 @@ fun ComponentsScreen(
                 }
             }
         },
+        onPickImage = {
+            scope.launch {
+                val image =
+                    com.iiitnr.inventoryapp.ui.platform
+                        .pickImage()
+                if (image != null && editingComponent != null) {
+                    try {
+                        val token = tokenManager.token.first()
+                        if (token != null) {
+                            ApiClient.componentApiService.uploadImage(
+                                "Bearer $token",
+                                editingComponent!!.id,
+                                image.bytes,
+                                image.filename,
+                            )
+                            loadComponents()
+                        }
+                    } catch (e: Throwable) {
+                        errorMessage = "Error uploading image: ${e.message}"
+                    }
+                }
+            }
+        },
+        onRemoveImage = {
+            scope.launch {
+                if (editingComponent != null) {
+                    try {
+                        val token = tokenManager.token.first()
+                        if (token != null) {
+                            ApiClient.componentApiService.deleteImage(
+                                "Bearer $token",
+                                editingComponent!!.id,
+                            )
+                            loadComponents()
+                        }
+                    } catch (e: Throwable) {
+                        errorMessage = "Error removing image: ${e.message}"
+                    }
+                }
+            }
+        },
         showDeleteDialog = if (!isReadOnly) showDeleteDialog else null,
         onDismissDelete = { showDeleteDialog = null },
         onConfirmDelete = { component ->
@@ -578,6 +619,8 @@ private fun ComponentsDialogs(
     editingComponent: Component?,
     onDismissEdit: () -> Unit,
     onSaveEdit: (ComponentRequest) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
     showDeleteDialog: Component?,
     onDismissDelete: () -> Unit,
     onConfirmDelete: (Component) -> Unit,
@@ -602,6 +645,8 @@ private fun ComponentsDialogs(
             component = editingComponent,
             onDismiss = onDismissEdit,
             onSave = { onSaveEdit(it) },
+            onPickImage = onPickImage,
+            onRemoveImage = onRemoveImage,
         )
     }
 
