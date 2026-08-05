@@ -24,7 +24,34 @@
 <body>
     <canvas id="compose-app"></canvas>
     <script src="web.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
+            window.iiitnrGoogleClientId = '';
+            window.iiitnrGoogleSignIn = function () {
+                return new Promise(function (resolve, reject) {
+                    var clientId = window.iiitnrGoogleClientId || '';
+                    if (!clientId) {
+                        reject(new Error('Google client ID not configured'));
+                        return;
+                    }
+                    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+                        reject(new Error('Google Identity Services failed to load'));
+                        return;
+                    }
+                    window.google.accounts.id.initialize({
+                        client_id: clientId,
+                        callback: function (resp) {
+                            if (resp && resp.credential) {
+                                resolve(resp.credential);
+                            } else {
+                                reject(new Error(resp && resp.error ? resp.error : 'Google sign-in was cancelled or failed'));
+                            }
+                        },
+                    });
+                    window.google.accounts.id.prompt();
+                });
+            };
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js');

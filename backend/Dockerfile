@@ -21,7 +21,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 WORKDIR /app
 
-RUN mkdir -p /app/tmp && chown bunuser:nodejs /app/tmp
+RUN mkdir -p /app/tmp /app/uploads/images && chown -R bunuser:nodejs /app
 
 COPY --from=builder --chown=bunuser:nodejs /app/server ./server
 COPY --from=builder --chown=bunuser:nodejs /app/migrate ./migrate

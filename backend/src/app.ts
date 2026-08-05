@@ -213,11 +213,11 @@ async function registerPlugins(app: FastifyInstance, env: AppEnvironment) {
   });
 
   await app.register(multipart, {
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024 },
   });
 
   await app.register(staticFiles, {
-    root: join(import.meta.dirname, '..', 'uploads'),
+    root: join(process.cwd(), 'uploads'),
     prefix: '/uploads/',
   });
 }
@@ -276,8 +276,7 @@ export async function buildApp() {
   const env = getAppEnvironment();
 
   const app = Fastify({
-    // Keep the global limit above the 5 MB image upload cap plus multipart overhead.
-    bodyLimit: 6 * 1024 * 1024,
+    bodyLimit: 11 * 1024 * 1024,
     logger: buildLoggerConfig(env),
   });
 

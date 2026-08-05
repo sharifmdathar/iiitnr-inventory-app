@@ -27,6 +27,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Inject Google Web Client ID
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        run: |
+          if [ -n "$GOOGLE_WEB_CLIENT_ID" ]; then
+            sed -i "s/window.iiitnrGoogleClientId = ''/window.iiitnrGoogleClientId = '$GOOGLE_WEB_CLIENT_ID'/" \
+              app/web/src/wasmJsMain/resources/index.html
+          fi
+
       - name: Build Web App
         working-directory: app
         run: |

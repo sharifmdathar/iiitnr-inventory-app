@@ -44,7 +44,7 @@ afterAll(async () => {
   await app.close();
 });
 
-const UPLOADS_IMAGES_DIR = join(import.meta.dirname, '..', 'uploads', 'images');
+const UPLOADS_IMAGES_DIR = join(process.cwd(), 'uploads', 'images');
 
 function cleanUploadsDir() {
   if (!existsSync(UPLOADS_IMAGES_DIR)) return;
@@ -58,6 +58,14 @@ function cleanUploadsDir() {
     }
   }
 }
+
+const VALID_PNG = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+  0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
+  0x42, 0x60, 0x82,
+]);
 
 function buildMultipartBody(params: {
   fieldName: string;
@@ -97,9 +105,9 @@ describe('Component image uploads', () => {
 
     const upload = buildMultipartBody({
       fieldName: 'image',
-      filename: 'component.jpg',
-      contentType: 'image/jpeg',
-      bytes: Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x43, 0x00]),
+      filename: 'component.png',
+      contentType: 'image/png',
+      bytes: VALID_PNG,
     });
 
     const uploadResponse = await app.inject({
@@ -116,6 +124,7 @@ describe('Component image uploads', () => {
     const uploadBody = uploadResponse.json();
     assert.ok(uploadBody.imageUrl.includes('/uploads/images/'));
     assert.equal(uploadBody.component.imageUrl, uploadBody.imageUrl);
+    assert.ok(uploadBody.imageUrl.endsWith('.webp'));
 
     let logs = await getImageAuditLogs(component.id);
     let uploadLog = logs.find((entry) => entry.action === 'UPDATE');
@@ -220,13 +229,11 @@ describe('Component image uploads', () => {
       availableQuantity: 1,
     });
 
-    // Minimal valid PNG magic: 8-byte signature
-    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     const upload = buildMultipartBody({
       fieldName: 'image',
       filename: 'component.png',
       contentType: 'image/png',
-      bytes: pngSignature,
+      bytes: VALID_PNG,
     });
 
     const response = await app.inject({
@@ -240,7 +247,7 @@ describe('Component image uploads', () => {
     });
 
     assert.equal(response.statusCode, 200);
-    assert.ok(response.json().imageUrl.endsWith('.png'));
+    assert.ok(response.json().imageUrl.endsWith('.webp'));
 
     await deleteComponents([component.id]);
   });
@@ -253,7 +260,7 @@ describe('Component image uploads', () => {
     });
 
     const jpegMagic = Buffer.from([0xff, 0xd8, 0xff]);
-    const oversized = Buffer.alloc(5 * 1024 * 1024 + 1, 0x11);
+    const oversized = Buffer.alloc(11 * 1024 * 1024 + 1, 0x11);
     const upload = buildMultipartBody({
       fieldName: 'image',
       filename: 'component.jpg',
@@ -337,9 +344,9 @@ describe('Component image authorization', () => {
 
     const upload = buildMultipartBody({
       fieldName: 'image',
-      filename: 'component.jpg',
-      contentType: 'image/jpeg',
-      bytes: Buffer.from([0xff, 0xd8, 0xff]),
+      filename: 'component.png',
+      contentType: 'image/png',
+      bytes: VALID_PNG,
     });
 
     const response = await app.inject({
@@ -363,9 +370,9 @@ describe('Component image authorization', () => {
 
     const upload = buildMultipartBody({
       fieldName: 'image',
-      filename: 'component.jpg',
-      contentType: 'image/jpeg',
-      bytes: Buffer.from([0xff, 0xd8, 0xff]),
+      filename: 'component.png',
+      contentType: 'image/png',
+      bytes: VALID_PNG,
     });
 
     const response = await app.inject({
@@ -392,9 +399,9 @@ describe('Component image authorization', () => {
 
     const upload = buildMultipartBody({
       fieldName: 'image',
-      filename: 'component.jpg',
-      contentType: 'image/jpeg',
-      bytes: Buffer.from([0xff, 0xd8, 0xff]),
+      filename: 'component.png',
+      contentType: 'image/png',
+      bytes: VALID_PNG,
     });
 
     const response = await app.inject({
@@ -421,9 +428,9 @@ describe('Component image authorization', () => {
 
     const upload = buildMultipartBody({
       fieldName: 'image',
-      filename: 'component.jpg',
-      contentType: 'image/jpeg',
-      bytes: Buffer.from([0xff, 0xd8, 0xff]),
+      filename: 'component.png',
+      contentType: 'image/png',
+      bytes: VALID_PNG,
     });
 
     const response = await app.inject({
@@ -445,9 +452,9 @@ describe('Component image authorization', () => {
   test('upload returns 404 for missing component', async () => {
     const upload = buildMultipartBody({
       fieldName: 'image',
-      filename: 'component.jpg',
-      contentType: 'image/jpeg',
-      bytes: Buffer.from([0xff, 0xd8, 0xff]),
+      filename: 'component.png',
+      contentType: 'image/png',
+      bytes: VALID_PNG,
     });
 
     const response = await app.inject({
@@ -564,9 +571,9 @@ describe('Component image authorization', () => {
 
     const upload = buildMultipartBody({
       fieldName: 'image',
-      filename: 'component.jpg',
-      contentType: 'image/jpeg',
-      bytes: Buffer.from([0xff, 0xd8, 0xff]),
+      filename: 'component.png',
+      contentType: 'image/png',
+      bytes: VALID_PNG,
     });
 
     const uploadResponse = await app.inject({

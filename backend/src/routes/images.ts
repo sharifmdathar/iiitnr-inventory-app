@@ -9,11 +9,12 @@ import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 
-const UPLOADS_DIR = join(import.meta.dirname, '..', '..', 'uploads', 'images');
+const UPLOADS_DIR = join(process.cwd(), 'uploads', 'images');
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const MAGIC_SIGNATURES: ReadonlyArray<{ type: string; match: (bytes: Buffer) => boolean }> = [
   {
@@ -64,17 +65,6 @@ function getPublicUrl(req: FastifyRequest, filename: string): string {
   const host = req.headers.host ?? 'localhost:4000';
   const protocol = req.protocol ?? 'http';
   return `${protocol}://${host}/uploads/images/${filename}`;
-}
-
-function mimeToExt(mimeType: string): string {
-  const map: Record<string, string> = {
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/webp': '.webp',
-    'image/gif': '.gif',
-    'image/avif': '.avif',
-  };
-  return map[mimeType] ?? '.jpg';
 }
 
 function deleteFileIfLocal(imageUrl: string | null | undefined): void {
@@ -128,7 +118,7 @@ async function handleUploadComponentImage(
     const bytes = Buffer.concat(chunks);
 
     if (data.file.truncated) {
-      return reply.code(413).send({ error: 'file too large. Max 5MB' });
+      return reply.code(413).send({ error: 'file too large. Max 10MB' });
     }
 
     const detectedType = detectImageType(bytes);
@@ -138,10 +128,24 @@ async function handleUploadComponentImage(
       });
     }
 
-    const filename = `${randomUUID()}${mimeToExt(detectedType)}`;
+    let processedBuffer: Buffer;
+    try {
+      processedBuffer = await sharp(bytes)
+        .resize(1024, 1024, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 80 })
+        .toBuffer();
+    } catch (err) {
+      app.log.error(err);
+      return reply.code(400).send({ error: 'invalid or corrupted image data' });
+    }
+
+    const filename = `${randomUUID()}.webp`;
     const filePath = join(UPLOADS_DIR, filename);
 
-    await writeFile(filePath, bytes);
+    await writeFile(filePath, processedBuffer);
 
     deleteFileIfLocal(existing.imageUrl);
 
