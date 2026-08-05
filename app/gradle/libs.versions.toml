@@ -12,7 +12,7 @@ kotlin = "2.4.10"
 composeBom = "2026.06.01"
 composeMultiplatform = "1.11.1"
 kotlinxSerialization = "1.11.0"
-ktor = "3.5.1"
+ktor = "3.5.2"
 material3 = "1.10.0-alpha05"
 materialIconsExtended = "1.7.3"
 navigationComposeVersion = "2.9.2"
@@ -27,7 +27,7 @@ cameraX = "1.6.1"
 zxingCore = "3.5.4"
 sqldelight = "2.3.2"
 ktlint = "14.2.0"
-detekt = "2.0.0-alpha.5"
+detekt = "2.0.0-alpha.6"
 
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }

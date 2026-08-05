@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
@@ -22,7 +21,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -190,19 +188,19 @@ private fun ComponentDialogFields(
                 onValueChange = onImageUrlChange,
                 label = { Text("Image URL (optional") },
                 modifier = Modifier.weight(1f),
-                singleLine = true
+                singleLine = true,
             )
             Button(onClick = onPickImage) {
                 Icon(
                     imageVector = Icons.Default.PhotoCamera,
-                    contentDescription = "Pick Image"
+                    contentDescription = "Pick Image",
                 )
             }
             if (imageUrl.isNotBlank()) {
                 Button(onClick = onRemoveImage) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Remove Image"
+                        contentDescription = "Remove Image",
                     )
                 }
             }

@@ -38,9 +38,7 @@ import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.GoogleSignInRequest
 import com.iiitnr.inventoryapp.data.models.LoginRequest
 import com.iiitnr.inventoryapp.data.storage.TokenManager
-import iiitnr_inventory_app.shared.generated.resources.*
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -265,7 +263,7 @@ fun LoginScreen(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Image(
-                        painter = painterResource(Res.drawable.google_g_logo),
+                        painter = googleSignInPainter(),
                         contentDescription = "Google",
                         modifier = Modifier.size(20.dp),
                     )

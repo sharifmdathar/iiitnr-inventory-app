@@ -170,6 +170,10 @@ sqldelight {
     }
 }
 
+compose.resources {
+    packageOfResClass = "com.iiitnr.inventoryapp.shared"
+}
+
 detekt {
     buildUponDefaultConfig = true
     allRules = false

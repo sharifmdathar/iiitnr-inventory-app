@@ -195,15 +195,23 @@ private fun RequestCardActions(
                 onShowQr = onShowQr,
             )
 
-        RequestStatus.ISSUED,
-        RequestStatus.PARTIALLY_ISSUED,
-        ->
+        RequestStatus.ISSUED ->
             IssuedRequestActions(
                 request = request,
                 isFaculty = isFaculty,
                 onReturnRequest = onReturnRequest,
                 onRequestRenew = onRequestRenew,
                 onShowQr = onShowQr,
+            )
+
+        RequestStatus.PARTIALLY_ISSUED ->
+            IssuedRequestActions(
+                request = request,
+                isFaculty = isFaculty,
+                onReturnRequest = onReturnRequest,
+                onRequestRenew = onRequestRenew,
+                onShowQr = onShowQr,
+                onFulfillRequest = onFulfillRequest,
             )
 
         RequestStatus.REQUESTED_RENEW ->
@@ -308,6 +316,7 @@ private fun IssuedRequestActions(
     onReturnRequest: ((String) -> Unit)?,
     onRequestRenew: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
+    onFulfillRequest: ((String) -> Unit)? = null,
 ) {
     RequestLifecycleActionRow(
         request = request,
@@ -317,6 +326,15 @@ private fun IssuedRequestActions(
         onShowQr = onShowQr,
         returnContentDescription = "Record return to inventory",
     )
+    if (onFulfillRequest != null) {
+        IconButton(onClick = { onFulfillRequest(request.id) }) {
+            Icon(
+                imageVector = Icons.Default.DoneAll,
+                contentDescription = "Issue more items",
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
 }
 
 @Composable

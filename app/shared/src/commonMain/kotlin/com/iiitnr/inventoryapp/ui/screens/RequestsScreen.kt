@@ -17,7 +17,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -81,6 +84,7 @@ fun RequestsScreen(
     var currentUser by remember { mutableStateOf<User?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var statusFilter by remember { mutableStateOf<RequestStatus?>(null) }
+    var pendingActionSelectionRequest by remember { mutableStateOf<Request?>(null) }
     var pendingPartialIssueRequest by remember { mutableStateOf<Request?>(null) }
     var issueItemsInput by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var pendingPartialReturnRequest by remember { mutableStateOf<Request?>(null) }
@@ -271,9 +275,10 @@ fun RequestsScreen(
         showRequestIdDialog = false
 
         when (request.status) {
-            RequestStatus.APPROVED,
-            RequestStatus.PARTIALLY_ISSUED,
-            -> updateRequestStatusPartialIssue(request)
+            RequestStatus.APPROVED -> updateRequestStatusPartialIssue(request)
+            RequestStatus.PARTIALLY_ISSUED -> {
+                pendingActionSelectionRequest = request
+            }
             RequestStatus.ISSUED,
             RequestStatus.RENEWED,
             RequestStatus.EXPIRED,
@@ -372,6 +377,23 @@ fun RequestsScreen(
                 returnItemsInput = emptyMap()
             },
         )
+
+        pendingActionSelectionRequest?.let { request ->
+            RequestActionSelectionDialog(
+                request = request,
+                onIssueMore = {
+                    pendingActionSelectionRequest = null
+                    updateRequestStatusPartialIssue(request)
+                },
+                onCollectReturn = {
+                    pendingActionSelectionRequest = null
+                    updateRequestStatusPartialReturn(request)
+                },
+                onDismiss = {
+                    pendingActionSelectionRequest = null
+                },
+            )
+        }
 
         Scaffold(
             topBar = {
@@ -723,7 +745,7 @@ fun PartialIssueDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        androidx.compose.material3.OutlinedTextField(
+                        OutlinedTextField(
                             value = qty.toString(),
                             onValueChange = { text ->
                                 val newQty = text.toIntOrNull() ?: 0
@@ -797,7 +819,7 @@ fun PartialReturnDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        androidx.compose.material3.OutlinedTextField(
+                        OutlinedTextField(
                             value = qty.toString(),
                             onValueChange = { text ->
                                 val newQty = text.toIntOrNull() ?: 0
@@ -817,6 +839,53 @@ fun PartialReturnDialog(
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text("Return", color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+fun RequestActionSelectionDialog(
+    request: Request,
+    onIssueMore: () -> Unit,
+    onCollectReturn: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Action") },
+        text = {
+            Column {
+                Text(
+                    text = "Request for: ${request.projectTitle}",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("This request is partially issued. What would you like to do?")
+            }
+        },
+        confirmButton = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onIssueMore,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Issue More Items")
+                }
+                OutlinedButton(
+                    onClick = onCollectReturn,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Collect Return")
+                }
             }
         },
         dismissButton = {
