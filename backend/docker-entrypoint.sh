@@ -2,7 +2,7 @@
 set -e
 
 echo "Running database migrations..."
-./migrate
+bun run src/index.ts
 
 echo "Starting server..."
-exec ./server
+exec bun run src/server.ts

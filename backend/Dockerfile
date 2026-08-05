@@ -4,41 +4,24 @@ WORKDIR /app
 FROM base AS builder
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
-COPY src ./src
-COPY tsconfig.json ./
-ENV NODE_ENV=production
-RUN bun build src/server.ts --minify --compile --outfile server && \
-    bun build src/index.ts --minify --compile --outfile migrate
+COPY . .
+RUN bun run typecheck
 
-FROM alpine:3.23.3 AS runner
+RUN rm -rf node_modules && bun install --frozen-lockfile --production
 
-RUN apk add --no-cache \
-      openssl ca-certificates libgcc libstdc++ && \
-    rm -rf /var/cache/apk/* /usr/share/apk
-
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 bunuser
+FROM base AS runner
+RUN apk add --no-cache openssl ca-certificates libgcc libstdc++
 
 WORKDIR /app
+RUN mkdir -p /app/tmp /app/uploads/images
 
-RUN mkdir -p /app/tmp /app/uploads/images && chown -R bunuser:nodejs /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --from=builder /app/src/drizzle ./drizzle
 
-COPY --from=builder --chown=bunuser:nodejs /app/server ./server
-COPY --from=builder --chown=bunuser:nodejs /app/migrate ./migrate
-COPY --from=builder --chown=bunuser:nodejs /app/src/drizzle ./drizzle
-COPY --chown=bunuser:nodejs package.json ./package.json
-COPY --chown=bunuser:nodejs docker-entrypoint.sh ./docker-entrypoint.sh
-
-ENV NODE_ENV=production
-ENV TMPDIR=/app/tmp
-ENV MIGRATIONS_FOLDER=/app/drizzle
-
-RUN chmod +x docker-entrypoint.sh
-
-USER bunuser
+RUN chown -R bun:bun /app
+USER bun
 EXPOSE 4000
-
-HEALTHCHECK --interval=30s --timeout=5s --retries=5 --start-period=60s \
-  CMD sh -c 'wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/ready || wget --no-verbose --tries=1 --spider http://[::1]:4000/ready || exit 1'
-
 ENTRYPOINT ["./docker-entrypoint.sh"]
