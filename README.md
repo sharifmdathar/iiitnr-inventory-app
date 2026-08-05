@@ -52,6 +52,8 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 - **Hierarchical Layout:** Components organized by categories (`Sensors`, `Actuators`, `Microcontrollers`, `Microprocessors`, `Others`).
 - **Physical Locations:** Tracks lab inventory mapping directly to physical college labs (`IoT_Lab`, `Robo_Lab`, `VLSI_Lab`).
 - **Real-time Stock Auditing:** Separates `totalQuantity` from `availableQuantity` dynamically, updating automatically as items are requested, approved, and returned.
+- **Cross-Platform Image Workflow:** Component images can be selected on Android, Desktop, and iOS, uploaded to the backend, and recorded in the audit log when they change.
+- **Upload Guardrails:** Image uploads are restricted to common formats (`JPEG`, `PNG`, `WEBP`, `GIF`, `AVIF`) and capped at `5 MB`.
 - **Platform-Native Data Export:** Built-in tool to export the component database to a CSV file from the client top bar (uses platform-specific storage on Android and Desktop).
 
 ### 🔄 Multi-State Issue, Return & Renewal System

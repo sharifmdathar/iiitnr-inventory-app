@@ -71,3 +71,5 @@ docker-data/
 .fastify/
 
 certs/
+
+uploads/

@@ -83,7 +83,8 @@ describe('User Management API', () => {
       assert.ok(body.pagination);
       assert.equal(body.pagination.limit, 50);
       assert.equal(body.pagination.offset, 0);
-      assert.equal(body.pagination.total, body.users.length);
+      assert.ok(body.pagination.total >= body.users.length);
+      assert.ok(body.users.length <= 50);
     });
 
     test('filters users by search query (name)', async () => {

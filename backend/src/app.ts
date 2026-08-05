@@ -1,13 +1,17 @@
 import 'dotenv/config';
 import fs from 'node:fs';
+import { join } from 'node:path';
 import Fastify from 'fastify';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
+import multipart from '@fastify/multipart';
+import staticFiles from '@fastify/static';
 import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
+import imagesRoutes from './routes/images.js';
 import { startRequestExpirySweep } from './services/request-expiry.js';
 
 interface AppEnvironment {
@@ -207,6 +211,15 @@ async function registerPlugins(app: FastifyInstance, env: AppEnvironment) {
     secret: getJwtSecret(),
     sign: { expiresIn: '7d' },
   });
+
+  await app.register(multipart, {
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+
+  await app.register(staticFiles, {
+    root: join(import.meta.dirname, '..', 'uploads'),
+    prefix: '/uploads/',
+  });
 }
 
 function setupContentParsers(app: FastifyInstance) {
@@ -263,7 +276,8 @@ export async function buildApp() {
   const env = getAppEnvironment();
 
   const app = Fastify({
-    bodyLimit: 512 * 1024,
+    // Keep the global limit above the 5 MB image upload cap plus multipart overhead.
+    bodyLimit: 6 * 1024 * 1024,
     logger: buildLoggerConfig(env),
   });
 
