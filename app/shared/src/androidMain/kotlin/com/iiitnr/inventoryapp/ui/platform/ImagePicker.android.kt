@@ -2,8 +2,12 @@ package com.iiitnr.inventoryapp.ui.platform
 
 import android.app.Activity
 import android.net.Uri
+import android.os.Build
+import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.CompletableDeferred
@@ -18,6 +22,7 @@ fun setImagePickerActivity(activity: Activity) {
     ImagePickerState.activity = activity
 }
 
+@RequiresApi(Build.VERSION_CODES.JELLY_BEAN)
 @Composable
 fun ImagePickerLauncher() {
     val launcher =
@@ -32,7 +37,31 @@ fun ImagePickerLauncher() {
                     try {
                         ctx.contentResolver.openInputStream(uri)?.use { input ->
                             val bytes = input.readBytes()
-                            val filename = uri.lastPathSegment?.substringAfterLast('/') ?: "image"
+
+                            var filename: String? = null
+                            if (uri.scheme == "content") {
+                                val cursor = ctx.contentResolver.query(uri, null, null, null, null)
+                                cursor.use { cursor ->
+                                    if (cursor != null && cursor.moveToFirst()) {
+                                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                        if (nameIndex != -1) {
+                                            filename = cursor.getString(nameIndex)
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (filename == null) {
+                                filename = uri.lastPathSegment ?: "image"
+                            }
+                            if (!filename.contains('.')) {
+                                val mimeType = ctx.contentResolver.getType(uri)
+                                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+                                if (extension != null) {
+                                    filename = "$filename.$extension"
+                                }
+                            }
+
                             deferred?.complete(ImageResult(bytes, filename))
                         } ?: deferred?.complete(null)
                     } catch (_: Exception) {

@@ -247,6 +247,8 @@ internal fun ComponentImage(
         }
     }
     if (!imageUrl.isNullOrBlank()) {
+        val shape = RoundedCornerShape(8.dp)
+        val sanitizedUrl = imageUrl.replace("http://", "https://")
         val imageModifier =
             if (onClick != null) {
                 modifier.clip(shape).clickable(onClick = onClick)
@@ -254,7 +256,7 @@ internal fun ComponentImage(
                 modifier.clip(shape)
             }
         SubcomposeAsyncImage(
-            model = imageUrl,
+            model = sanitizedUrl,
             contentDescription = "Component image",
             modifier = imageModifier,
             contentScale = ContentScale.Crop,

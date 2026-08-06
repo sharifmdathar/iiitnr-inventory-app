@@ -193,8 +193,9 @@ fun ProfileScreen(
 @Composable
 fun ProfilePicture(imageUrl: String?) {
     if (imageUrl != null) {
+        val sanitizedUrl = imageUrl.replace("http://", "https://")
         AsyncImage(
-            model = imageUrl,
+            model = sanitizedUrl,
             contentDescription = "Profile picture",
             modifier =
                 Modifier

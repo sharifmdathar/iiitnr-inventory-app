@@ -451,13 +451,26 @@ fun ComponentsScreen(
                     try {
                         val token = tokenManager.token.first()
                         if (token != null) {
-                            ApiClient.componentApiService.uploadImage(
-                                "Bearer $token",
-                                editingComponent!!.id,
-                                image.bytes,
-                                image.filename,
-                            )
-                            loadComponents()
+                            val extension = image.filename.substringAfterLast('.', "")
+                            val uploadFilename =
+                                if (extension.isNotEmpty()) {
+                                    "${editingComponent!!.id}.$extension"
+                                } else {
+                                    editingComponent!!.id
+                                }
+                            val response =
+                                ApiClient.componentApiService.uploadImage(
+                                    "Bearer $token",
+                                    editingComponent!!.id,
+                                    image.bytes,
+                                    uploadFilename,
+                                )
+                            editingComponent = response.component
+                            components =
+                                components.map {
+                                    if (it.id == response.component.id) response.component else it
+                                }
+                            loadComponents(pollingMode = true)
                         }
                     } catch (e: Throwable) {
                         errorMessage = "Error uploading image: ${e.message}"
