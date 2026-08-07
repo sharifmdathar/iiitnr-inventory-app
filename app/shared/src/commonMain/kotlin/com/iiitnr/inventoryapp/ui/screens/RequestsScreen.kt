@@ -10,23 +10,39 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowCircleUp
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,10 +53,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.IssueItemPayload
 import com.iiitnr.inventoryapp.data.models.Request
+import com.iiitnr.inventoryapp.data.models.RequestItem
 import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.ReturnItemPayload
 import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
@@ -58,6 +76,7 @@ import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackba
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusDisplayLabel
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
+import com.iiitnr.inventoryapp.ui.theme.AppTheme
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
@@ -95,21 +114,19 @@ fun RequestsScreen(
     val isAdminOrLA = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.LA
 
     val query: String = searchQuery.trim()
-    val filteredRequests =
-        requests.filter { request ->
-            val matchesStatus = statusFilter?.let { it == request.status } ?: true
-            val textMatches =
-                listOfNotNull(
-                    request.projectTitle,
-                    request.user?.name,
-                    request.user?.email,
-                    request.targetFaculty?.name,
-                    request.targetFaculty?.email,
-                ).any { it.contains(query, ignoreCase = true) }
-            val itemMatches = request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
+    val filteredRequests = requests.filter { request ->
+        val matchesStatus = statusFilter?.let { it == request.status } ?: true
+        val textMatches = listOfNotNull(
+            request.projectTitle,
+            request.user?.name,
+            request.user?.email,
+            request.targetFaculty?.name,
+            request.targetFaculty?.email,
+        ).any { it.contains(query, ignoreCase = true) }
+        val itemMatches = request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
 
-            matchesStatus && (query.isBlank() || textMatches || itemMatches)
-        }
+        matchesStatus && (query.isBlank() || textMatches || itemMatches)
+    }
 
     fun loadRequests(pollingMode: Boolean = false) {
         scope.launch {
@@ -142,15 +159,13 @@ fun RequestsScreen(
                     val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
                     if (isAuthError) return@launch
 
-                    errorMessage =
-                        when {
-                            e.message?.contains(
-                                "Network",
-                            ) == true ||
-                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                    errorMessage = when {
+                        e.message?.contains(
+                            "Network",
+                        ) == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
-                            else -> "Error: ${e.message ?: "Failed to load requests"}"
-                        }
+                        else -> "Error: ${e.message ?: "Failed to load requests"}"
+                    }
                 }
             } finally {
                 if (pollingMode) {
@@ -214,44 +229,35 @@ fun RequestsScreen(
 
     fun updateRequestStatusPartialIssue(request: Request) {
         pendingPartialIssueRequest = request
-        issueItemsInput =
-            request.items.associate { item ->
-                val componentId = item.componentId ?: ""
-                val remainingQuantity = (item.quantity - item.fulfilledQuantity).coerceAtLeast(0)
-                componentId to remainingQuantity
-            }
+        issueItemsInput = request.items.associate { item ->
+            val componentId = item.componentId ?: ""
+            componentId to 0
+        }
     }
 
     fun updateRequestStatusPartialReturn(request: Request) {
         pendingPartialReturnRequest = request
-        returnItemsInput =
-            request.items
-                .filter { it.fulfilledQuantity > 0 }
-                .associate { item ->
-                    val componentId = item.componentId ?: ""
-                    componentId to item.fulfilledQuantity
-                }
+        returnItemsInput = request.items.filter { it.fulfilledQuantity > it.returnedQuantity }.associate { item ->
+            val componentId = item.componentId ?: ""
+            componentId to 0
+        }
     }
 
     fun confirmPartialIssue() {
-        val request = pendingPartialIssueRequest
-        if (request == null) return
-        val items =
-            issueItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
-                IssueItemPayload(componentId = componentId, quantity = quantity)
-            }
+        val request = pendingPartialIssueRequest ?: return
+        val items = issueItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
+            IssueItemPayload(componentId = componentId, quantity = quantity)
+        }
         pendingPartialIssueRequest = null
         issueItemsInput = emptyMap()
         updateRequestStatus(request.id, RequestStatus.ISSUED, issueItems = items)
     }
 
     fun confirmPartialReturn() {
-        val request = pendingPartialReturnRequest
-        if (request == null) return
-        val items =
-            returnItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
-                ReturnItemPayload(componentId = componentId, quantity = quantity)
-            }
+        val request = pendingPartialReturnRequest ?: return
+        val items = returnItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
+            ReturnItemPayload(componentId = componentId, quantity = quantity)
+        }
         pendingPartialReturnRequest = null
         returnItemsInput = emptyMap()
         updateRequestStatus(request.id, RequestStatus.RETURNED, returnItems = items)
@@ -279,11 +285,13 @@ fun RequestsScreen(
             RequestStatus.PARTIALLY_ISSUED -> {
                 pendingActionSelectionRequest = request
             }
+
             RequestStatus.ISSUED,
             RequestStatus.RENEWED,
             RequestStatus.EXPIRED,
             RequestStatus.PARTIALLY_RETURNED,
-            -> updateRequestStatusPartialReturn(request)
+                -> updateRequestStatusPartialReturn(request)
+
             else -> {
                 scope.launch {
                     snackbarHostState.showSnackbar(
@@ -350,12 +358,11 @@ fun RequestsScreen(
                 showRequestIdDialog = false
                 requestIdInput = ""
             },
-            onScanClick =
-                if (isAdminOrLA && isQrScanAvailable()) {
-                    { showQrScanner = true }
-                } else {
-                    null
-                },
+            onScanClick = if (isAdminOrLA && isQrScanAvailable()) {
+                { showQrScanner = true }
+            } else {
+                null
+            },
             pendingPartialIssueRequest = pendingPartialIssueRequest,
             issueItemsInput = issueItemsInput,
             onIssueItemQtyChange = { componentId, quantity ->
@@ -399,15 +406,14 @@ fun RequestsScreen(
             topBar = {
                 RequestsTopBar(
                     onNavigateBack = onNavigateBack,
-                    onScanRequestClick =
-                        if (isAdminOrLA) {
-                            {
-                                showRequestIdDialog = true
-                                requestIdInput = ""
-                            }
-                        } else {
-                            null
-                        },
+                    onScanRequestClick = if (isAdminOrLA) {
+                        {
+                            showRequestIdDialog = true
+                            requestIdInput = ""
+                        }
+                    } else {
+                        null
+                    },
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -424,71 +430,54 @@ fun RequestsScreen(
                 filteredRequests = filteredRequests,
                 onRetry = { loadRequests() },
                 isFaculty = isFaculty,
-                onDeleteRequest =
-                    if (isFaculty) {
-                        null
-                    } else {
-                        { requestId -> pendingDeleteRequestId = requestId }
-                    },
-                onApproveRequest =
-                    if (isFaculty) {
-                        (
-                            { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.APPROVED)
-                            }
-                        )
-                    } else {
-                        null
-                    },
-                onRejectRequest =
-                    if (isFaculty) {
-                        (
-                            { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.REJECTED)
-                            }
-                        )
-                    } else {
-                        null
-                    },
-                onFulfillRequest =
-                    if (isAdminOrLA) {
-                        (
-                            { requestId ->
-                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
-                            }
-                        )
-                    } else {
-                        null
-                    },
-                onReturnRequest =
-                    if (isAdminOrLA) {
-                        (
-                            { requestId ->
-                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
-                            }
-                        )
-                    } else {
-                        null
-                    },
-                onRequestRenew =
-                    if (!isFaculty && !isAdminOrLA) {
-                        { requestId ->
-                            pendingRenewRequestId = requestId
-                            renewReasonInput = ""
-                        }
-                    } else {
-                        null
-                    },
-                onApproveRenew =
-                    if (isFaculty) {
-                        (
-                            { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.RENEWED)
-                            }
-                        )
-                    } else {
-                        null
-                    },
+                onDeleteRequest = if (isFaculty) {
+                    null
+                } else {
+                    { requestId -> pendingDeleteRequestId = requestId }
+                },
+                onApproveRequest = if (isFaculty) {
+                    ({ requestId ->
+                        updateRequestStatus(requestId, RequestStatus.APPROVED)
+                    })
+                } else {
+                    null
+                },
+                onRejectRequest = if (isFaculty) {
+                    ({ requestId ->
+                        updateRequestStatus(requestId, RequestStatus.REJECTED)
+                    })
+                } else {
+                    null
+                },
+                onFulfillRequest = if (isAdminOrLA) {
+                    ({ requestId ->
+                        requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
+                    })
+                } else {
+                    null
+                },
+                onReturnRequest = if (isAdminOrLA) {
+                    ({ requestId ->
+                        requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
+                    })
+                } else {
+                    null
+                },
+                onRequestRenew = if (!isFaculty && !isAdminOrLA) {
+                    { requestId ->
+                        pendingRenewRequestId = requestId
+                        renewReasonInput = ""
+                    }
+                } else {
+                    null
+                },
+                onApproveRenew = if (isFaculty) {
+                    ({ requestId ->
+                        updateRequestStatus(requestId, RequestStatus.RENEWED)
+                    })
+                } else {
+                    null
+                },
                 onShowQr = if (!isFaculty) ({ request -> requestToShowQr = request }) else null,
             )
         }
@@ -686,20 +675,18 @@ private fun RequestStatusFilterRow(
             ) {
                 Text(
                     text = if (option != null) requestStatusDisplayLabel(option) else "All",
-                    color =
-                        if (isSelected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
         }
     }
 }
 
-private val REQUEST_STATUS_OPTIONS: List<RequestStatus?> =
-    listOf(null) + RequestStatus.FILTER_OPTIONS
+private val REQUEST_STATUS_OPTIONS: List<RequestStatus?> = listOf(null) + RequestStatus.FILTER_OPTIONS
 
 @Composable
 fun PartialIssueDialog(
@@ -711,56 +698,13 @@ fun PartialIssueDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Issue Items (Partial)") },
+        title = { Text("Issue Items") },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
-                Text(
-                    text = request.projectTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = "Adjust quantities to issue (0 to skip item)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                request.items.forEach { item ->
-                    val compId = item.componentId ?: ""
-                    val qty = itemsInput[compId] ?: item.quantity
-                    val available = item.quantity
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = item.component?.name ?: compId,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                            )
-                            Text(
-                                text = "Available: $available",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        OutlinedTextField(
-                            value = qty.toString(),
-                            onValueChange = { text ->
-                                val newQty = text.toIntOrNull() ?: 0
-                                if (newQty in 0..available) {
-                                    onItemQtyChange(compId, newQty)
-                                }
-                            },
-                            modifier = Modifier.width(80.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Qty") },
-                        )
-                    }
-                }
-            }
+            PartialIssueDialogContent(
+                request = request,
+                itemsInput = itemsInput,
+                onItemQtyChange = onItemQtyChange,
+            )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
@@ -776,6 +720,87 @@ fun PartialIssueDialog(
 }
 
 @Composable
+fun PartialIssueDialogContent(
+    request: Request,
+    itemsInput: Map<String, Int> = emptyMap(),
+    onItemQtyChange: (String, Int) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
+        Text(
+            text = request.projectTitle,
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = "Adjust quantities to issue",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        request.items.filter { it.quantity - it.fulfilledQuantity > 0 }.forEach { item ->
+            val compId = item.componentId ?: ""
+            val total = item.quantity
+            val fulfilled = item.fulfilledQuantity
+            val remaining = (total - fulfilled).coerceAtLeast(0)
+            val qty = itemsInput[compId] ?: 0
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.component?.name ?: compId,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "Issued: $fulfilled / $total",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                    val targetTotal = fulfilled + qty
+                    OutlinedTextField(
+                        value = targetTotal.toString(),
+                        onValueChange = { text ->
+                            val inputVal = text.toIntOrNull() ?: fulfilled
+                            val newDelta = (inputVal - fulfilled).coerceIn(0, remaining)
+                            onItemQtyChange(compId, newDelta)
+                        },
+                        modifier = Modifier.width(90.dp),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        label = { Text("Issued") },
+                        trailingIcon = {
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                IconButton(
+                                    onClick = { onItemQtyChange(compId, (qty + 1).coerceAtMost(remaining)) },
+                                    enabled = (fulfilled + qty) < total,
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase")
+                                }
+                                IconButton(
+                                    onClick = { onItemQtyChange(compId, (qty - 1).coerceAtLeast(0)) },
+                                    enabled = qty > 0,
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Decrease")
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun PartialReturnDialog(
     request: Request,
     itemsInput: Map<String, Int>,
@@ -787,54 +812,11 @@ fun PartialReturnDialog(
         onDismissRequest = onDismiss,
         title = { Text("Return Items (Partial)") },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
-                Text(
-                    text = request.projectTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = "Adjust quantities to return (0 to skip item)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                request.items.filter { it.fulfilledQuantity > 0 }.forEach { item ->
-                    val compId = item.componentId ?: ""
-                    val fulfilled = item.fulfilledQuantity
-                    val qty = itemsInput[compId] ?: fulfilled
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = item.component?.name ?: compId,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                            )
-                            Text(
-                                text = "Issued: $fulfilled",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        OutlinedTextField(
-                            value = qty.toString(),
-                            onValueChange = { text ->
-                                val newQty = text.toIntOrNull() ?: 0
-                                if (newQty in 0..fulfilled) {
-                                    onItemQtyChange(compId, newQty)
-                                }
-                            },
-                            modifier = Modifier.width(80.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Qty") },
-                        )
-                    }
-                }
-            }
+            PartialReturnDialogContent(
+                request = request,
+                itemsInput = itemsInput,
+                onItemQtyChange = onItemQtyChange,
+            )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
@@ -850,6 +832,89 @@ fun PartialReturnDialog(
 }
 
 @Composable
+fun PartialReturnDialogContent(
+    request: Request,
+    itemsInput: Map<String, Int> = emptyMap(),
+    onItemQtyChange: (String, Int) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
+        Text(
+            text = request.projectTitle,
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = "Adjust quantities to return",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        request.items.filter { it.fulfilledQuantity - it.returnedQuantity > 0 }.forEach { item ->
+            val compId = item.componentId ?: ""
+            val total = item.quantity
+            val issued = item.fulfilledQuantity
+            val returned = item.returnedQuantity
+            val currentHeld = (issued - returned).coerceAtLeast(0)
+            val qty = itemsInput[compId] ?: 0
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.component?.name ?: compId,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "Returned: $returned / $issued / $total",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                    val targetTotal = returned + qty
+                    OutlinedTextField(
+                        value = targetTotal.toString(),
+                        onValueChange = { text ->
+                            val inputVal = text.toIntOrNull() ?: returned
+                            val newDelta = (inputVal - returned).coerceIn(0, currentHeld)
+                            onItemQtyChange(compId, newDelta)
+                        },
+                        modifier = Modifier.width(90.dp),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        label = { Text("Returned") },
+                        trailingIcon = {
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                IconButton(
+                                    onClick = { onItemQtyChange(compId, (qty + 1).coerceAtMost(currentHeld)) },
+                                    enabled = (returned + qty) < issued,
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase")
+                                }
+                                IconButton(
+                                    onClick = { onItemQtyChange(compId, (qty - 1).coerceAtLeast(0)) },
+                                    enabled = qty > 0,
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Decrease")
+                                }
+                            }
+                        },
+                    )
+                }
+
+            }
+        }
+    }
+}
+
+@Composable
 fun RequestActionSelectionDialog(
     request: Request,
     onIssueMore: () -> Unit,
@@ -860,14 +925,7 @@ fun RequestActionSelectionDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select Action") },
         text = {
-            Column {
-                Text(
-                    text = "Request for: ${request.projectTitle}",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("This request is partially issued. What would you like to do?")
-            }
+            RequestActionSelectionDialogContent(request = request)
         },
         confirmButton = {
             Column(
@@ -894,4 +952,72 @@ fun RequestActionSelectionDialog(
             }
         },
     )
+}
+
+@Composable
+fun RequestActionSelectionDialogContent(request: Request) {
+    Column {
+        Text(
+            text = "Request for: ${request.projectTitle}",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("This request is partially issued. What would you like to do?")
+    }
+}
+
+@Preview
+@Composable
+fun PartialDialogsPreview() {
+    val requestItems = listOf(
+        RequestItem(
+            id = "item1",
+            componentId = "partially issued",
+            quantity = 100,
+            fulfilledQuantity = 99,
+            returnedQuantity = 2,
+        ),
+        RequestItem(
+            id = "item2",
+            componentId = "fully issued",
+            quantity = 5,
+            fulfilledQuantity = 5,
+            returnedQuantity = 2,
+        ),
+        RequestItem(
+            id = "item3",
+            componentId = "not issued",
+            quantity = 10,
+            fulfilledQuantity = 0,
+            returnedQuantity = 0,
+        ),
+    )
+    val request = Request(
+        id = "req1",
+        userId = "user1",
+        targetFacultyId = "faculty1",
+        projectTitle = "Issue Example",
+        status = RequestStatus.PARTIALLY_ISSUED,
+        createdAt = "2023-03-01T12:00:00Z",
+        updatedAt = "2023-03-01T12:00:00Z",
+        items = requestItems
+    )
+
+    AppTheme {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            Column {
+                PartialIssueDialogContent(
+                    request = request,
+                    onItemQtyChange = { _, _ -> },
+                )
+                PartialReturnDialogContent(
+                    request = request.copy(projectTitle = "Return Example"),
+                    onItemQtyChange = { _, _ -> },
+                )
+            }
+        }
+    }
 }

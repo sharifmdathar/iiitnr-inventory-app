@@ -85,6 +85,8 @@ kotlin {
             dependencies {
                 val composeVersion = libs.versions.composeMultiplatform.get()
 
+                implementation("org.jetbrains.compose.ui:ui-tooling-preview:$composeVersion")
+
                 implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
                 implementation("org.jetbrains.compose.ui:ui:$composeVersion")
                 implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
@@ -186,4 +188,9 @@ ktlint {
         exclude("**/build/**")
         exclude("**/generated/**")
     }
+}
+
+dependencies {
+    val composeVersion = libs.versions.composeMultiplatform.get()
+    add("androidRuntimeClasspath", "org.jetbrains.compose.ui:ui-tooling:$composeVersion")
 }

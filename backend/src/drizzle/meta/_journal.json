@@ -57,6 +57,13 @@
       "when": 1785990000000,
       "tag": "0007_add_partial_issue_return",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786099168745,
+      "tag": "0008_same_slipstream",
+      "breakpoints": true
     }
   ]
 }

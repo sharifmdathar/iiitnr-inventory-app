@@ -408,24 +408,27 @@ async function returnRequestTransaction(
 ) {
   const returnedAt = new Date().toISOString();
   await db.transaction(async (tx) => {
-    let hasFulfilledRemaining = false;
+    let hasIssuedRemaining = false;
     let hasAnyReturned = false;
 
     for (const item of existingRequest.requestItems) {
-      const fulfilledQty = item.fulfilledQuantity ?? 0;
-      if (fulfilledQty <= 0) {
+      const issuedQty = item.fulfilledQuantity ?? 0;
+      const alreadyReturnedQty = item.returnedQuantity ?? 0;
+      const currentlyHeldQty = issuedQty - alreadyReturnedQty;
+
+      if (currentlyHeldQty <= 0) {
         continue;
       }
 
       const returnItem = returnItems?.find((i) => i.componentId === item.componentId);
       const returnQty = returnItem
-        ? Math.min(returnItem.quantity, fulfilledQty)
+        ? Math.min(returnItem.quantity, currentlyHeldQty)
         : returnItems
           ? 0
-          : fulfilledQty;
+          : currentlyHeldQty;
 
       if (returnQty <= 0) {
-        hasFulfilledRemaining = true;
+        hasIssuedRemaining = true;
         continue;
       }
 
@@ -447,11 +450,11 @@ async function returnRequestTransaction(
         throw new Error(`COMPONENT_NOT_FOUND:${name}`);
       }
 
-      const newFulfilled = fulfilledQty - returnQty;
+      const newReturned = alreadyReturnedQty + returnQty;
       await tx
         .update(requestItem)
         .set({
-          fulfilledQuantity: newFulfilled,
+          returnedQuantity: newReturned,
           updatedAt: returnedAt,
         })
         .where(eq(requestItem.id, item.id));
@@ -468,13 +471,13 @@ async function returnRequestTransaction(
         })
         .where(eq(component.id, item.componentId));
 
-      if (newFulfilled > 0) {
-        hasFulfilledRemaining = true;
+      if (issuedQty - newReturned > 0) {
+        hasIssuedRemaining = true;
       }
     }
 
     const newStatus =
-      hasFulfilledRemaining && hasAnyReturned
+      hasIssuedRemaining && hasAnyReturned
         ? RequestStatus.PARTIALLY_RETURNED
         : RequestStatus.RETURNED;
 

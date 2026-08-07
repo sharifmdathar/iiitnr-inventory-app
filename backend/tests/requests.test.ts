@@ -1003,6 +1003,9 @@ describe('Request API', () => {
       const body = returnRes.json();
       assert.equal(body.request.status, 'RETURNED');
       assert.ok(body.request.returnedAt);
+      const updatedReq = await findRequestById(req.id);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 4);
+      assert.equal(updatedReq?.items[0].returnedQuantity, 4);
       const updatedComponent = await findComponentById(item.id);
       assert.equal(updatedComponent?.availableQuantity, 10);
     });
@@ -1219,7 +1222,9 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.equal(body.request.status, 'RETURNED');
-      assert.ok(body.request.returnedAt);
+      const updatedReq = await findRequestById(req.id);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 4);
+      assert.equal(updatedReq?.items[0].returnedQuantity, 4);
       const updatedComponent = await findComponentById(item.id);
       assert.equal(updatedComponent?.availableQuantity, 10);
     });
@@ -1252,6 +1257,9 @@ describe('Request API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.equal(body.request.status, 'RETURNED');
+      const updatedReq = await findRequestById(req.id);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 4);
+      assert.equal(updatedReq?.items[0].returnedQuantity, 4);
       const updatedComponent = await findComponentById(item.id);
       assert.equal(updatedComponent?.availableQuantity, 10);
     });
@@ -1472,13 +1480,17 @@ describe('Request API', () => {
       assert.equal(updatedReq.status, 'PARTIALLY_RETURNED');
 
       const item1Row = updatedReq.items.find(
-        (i: { componentId: string; fulfilledQuantity: number }) => i.componentId === item1.id,
+        (i: { componentId: string; fulfilledQuantity: number; returnedQuantity: number }) =>
+          i.componentId === item1.id,
       );
       const item2Row = updatedReq.items.find(
-        (i: { componentId: string; fulfilledQuantity: number }) => i.componentId === item2.id,
+        (i: { componentId: string; fulfilledQuantity: number; returnedQuantity: number }) =>
+          i.componentId === item2.id,
       );
-      assert.equal(item1Row?.fulfilledQuantity, 1);
+      assert.equal(item1Row?.fulfilledQuantity, 3);
+      assert.equal(item1Row?.returnedQuantity, 2);
       assert.equal(item2Row?.fulfilledQuantity, 2);
+      assert.equal(item2Row?.returnedQuantity, 0);
 
       const comp1 = await findComponentById(item1.id);
       const comp2 = await findComponentById(item2.id);
@@ -1519,7 +1531,8 @@ describe('Request API', () => {
       const updatedReq = await findRequestById(req.id);
       assert.ok(updatedReq);
       assert.equal(updatedReq.status, 'RETURNED');
-      assert.equal(updatedReq.items[0].fulfilledQuantity, 0);
+      assert.equal(updatedReq.items[0].fulfilledQuantity, 3);
+      assert.equal(updatedReq.items[0].returnedQuantity, 3);
 
       const comp = await findComponentById(item.id);
       assert.equal(comp?.availableQuantity, 10);
@@ -1585,7 +1598,8 @@ describe('Request API', () => {
       const body = response.json();
       assert.equal(body.request.status, 'RETURNED');
       const updatedReq = await findRequestById(req.id);
-      assert.equal(updatedReq?.items[0].fulfilledQuantity, 0);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 2);
+      assert.equal(updatedReq?.items[0].returnedQuantity, 2);
     });
 
     test('PARTIALLY_ISSUED can transition to RETURNED', async () => {
@@ -1618,7 +1632,8 @@ describe('Request API', () => {
       const body = response.json();
       assert.equal(body.request.status, 'RETURNED');
       const updatedReq = await findRequestById(req.id);
-      assert.equal(updatedReq?.items[0].fulfilledQuantity, 0);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 3);
+      assert.equal(updatedReq?.items[0].returnedQuantity, 3);
     });
 
     test('PARTIALLY_RETURNED can transition to RETURNED', async () => {
@@ -1634,7 +1649,7 @@ describe('Request API', () => {
         targetFacultyId: facultyId,
         projectTitle: 'Partial Returned Return',
         status: 'PARTIALLY_RETURNED',
-        items: [{ componentId: item.id, quantity: 5, fulfilledQuantity: 2 }],
+        items: [{ componentId: item.id, quantity: 5, fulfilledQuantity: 2, returnedQuantity: 1 }],
       });
 
       const response = await app.inject({
@@ -1643,7 +1658,7 @@ describe('Request API', () => {
         headers: { authorization: `Bearer ${adminToken}` },
         payload: {
           status: 'RETURNED',
-          returnItems: [{ componentId: item.id, quantity: 2 }],
+          returnItems: [{ componentId: item.id, quantity: 1 }],
         },
       });
 
@@ -1651,7 +1666,8 @@ describe('Request API', () => {
       const body = response.json();
       assert.equal(body.request.status, 'RETURNED');
       const updatedReq = await findRequestById(req.id);
-      assert.equal(updatedReq?.items[0].fulfilledQuantity, 0);
+      assert.equal(updatedReq?.items[0].fulfilledQuantity, 2);
+      assert.equal(updatedReq?.items[0].returnedQuantity, 2);
     });
   });
 

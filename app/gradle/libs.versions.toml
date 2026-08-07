@@ -24,6 +24,7 @@ googleid = "1.2.0"
 coil = "3.5.0"
 qrose = "1.1.2"
 cameraX = "1.6.1"
+uiToolingPreview = "1.11.4"
 zxingCore = "3.5.4"
 sqldelight = "2.3.2"
 ktlint = "14.2.0"
@@ -32,6 +33,7 @@ detekt = "2.0.0-alpha.6"
 [libraries]
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

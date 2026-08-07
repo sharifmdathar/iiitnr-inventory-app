@@ -61,7 +61,12 @@ export async function createRequest(data: {
   targetFacultyId: string;
   projectTitle: string;
   status?: RequestStatusValue;
-  items: { componentId: string; quantity: number; fulfilledQuantity?: number }[];
+  items: {
+    componentId: string;
+    quantity: number;
+    fulfilledQuantity?: number;
+    returnedQuantity?: number;
+  }[];
 }) {
   const n = now();
   const requestId = crypto.randomUUID();
@@ -81,6 +86,7 @@ export async function createRequest(data: {
       componentId: item.componentId,
       quantity: item.quantity,
       fulfilledQuantity: item.fulfilledQuantity ?? 0,
+      returnedQuantity: item.returnedQuantity ?? 0,
       createdAt: n,
       updatedAt: n,
     })),

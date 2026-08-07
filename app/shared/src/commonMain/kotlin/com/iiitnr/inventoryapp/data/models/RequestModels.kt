@@ -9,6 +9,7 @@ data class RequestItem(
     val componentId: String? = null,
     val quantity: Int,
     val fulfilledQuantity: Int = 0,
+    val returnedQuantity: Int = 0,
     val component: Component? = null,
 )
 
