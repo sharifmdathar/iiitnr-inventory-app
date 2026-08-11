@@ -240,8 +240,7 @@ private fun UserCard(
     user: User,
     onClick: () -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val roleColor = userRoleColor(user.role, isDark)
+    val roleColor = userRoleColor(user.role)
     val cardBackground = roleColor.copy(alpha = 0.12f)
 
     Card(

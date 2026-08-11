@@ -230,7 +230,7 @@ private fun AuditFilterBar(
             label = { Text("All", fontSize = 12.sp) },
         )
         allActions.forEach { action ->
-            val color = auditActionColor(action, isSystemInDarkTheme()) ?: MaterialTheme.colorScheme.primary
+            val color = auditActionColor(action) ?: MaterialTheme.colorScheme.primary
             FilterChip(
                 selected = selectedAction == action,
                 onClick = {
@@ -252,8 +252,7 @@ private fun AuditLogCard(
     entry: AuditLogEntry,
     onClick: () -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
-    val actionColor = auditActionColor(entry.action, isDark) ?: MaterialTheme.colorScheme.primary
+    val actionColor = auditActionColor(entry.action) ?: MaterialTheme.colorScheme.primary
     val cardBackground = actionColor.copy(alpha = 0.12f)
 
     Card(
@@ -339,7 +338,7 @@ private fun AuditDetailDialog(
     entry: AuditLogEntry,
     onDismiss: () -> Unit,
 ) {
-    val actionColor = auditActionColor(entry.action, isSystemInDarkTheme()) ?: MaterialTheme.colorScheme.primary
+    val actionColor = auditActionColor(entry.action) ?: MaterialTheme.colorScheme.primary
 
     AlertDialog(
         onDismissRequest = onDismiss,

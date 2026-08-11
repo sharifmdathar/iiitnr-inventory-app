@@ -45,7 +45,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.ui.components.common.InfoChip
-import com.iiitnr.inventoryapp.ui.theme.SemanticSuccessAccent
+import com.iiitnr.inventoryapp.ui.theme.inventoryColors
 
 @Composable
 fun ComponentCard(
@@ -194,7 +194,7 @@ fun ComponentCard(
                 val quantityColor =
                     lerp(
                         start = MaterialTheme.colorScheme.error,
-                        stop = SemanticSuccessAccent,
+                        stop = MaterialTheme.inventoryColors.success,
                         fraction = quantityRatio,
                     )
 

@@ -15,14 +15,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.UserRole
+import com.iiitnr.inventoryapp.ui.theme.inventoryColors
 
 @Composable
 fun StatusChip(
     status: RequestStatus,
     modifier: Modifier = Modifier,
 ) {
+    val color = requestStatusColor(status = status)
     val isDark = isSystemInDarkTheme()
-    val color = requestStatusColor(status = status, isDark = isDark)
 
     Surface(
         modifier =
@@ -42,22 +43,21 @@ fun StatusChip(
 }
 
 @Composable
-fun requestStatusColor(
-    status: RequestStatus,
-    isDark: Boolean = isSystemInDarkTheme(),
-): Color =
-    when (status) {
-        RequestStatus.PENDING -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)
-        RequestStatus.APPROVED -> if (isDark) Color(0xFF93C5FD) else Color(0xFF1A56DB)
-        RequestStatus.ISSUED -> if (isDark) Color(0xFF86EFAC) else Color(0xFF15803D)
-        RequestStatus.PARTIALLY_ISSUED -> if (isDark) Color(0xFFFBBF24) else Color(0xFFB45309)
-        RequestStatus.REQUESTED_RENEW -> if (isDark) Color(0xFFFDBA74) else Color(0xFFEA580C)
-        RequestStatus.RENEWED -> if (isDark) Color(0xFF5EEAD4) else Color(0xFF0F766E)
-        RequestStatus.RETURNED -> if (isDark) Color(0xFFD1D5DB) else Color(0xFF6B7280)
-        RequestStatus.PARTIALLY_RETURNED -> if (isDark) Color(0xFFFCD34D) else Color(0xFFB45309)
-        RequestStatus.EXPIRED -> if (isDark) Color(0xFFFCA5A5) else Color(0xFFB91C1C)
+fun requestStatusColor(status: RequestStatus): Color {
+    val colors = MaterialTheme.inventoryColors
+    return when (status) {
+        RequestStatus.PENDING -> colors.warning
+        RequestStatus.APPROVED -> colors.info
+        RequestStatus.ISSUED -> colors.success
+        RequestStatus.PARTIALLY_ISSUED -> colors.warning
+        RequestStatus.REQUESTED_RENEW -> colors.warning
+        RequestStatus.RENEWED -> colors.success
+        RequestStatus.RETURNED -> colors.neutral
+        RequestStatus.PARTIALLY_RETURNED -> colors.warning
+        RequestStatus.EXPIRED -> colors.danger
         RequestStatus.REJECTED -> MaterialTheme.colorScheme.error
     }
+}
 
 fun requestStatusLabel(status: RequestStatus): String =
     when (status) {
@@ -72,30 +72,28 @@ fun requestStatusLabel(status: RequestStatus): String =
     }
 
 @Composable
-fun userRoleColor(
-    role: UserRole,
-    isDark: Boolean = isSystemInDarkTheme(),
-): Color =
-    when (role) {
-        UserRole.ADMIN -> if (isDark) Color(0xFFEF5350) else Color(0xFFC62828)
-        UserRole.FACULTY -> if (isDark) Color(0xFF42A5F5) else Color(0xFF1565C0)
-        UserRole.STUDENT -> if (isDark) Color(0xFF66BB6A) else Color(0xFF2E7D32)
-        UserRole.LA -> if (isDark) Color(0xFFFF9800) else Color(0xFFE65100)
-        UserRole.PENDING -> if (isDark) Color(0xFFB0BEC5) else Color(0xFF78909C)
+fun userRoleColor(role: UserRole): Color {
+    val colors = MaterialTheme.inventoryColors
+    return when (role) {
+        UserRole.ADMIN -> colors.danger
+        UserRole.FACULTY -> colors.info
+        UserRole.STUDENT -> colors.success
+        UserRole.LA -> colors.warning
+        UserRole.PENDING -> colors.pending
     }
+}
 
 @Composable
-fun auditActionColor(
-    action: String?,
-    isDark: Boolean = isSystemInDarkTheme(),
-): Color? =
-    when (action?.uppercase()) {
-        "CREATE" -> if (isDark) Color(0xFF66BB6A) else Color(0xFF2E7D32)
-        "UPDATE" -> if (isDark) Color(0xFF42A5F5) else Color(0xFF1565C0)
-        "DELETE" -> if (isDark) Color(0xFFEF5350) else Color(0xFFC62828)
-        "LOGIN" -> if (isDark) Color(0xFFCE93D8) else Color(0xFF6A1B9A)
-        "LOGOUT" -> if (isDark) Color(0xFFB0BEC5) else Color(0xFF78909C)
-        "REQUEST_STATUS_CHANGE" -> if (isDark) Color(0xFFFF9800) else Color(0xFFE65100)
-        "INVENTORY_ADJUST" -> if (isDark) Color(0xFF26C6DA) else Color(0xFF00838F)
+fun auditActionColor(action: String?): Color? {
+    val colors = MaterialTheme.inventoryColors
+    return when (action?.uppercase()) {
+        "CREATE" -> colors.success
+        "UPDATE" -> colors.info
+        "DELETE" -> colors.danger
+        "LOGIN" -> colors.actionPurple
+        "LOGOUT" -> colors.neutral
+        "REQUEST_STATUS_CHANGE" -> colors.warning
+        "INVENTORY_ADJUST" -> colors.actionCyan
         else -> null
     }
+}

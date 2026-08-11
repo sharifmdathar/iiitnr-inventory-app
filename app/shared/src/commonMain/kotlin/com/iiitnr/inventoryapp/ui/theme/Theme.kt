@@ -5,6 +5,81 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+
+@Immutable
+data class InventoryColors(
+    val success: Color,
+    val warning: Color,
+    val info: Color,
+    val danger: Color,
+    val neutral: Color,
+    val admin: Color,
+    val faculty: Color,
+    val student: Color,
+    val la: Color,
+    val pending: Color,
+    val actionPurple: Color,
+    val actionCyan: Color,
+)
+
+private val LocalInventoryColors = staticCompositionLocalOf {
+    InventoryColors(
+        success = Color.Unspecified,
+        warning = Color.Unspecified,
+        info = Color.Unspecified,
+        danger = Color.Unspecified,
+        neutral = Color.Unspecified,
+        admin = Color.Unspecified,
+        faculty = Color.Unspecified,
+        student = Color.Unspecified,
+        la = Color.Unspecified,
+        pending = Color.Unspecified,
+        actionPurple = Color.Unspecified,
+        actionCyan = Color.Unspecified,
+    )
+}
+
+val MaterialTheme.inventoryColors: InventoryColors
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalInventoryColors.current
+
+private val DarkInventoryColors =
+    InventoryColors(
+        success = SemanticSuccessDark,
+        warning = SemanticWarningDark,
+        info = SemanticInfoDark,
+        danger = SemanticDangerDark,
+        neutral = SemanticNeutralDark,
+        admin = RoleAdminDark,
+        faculty = RoleFacultyDark,
+        student = RoleStudentDark,
+        la = RoleLADark,
+        pending = RolePendingDark,
+        actionPurple = ActionPurpleDark,
+        actionCyan = ActionCyanDark,
+    )
+
+private val LightInventoryColors =
+    InventoryColors(
+        success = SemanticSuccess,
+        warning = SemanticWarning,
+        info = SemanticInfo,
+        danger = SemanticDanger,
+        neutral = SemanticNeutral,
+        admin = RoleAdmin,
+        faculty = RoleFaculty,
+        student = RoleStudent,
+        la = RoleLA,
+        pending = RolePending,
+        actionPurple = ActionPurple,
+        actionCyan = ActionCyan,
+    )
 
 private val DarkColorScheme =
     darkColorScheme(
@@ -38,9 +113,13 @@ private val LightColorScheme =
 fun AppTheme(content: @Composable () -> Unit) {
     val darkTheme = isSystemInDarkTheme()
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = IIITNRTypography,
-        content = content,
-    )
+    val inventoryColors = if (darkTheme) DarkInventoryColors else LightInventoryColors
+
+    CompositionLocalProvider(LocalInventoryColors provides inventoryColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = IIITNRTypography,
+            content = content,
+        )
+    }
 }

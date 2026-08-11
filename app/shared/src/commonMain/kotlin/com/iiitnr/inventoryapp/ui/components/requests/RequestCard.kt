@@ -1,7 +1,6 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,17 +67,15 @@ fun RequestCard(
         )
     }
 
-    val isDark = isSystemInDarkTheme()
-    val cardBackground = requestStatusColor(request.status, isDark).copy(alpha = 0.12f)
+    val cardBackground = requestStatusColor(request.status).copy(alpha = 0.12f)
 
     Card(
         modifier = modifier.fillMaxWidth().clickable { showDialog = true },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = cardBackground,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
+        colors = CardDefaults.cardColors(
+            containerColor = cardBackground,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -166,13 +163,12 @@ private fun RequestCardMeta(request: Request) {
         Spacer(modifier = Modifier.height(4.dp))
         val requester = request.user?.let { compactUserLabel(it) }
         val faculty = request.targetFaculty?.let { it.name ?: it.email }
-        val combined =
-            when {
-                requester != null && faculty != null -> "$requester  ← $faculty"
-                requester != null -> requester
-                faculty != null -> "Requested from: $faculty"
-                else -> ""
-            }
+        val combined = when {
+            requester != null && faculty != null -> "$requester  ← $faculty"
+            requester != null -> requester
+            faculty != null -> "Requested from: $faculty"
+            else -> ""
+        }
         Text(
             text = combined,
             style = MaterialTheme.typography.bodySmall,
@@ -184,65 +180,60 @@ private fun RequestCardMeta(request: Request) {
 @Preview
 @Composable
 fun RequestCardPreview() {
-    val sampleUser =
-        User(
-            id = "s1",
-            email = "john24100@iiitnr.edu.in",
-            name = "John Doe",
-            role = UserRole.STUDENT,
-            batch = "2024-28",
-            branch = "CSE",
-        )
+    val sampleUser = User(
+        id = "s1",
+        email = "john24100@iiitnr.edu.in",
+        name = "John Doe",
+        role = UserRole.STUDENT,
+        batch = "2024-28",
+        branch = "CSE",
+    )
 
-    val sampleFaculty =
-        User(
-            id = "f1",
-            email = "faculty@iiitnr.edu.in",
-            name = "Faculty A",
-            role = UserRole.FACULTY,
-        )
+    val sampleFaculty = User(
+        id = "f1",
+        email = "faculty@iiitnr.edu.in",
+        name = "Faculty A",
+        role = UserRole.FACULTY,
+    )
 
-    val sampleComponent =
-        Component(
-            id = "c1",
-            name = "Arduino Uno",
-            totalQuantity = 10,
-            availableQuantity = 5,
-            createdAt = "2023-08-11T10:00:00",
-            updatedAt = "2023-08-11T10:00:00",
-        )
+    val sampleComponent = Component(
+        id = "c1",
+        name = "Arduino Uno",
+        totalQuantity = 10,
+        availableQuantity = 5,
+        createdAt = "2023-08-11T10:00:00",
+        updatedAt = "2023-08-11T10:00:00",
+    )
 
-    val sampleRequest =
-        Request(
-            id = "r1",
-            userId = "s1",
-            targetFacultyId = "f1",
-            projectTitle = "IoT Weather Station",
-            status = RequestStatus.PENDING,
-            createdAt = "2026-07-11T10:00:00",
-            updatedAt = "2026-07-11T10:00:00",
-            items =
-                listOf(
-                    RequestItem(
-                        id = "ri1",
-                        requestId = "r1",
-                        componentId = "c1",
-                        quantity = 2,
-                        component = sampleComponent,
-                    ),
-                    RequestItem(
-                        id = "ri2",
-                        requestId = "r1",
-                        componentId = "c1",
-                        quantity = 5,
-                        fulfilledQuantity = 3,
-                        returnedQuantity = 2,
-                        component = sampleComponent.copy(name = "Flame Sensor"),
-                    ),
-                ),
-            user = sampleUser,
-            targetFaculty = sampleFaculty,
-        )
+    val sampleRequest = Request(
+        id = "r1",
+        userId = "s1",
+        targetFacultyId = "f1",
+        projectTitle = "IoT Weather Station",
+        status = RequestStatus.PENDING,
+        createdAt = "2026-07-11T10:00:00",
+        updatedAt = "2026-07-11T10:00:00",
+        items = listOf(
+            RequestItem(
+                id = "ri1",
+                requestId = "r1",
+                componentId = "c1",
+                quantity = 2,
+                component = sampleComponent,
+            ),
+            RequestItem(
+                id = "ri2",
+                requestId = "r1",
+                componentId = "c1",
+                quantity = 5,
+                fulfilledQuantity = 3,
+                returnedQuantity = 2,
+                component = sampleComponent.copy(name = "Flame Sensor"),
+            ),
+        ),
+        user = sampleUser,
+        targetFaculty = sampleFaculty,
+    )
 
     AppTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
@@ -257,21 +248,19 @@ fun RequestCardPreview() {
                 )
 
                 RequestCard(
-                    request =
-                        sampleRequest.copy(
-                            status = RequestStatus.ISSUED,
-                            returnDueAt = "2023-08-20T10:00:00",
-                        ),
+                    request = sampleRequest.copy(
+                        status = RequestStatus.ISSUED,
+                        returnDueAt = "2023-08-20T10:00:00",
+                    ),
                     onReturnRequest = {},
                     onShowQr = {},
                     isFaculty = false,
                 )
 
                 RequestCard(
-                    request =
-                        sampleRequest.copy(
-                            status = RequestStatus.PARTIALLY_RETURNED,
-                        ),
+                    request = sampleRequest.copy(
+                        status = RequestStatus.PARTIALLY_RETURNED,
+                    ),
                     onApproveRequest = {},
                     onRejectRequest = {},
                     isFaculty = true,
