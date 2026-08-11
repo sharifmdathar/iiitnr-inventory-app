@@ -18,15 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowCircleUp
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowDropUp
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.KeyboardDoubleArrowUp
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -73,10 +66,10 @@ import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
-import com.iiitnr.inventoryapp.ui.components.requests.requestStatusDisplayLabel
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
 import com.iiitnr.inventoryapp.ui.theme.AppTheme
+import com.iiitnr.inventoryapp.utils.requestStatusDisplayLabel
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
@@ -114,19 +107,21 @@ fun RequestsScreen(
     val isAdminOrLA = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.LA
 
     val query: String = searchQuery.trim()
-    val filteredRequests = requests.filter { request ->
-        val matchesStatus = statusFilter?.let { it == request.status } ?: true
-        val textMatches = listOfNotNull(
-            request.projectTitle,
-            request.user?.name,
-            request.user?.email,
-            request.targetFaculty?.name,
-            request.targetFaculty?.email,
-        ).any { it.contains(query, ignoreCase = true) }
-        val itemMatches = request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
+    val filteredRequests =
+        requests.filter { request ->
+            val matchesStatus = statusFilter?.let { it == request.status } ?: true
+            val textMatches =
+                listOfNotNull(
+                    request.projectTitle,
+                    request.user?.name,
+                    request.user?.email,
+                    request.targetFaculty?.name,
+                    request.targetFaculty?.email,
+                ).any { it.contains(query, ignoreCase = true) }
+            val itemMatches = request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
 
-        matchesStatus && (query.isBlank() || textMatches || itemMatches)
-    }
+            matchesStatus && (query.isBlank() || textMatches || itemMatches)
+        }
 
     fun loadRequests(pollingMode: Boolean = false) {
         scope.launch {
@@ -159,13 +154,15 @@ fun RequestsScreen(
                     val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
                     if (isAuthError) return@launch
 
-                    errorMessage = when {
-                        e.message?.contains(
-                            "Network",
-                        ) == true || e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                    errorMessage =
+                        when {
+                            e.message?.contains(
+                                "Network",
+                            ) == true ||
+                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
 
-                        else -> "Error: ${e.message ?: "Failed to load requests"}"
-                    }
+                            else -> "Error: ${e.message ?: "Failed to load requests"}"
+                        }
                 }
             } finally {
                 if (pollingMode) {
@@ -229,25 +226,28 @@ fun RequestsScreen(
 
     fun updateRequestStatusPartialIssue(request: Request) {
         pendingPartialIssueRequest = request
-        issueItemsInput = request.items.associate { item ->
-            val componentId = item.componentId ?: ""
-            componentId to 0
-        }
+        issueItemsInput =
+            request.items.associate { item ->
+                val componentId = item.componentId ?: ""
+                componentId to 0
+            }
     }
 
     fun updateRequestStatusPartialReturn(request: Request) {
         pendingPartialReturnRequest = request
-        returnItemsInput = request.items.filter { it.fulfilledQuantity > it.returnedQuantity }.associate { item ->
-            val componentId = item.componentId ?: ""
-            componentId to 0
-        }
+        returnItemsInput =
+            request.items.filter { it.fulfilledQuantity > it.returnedQuantity }.associate { item ->
+                val componentId = item.componentId ?: ""
+                componentId to 0
+            }
     }
 
     fun confirmPartialIssue() {
         val request = pendingPartialIssueRequest ?: return
-        val items = issueItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
-            IssueItemPayload(componentId = componentId, quantity = quantity)
-        }
+        val items =
+            issueItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
+                IssueItemPayload(componentId = componentId, quantity = quantity)
+            }
         pendingPartialIssueRequest = null
         issueItemsInput = emptyMap()
         updateRequestStatus(request.id, RequestStatus.ISSUED, issueItems = items)
@@ -255,9 +255,10 @@ fun RequestsScreen(
 
     fun confirmPartialReturn() {
         val request = pendingPartialReturnRequest ?: return
-        val items = returnItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
-            ReturnItemPayload(componentId = componentId, quantity = quantity)
-        }
+        val items =
+            returnItemsInput.filter { it.value > 0 }.map { (componentId, quantity) ->
+                ReturnItemPayload(componentId = componentId, quantity = quantity)
+            }
         pendingPartialReturnRequest = null
         returnItemsInput = emptyMap()
         updateRequestStatus(request.id, RequestStatus.RETURNED, returnItems = items)
@@ -290,7 +291,7 @@ fun RequestsScreen(
             RequestStatus.RENEWED,
             RequestStatus.EXPIRED,
             RequestStatus.PARTIALLY_RETURNED,
-                -> updateRequestStatusPartialReturn(request)
+            -> updateRequestStatusPartialReturn(request)
 
             else -> {
                 scope.launch {
@@ -358,11 +359,12 @@ fun RequestsScreen(
                 showRequestIdDialog = false
                 requestIdInput = ""
             },
-            onScanClick = if (isAdminOrLA && isQrScanAvailable()) {
-                { showQrScanner = true }
-            } else {
-                null
-            },
+            onScanClick =
+                if (isAdminOrLA && isQrScanAvailable()) {
+                    { showQrScanner = true }
+                } else {
+                    null
+                },
             pendingPartialIssueRequest = pendingPartialIssueRequest,
             issueItemsInput = issueItemsInput,
             onIssueItemQtyChange = { componentId, quantity ->
@@ -406,14 +408,15 @@ fun RequestsScreen(
             topBar = {
                 RequestsTopBar(
                     onNavigateBack = onNavigateBack,
-                    onScanRequestClick = if (isAdminOrLA) {
-                        {
-                            showRequestIdDialog = true
-                            requestIdInput = ""
-                        }
-                    } else {
-                        null
-                    },
+                    onScanRequestClick =
+                        if (isAdminOrLA) {
+                            {
+                                showRequestIdDialog = true
+                                requestIdInput = ""
+                            }
+                        } else {
+                            null
+                        },
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -430,55 +433,81 @@ fun RequestsScreen(
                 filteredRequests = filteredRequests,
                 onRetry = { loadRequests() },
                 isFaculty = isFaculty,
-                onDeleteRequest = if (isFaculty) {
-                    null
-                } else {
-                    { requestId -> pendingDeleteRequestId = requestId }
-                },
-                onApproveRequest = if (isFaculty) {
-                    ({ requestId ->
-                        updateRequestStatus(requestId, RequestStatus.APPROVED)
-                    })
-                } else {
-                    null
-                },
-                onRejectRequest = if (isFaculty) {
-                    ({ requestId ->
-                        updateRequestStatus(requestId, RequestStatus.REJECTED)
-                    })
-                } else {
-                    null
-                },
-                onFulfillRequest = if (isAdminOrLA) {
-                    ({ requestId ->
-                        requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
-                    })
-                } else {
-                    null
-                },
-                onReturnRequest = if (isAdminOrLA) {
-                    ({ requestId ->
-                        requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
-                    })
-                } else {
-                    null
-                },
-                onRequestRenew = if (!isFaculty && !isAdminOrLA) {
-                    { requestId ->
-                        pendingRenewRequestId = requestId
-                        renewReasonInput = ""
-                    }
-                } else {
-                    null
-                },
-                onApproveRenew = if (isFaculty) {
-                    ({ requestId ->
-                        updateRequestStatus(requestId, RequestStatus.RENEWED)
-                    })
-                } else {
-                    null
-                },
-                onShowQr = if (!isFaculty) ({ request -> requestToShowQr = request }) else null,
+                onDeleteRequest =
+                    if (isFaculty) {
+                        null
+                    } else {
+                        { requestId -> pendingDeleteRequestId = requestId }
+                    },
+                onApproveRequest =
+                    if (isFaculty) {
+                        (
+                            { requestId ->
+                                updateRequestStatus(requestId, RequestStatus.APPROVED)
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onRejectRequest =
+                    if (isFaculty) {
+                        (
+                            { requestId ->
+                                updateRequestStatus(requestId, RequestStatus.REJECTED)
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onFulfillRequest =
+                    if (isAdminOrLA) {
+                        (
+                            { requestId ->
+                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onReturnRequest =
+                    if (isAdminOrLA) {
+                        (
+                            { requestId ->
+                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onRequestRenew =
+                    if (!isFaculty && !isAdminOrLA) {
+                        { requestId ->
+                            pendingRenewRequestId = requestId
+                            renewReasonInput = ""
+                        }
+                    } else {
+                        null
+                    },
+                onApproveRenew =
+                    if (isFaculty) {
+                        (
+                            { requestId ->
+                                updateRequestStatus(requestId, RequestStatus.RENEWED)
+                            }
+                        )
+                    } else {
+                        null
+                    },
+                onShowQr =
+                    if (!isFaculty) {
+                        (
+                            { request ->
+                                requestToShowQr = request
+                            }
+                        )
+                    } else {
+                        null
+                    },
             )
         }
 
@@ -675,11 +704,12 @@ private fun RequestStatusFilterRow(
             ) {
                 Text(
                     text = if (option != null) requestStatusDisplayLabel(option) else "All",
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    color =
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                 )
             }
         }
@@ -908,7 +938,6 @@ fun PartialReturnDialogContent(
                         },
                     )
                 }
-
             }
         }
     }
@@ -969,39 +998,41 @@ fun RequestActionSelectionDialogContent(request: Request) {
 @Preview
 @Composable
 fun PartialDialogsPreview() {
-    val requestItems = listOf(
-        RequestItem(
-            id = "item1",
-            componentId = "partially issued",
-            quantity = 100,
-            fulfilledQuantity = 99,
-            returnedQuantity = 2,
-        ),
-        RequestItem(
-            id = "item2",
-            componentId = "fully issued",
-            quantity = 5,
-            fulfilledQuantity = 5,
-            returnedQuantity = 2,
-        ),
-        RequestItem(
-            id = "item3",
-            componentId = "not issued",
-            quantity = 10,
-            fulfilledQuantity = 0,
-            returnedQuantity = 0,
-        ),
-    )
-    val request = Request(
-        id = "req1",
-        userId = "user1",
-        targetFacultyId = "faculty1",
-        projectTitle = "Issue Example",
-        status = RequestStatus.PARTIALLY_ISSUED,
-        createdAt = "2023-03-01T12:00:00Z",
-        updatedAt = "2023-03-01T12:00:00Z",
-        items = requestItems
-    )
+    val requestItems =
+        listOf(
+            RequestItem(
+                id = "item1",
+                componentId = "partially issued",
+                quantity = 100,
+                fulfilledQuantity = 99,
+                returnedQuantity = 2,
+            ),
+            RequestItem(
+                id = "item2",
+                componentId = "fully issued",
+                quantity = 5,
+                fulfilledQuantity = 5,
+                returnedQuantity = 2,
+            ),
+            RequestItem(
+                id = "item3",
+                componentId = "not issued",
+                quantity = 10,
+                fulfilledQuantity = 0,
+                returnedQuantity = 0,
+            ),
+        )
+    val request =
+        Request(
+            id = "req1",
+            userId = "user1",
+            targetFacultyId = "faculty1",
+            projectTitle = "Issue Example",
+            status = RequestStatus.PARTIALLY_ISSUED,
+            createdAt = "2023-03-01T12:00:00Z",
+            updatedAt = "2023-03-01T12:00:00Z",
+            items = requestItems,
+        )
 
     AppTheme {
         Surface(
