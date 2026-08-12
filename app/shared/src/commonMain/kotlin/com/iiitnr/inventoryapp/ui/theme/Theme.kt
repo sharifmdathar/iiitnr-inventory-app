@@ -8,8 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.iiitnr.inventoryapp.utils.LocalToday
+import kotlinx.datetime.LocalDateTime
 
 @Immutable
 data class InventoryColors(
@@ -27,22 +30,23 @@ data class InventoryColors(
     val actionCyan: Color,
 )
 
-private val LocalInventoryColors = staticCompositionLocalOf {
-    InventoryColors(
-        success = Color.Unspecified,
-        warning = Color.Unspecified,
-        info = Color.Unspecified,
-        danger = Color.Unspecified,
-        neutral = Color.Unspecified,
-        admin = Color.Unspecified,
-        faculty = Color.Unspecified,
-        student = Color.Unspecified,
-        la = Color.Unspecified,
-        pending = Color.Unspecified,
-        actionPurple = Color.Unspecified,
-        actionCyan = Color.Unspecified,
-    )
-}
+private val LocalInventoryColors =
+    staticCompositionLocalOf {
+        InventoryColors(
+            success = Color.Unspecified,
+            warning = Color.Unspecified,
+            info = Color.Unspecified,
+            danger = Color.Unspecified,
+            neutral = Color.Unspecified,
+            admin = Color.Unspecified,
+            faculty = Color.Unspecified,
+            student = Color.Unspecified,
+            la = Color.Unspecified,
+            pending = Color.Unspecified,
+            actionPurple = Color.Unspecified,
+            actionCyan = Color.Unspecified,
+        )
+    }
 
 val MaterialTheme.inventoryColors: InventoryColors
     @Composable
@@ -114,8 +118,15 @@ fun AppTheme(content: @Composable () -> Unit) {
     val darkTheme = isSystemInDarkTheme()
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val inventoryColors = if (darkTheme) DarkInventoryColors else LightInventoryColors
+    val today =
+        remember {
+            LocalDateTime.parse("2026-08-12T00:00:00").date
+        }
 
-    CompositionLocalProvider(LocalInventoryColors provides inventoryColors) {
+    CompositionLocalProvider(
+        LocalInventoryColors provides inventoryColors,
+        LocalToday provides today,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = IIITNRTypography,

@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AssignmentReturn
 import androidx.compose.material.icons.filled.CheckCircle
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -47,6 +49,7 @@ import com.iiitnr.inventoryapp.ui.components.components.ComponentImage
 import com.iiitnr.inventoryapp.ui.theme.AppTheme
 import com.iiitnr.inventoryapp.utils.compactUserLabel
 import com.iiitnr.inventoryapp.utils.getRelativeDays
+import kotlinx.datetime.LocalDate
 
 @Composable
 fun RequestDetailDialog(
@@ -91,79 +94,91 @@ fun RequestDetailDialogContent(
     request: Request,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 8.dp),
+    val today = com.iiitnr.inventoryapp.utils.currentToday
+
+    LazyColumn(
+        modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
     ) {
-        RequestDetailDatesFlow(request = request)
+        item {
+            RequestDetailDatesFlow(request = request, today = today)
+        }
 
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            request.user?.let {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Requester",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = compactUserLabel(it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        item {
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                request.user?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Requester",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = compactUserLabel(it),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-            }
-            request.targetFaculty?.let {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.School,
-                        contentDescription = "Faculty",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.secondary,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = compactUserLabel(it),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                request.targetFaculty?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.School,
+                            contentDescription = "Faculty",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.secondary,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = compactUserLabel(it),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        Text(
-            text = "Components",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        item {
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        request.items.forEach { item ->
+        item {
+            Text(
+                text = "Components",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        items(request.items) { item ->
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -220,7 +235,10 @@ fun RequestDetailDialogContent(
 }
 
 @Composable
-private fun RequestDetailDatesFlow(request: Request) {
+private fun RequestDetailDatesFlow(
+    request: Request,
+    today: LocalDate,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -228,14 +246,14 @@ private fun RequestDetailDatesFlow(request: Request) {
         DateItem(
             icon = Icons.Default.History,
             label = "Created",
-            value = getRelativeDays(request.createdAt),
+            value = getRelativeDays(request.createdAt, today),
         )
 
         request.fulfilledAt?.let {
             DateItem(
                 icon = Icons.Default.CheckCircle,
                 label = "Fulfilled",
-                value = getRelativeDays(it),
+                value = getRelativeDays(it, today),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
@@ -245,9 +263,9 @@ private fun RequestDetailDatesFlow(request: Request) {
                 DateItem(
                     icon = Icons.Default.Timer,
                     label = "Return Due",
-                    value = getRelativeDays(it),
+                    value = getRelativeDays(it, today),
                     tint =
-                        if (getRelativeDays(it).contains("ago")) {
+                        if (getRelativeDays(it, today).contains("ago")) {
                             MaterialTheme.colorScheme.error
                         } else {
                             MaterialTheme.colorScheme.secondary
@@ -260,7 +278,7 @@ private fun RequestDetailDatesFlow(request: Request) {
             DateItem(
                 icon = Icons.AutoMirrored.Filled.AssignmentReturn,
                 label = "Returned",
-                value = getRelativeDays(it),
+                value = getRelativeDays(it, today),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
@@ -269,7 +287,7 @@ private fun RequestDetailDatesFlow(request: Request) {
             DateItem(
                 icon = Icons.Default.Refresh,
                 label = "Last Renewed",
-                value = getRelativeDays(it),
+                value = getRelativeDays(it, today),
                 tint = MaterialTheme.colorScheme.tertiary,
             )
             request.lastRenewReason?.takeIf { reason -> reason.isNotBlank() }?.let { reason ->
@@ -296,7 +314,7 @@ private fun RequestDetailDatesFlow(request: Request) {
 
 @Composable
 private fun DateItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String,
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,

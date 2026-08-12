@@ -1,12 +1,28 @@
 package com.iiitnr.inventoryapp.utils
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestStatus
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.daysUntil
 import kotlin.math.abs
 
-fun getRelativeDays(dateTimeString: String?): String {
+val LocalToday =
+    staticCompositionLocalOf<LocalDate> {
+        LocalDateTime.parse("2026-08-12T00:00:00").date
+    }
+
+val currentToday: LocalDate
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalToday.current
+
+fun getRelativeDays(
+    dateTimeString: String?,
+    today: LocalDate,
+): String {
     if (dateTimeString == null) return ""
     val dateTime =
         try {
@@ -16,30 +32,32 @@ fun getRelativeDays(dateTimeString: String?): String {
         }
     val date = dateTime.date
 
-    val today = LocalDateTime.parse("2026-08-12T00:00:00").date
-    val days = today.daysUntil(date)
+    val days = (date.toEpochDays() - today.toEpochDays())
 
-    return if (days == 0) {
+    return if (days == 0L) {
         "Today"
-    } else if (days < 0) {
+    } else if (days < 0L) {
         "${abs(days)}d ago"
     } else {
         "Due in ${abs(days)}d"
     }
 }
 
-fun buildDatesLine(request: Request): String {
+fun buildDatesLine(
+    request: Request,
+    today: LocalDate,
+): String {
     val tokens = mutableListOf<String>()
     request.returnDueAt?.let {
         if (request.status != RequestStatus.RETURNED) {
-            var s = getRelativeDays(it)
+            var s = getRelativeDays(it, today)
             if (s.startsWith("Due in ")) s = "Due: " + s.removePrefix("Due in ")
             tokens += s
         }
     }
-    tokens += "Created: ${getRelativeDays(request.createdAt)}"
-    request.fulfilledAt?.let { tokens += "Fulfilled: ${getRelativeDays(it)}" }
-    request.lastRenewDate?.let { tokens += "Renewed: ${getRelativeDays(it)}" }
-    request.returnedAt?.let { tokens += "Returned: ${getRelativeDays(it)}" }
+    tokens += "Created: ${getRelativeDays(request.createdAt, today)}"
+    request.fulfilledAt?.let { tokens += "Fulfilled: ${getRelativeDays(it, today)}" }
+    request.lastRenewDate?.let { tokens += "Renewed: ${getRelativeDays(it, today)}" }
+    request.returnedAt?.let { tokens += "Returned: ${getRelativeDays(it, today)}" }
     return tokens.joinToString(" · ")
 }
