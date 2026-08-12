@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
+import com.iiitnr.inventoryapp.data.models.RequestItem
 import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.models.UserRole
@@ -25,6 +26,7 @@ class RequestFormattingTest {
     @Test
     fun snackbarMessageMatchesKnownStatusActions() {
         assertEquals("Request approved", requestStatusActionSnackbarMessage(RequestStatus.APPROVED))
+        assertEquals("Request rejected", requestStatusActionSnackbarMessage(RequestStatus.REJECTED))
         assertEquals("Request issued", requestStatusActionSnackbarMessage(RequestStatus.ISSUED))
         assertEquals("Request marked returned", requestStatusActionSnackbarMessage(RequestStatus.RETURNED))
         assertEquals("Renewal requested", requestStatusActionSnackbarMessage(RequestStatus.REQUESTED_RENEW))
@@ -32,8 +34,9 @@ class RequestFormattingTest {
     }
 
     @Test
-    fun snackbarMessageIsNullForUnknownStatus() {
-        assertNull(requestStatusActionSnackbarMessage(RequestStatus.REJECTED))
+    fun snackbarMessageIsNullForStatusesWithoutDirectActionMessage() {
+        assertNull(requestStatusActionSnackbarMessage(RequestStatus.PENDING))
+        assertNull(requestStatusActionSnackbarMessage(RequestStatus.EXPIRED))
     }
 
     @Test
@@ -74,5 +77,31 @@ class RequestFormattingTest {
             )
 
         assertEquals("Requested from: Name: Dr. Shailesh Khapre", buildUserDetailsLabel("Requested from", user))
+    }
+
+    @Test
+    fun requestItemQuantitySummaryShowsOnlyRequestedQuantityWhenNoProgress() {
+        val item =
+            RequestItem(
+                id = "item-1",
+                quantity = 5,
+                fulfilledQuantity = 0,
+                returnedQuantity = 0,
+            )
+
+        assertEquals("Requested 5", requestItemQuantitySummary(item))
+    }
+
+    @Test
+    fun requestItemQuantitySummaryLabelsEveryLifecycleQuantityWhenProgressed() {
+        val item =
+            RequestItem(
+                id = "item-1",
+                quantity = 5,
+                fulfilledQuantity = 3,
+                returnedQuantity = 1,
+            )
+
+        assertEquals("Requested 5 • Issued 3 • Returned 1", requestItemQuantitySummary(item))
     }
 }
