@@ -32,7 +32,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,87 +43,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.UpdateUserRequest
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.models.UserRole
-import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.PaginationBar
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.components.common.userRoleColor
-import io.ktor.client.plugins.ResponseException
-import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
+import org.koin.compose.viewmodel.koinViewModel
 
 private val allRoles: List<UserRole> = UserRole.ALL
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserManagementScreen(
-    tokenManager: TokenManager,
     onNavigateBack: () -> Unit,
+    viewModel: UserManagementViewModel = koinViewModel(),
 ) {
-    var users by remember { mutableStateOf<List<User>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var totalCount by remember { mutableStateOf(0) }
-    var currentOffset by remember { mutableStateOf(0) }
-    var searchQuery by remember { mutableStateOf("") }
+    val users = viewModel.users
+    val isLoading = viewModel.isLoading
+    val errorMessage = viewModel.errorMessage
+    val totalCount = viewModel.totalCount
+    val currentOffset = viewModel.currentOffset
+    val searchQuery = viewModel.searchQuery
+    val pageSize = viewModel.pageSize
+
     var editingUser by remember { mutableStateOf<User?>(null) }
-    val pageSize = 50
     val scope = rememberCoroutineScope()
-
-    fun loadUsers() {
-        scope.launch {
-            isLoading = true
-            errorMessage = null
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    val response =
-                        ApiClient.userApiService.getUsers(
-                            token = "Bearer $token",
-                            limit = pageSize,
-                            offset = currentOffset,
-                            search = searchQuery.trim().ifBlank { null },
-                        )
-                    users = response.users
-                    totalCount = response.pagination.total
-                } else {
-                    errorMessage = "No authentication token"
-                }
-            } catch (e: Throwable) {
-                errorMessage =
-                    when {
-                        e is ResponseException &&
-                            e.response.status == HttpStatusCode.Unauthorized
-                        -> "Session expired. Please login again."
-
-                        e.message?.contains(
-                            "Network",
-                        ) == true ||
-                            e.message?.contains(
-                                "timeout",
-                            ) == true -> "Network error. Please check your connection."
-
-                        else -> "Error: ${e.message ?: "Failed to load users"}"
-                    }
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    LaunchedEffect(currentOffset, searchQuery) {
-        if (searchQuery.isNotBlank()) {
-            delay(300.milliseconds)
-        }
-        loadUsers()
-    }
 
     Scaffold(
         topBar = {
@@ -139,10 +84,7 @@ fun UserManagementScreen(
         ) {
             SearchBar(
                 searchQuery = searchQuery,
-                onSearchQueryChange = {
-                    searchQuery = it
-                    currentOffset = 0
-                },
+                onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
                 placeholder = "Search users...",
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -162,7 +104,7 @@ fun UserManagementScreen(
                                 color = MaterialTheme.colorScheme.error,
                             )
                             Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = { loadUsers() }) { Text("Retry") }
+                            TextButton(onClick = { viewModel.loadUsers() }) { Text("Retry") }
                         }
                     }
                 }
@@ -194,8 +136,8 @@ fun UserManagementScreen(
                         currentOffset = currentOffset,
                         pageSize = pageSize,
                         totalCount = totalCount,
-                        onPrevious = { currentOffset = (currentOffset - pageSize).coerceAtLeast(0) },
-                        onNext = { currentOffset += pageSize },
+                        onPrevious = { viewModel.onPreviousPage() },
+                        onNext = { viewModel.onNextPage() },
                     )
                 }
             }
@@ -206,28 +148,17 @@ fun UserManagementScreen(
         EditUserDialog(
             user = user,
             onSave = { name, role, batch, branch ->
-                scope.launch {
-                    try {
-                        val token = tokenManager.token.first()
-                        if (token != null) {
-                            ApiClient.userApiService.updateUser(
-                                token = "Bearer $token",
-                                userId = user.id,
-                                request =
-                                    UpdateUserRequest(
-                                        name = name.ifBlank { null },
-                                        role = role,
-                                        batch = batch.ifBlank { null },
-                                        branch = branch.ifBlank { null },
-                                    ),
-                            )
-                            editingUser = null
-                            loadUsers()
-                        }
-                    } catch (e: Throwable) {
-                        errorMessage = "Failed to update user: ${e.message}"
-                    }
-                }
+                viewModel.updateUser(
+                    userId = user.id,
+                    request =
+                        UpdateUserRequest(
+                            name = name.ifBlank { null },
+                            role = role,
+                            batch = batch.ifBlank { null },
+                            branch = branch.ifBlank { null },
+                        ),
+                )
+                editingUser = null
             },
             onDismiss = { editingUser = null },
         )

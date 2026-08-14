@@ -24,10 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,61 +32,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.iiitnr.inventoryapp.data.api.ApiClient
-import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.models.UserRole
-import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun ProfileScreen(
-    tokenManager: TokenManager,
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToRequests: () -> Unit = {},
     onNavigateToAuditLog: () -> Unit = {},
     onNavigateToUserManagement: () -> Unit = {},
+    viewModel: ProfileViewModel = koinViewModel(),
 ) {
-    var userData by remember { mutableStateOf<User?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val userData = viewModel.user
+    val isLoading = viewModel.isLoading
+    val errorMessage = viewModel.errorMessage
     val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    try {
-                        val response = ApiClient.authApiService.getMe("Bearer $token")
-                        userData = response.user
-                        isLoading = false
-                    } catch (e: Throwable) {
-                        errorMessage =
-                            when {
-                                e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true ->
-                                    "Session expired. Please login again."
-
-                                e.message?.contains("Network") == true || e.message?.contains("timeout") == true ->
-                                    "Network error. Please check your connection."
-
-                                else ->
-                                    "Failed to load user data: ${e.message ?: "Unknown error"}"
-                            }
-                        isLoading = false
-                    }
-                } else {
-                    errorMessage = "No authentication token found"
-                    isLoading = false
-                }
-            } catch (e: Throwable) {
-                errorMessage = "Error: ${e.message}"
-                isLoading = false
-            }
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -99,10 +58,7 @@ fun ProfileScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            scope.launch {
-                                tokenManager.clearToken()
-                                onLogout()
-                            }
+                            viewModel.logout(onLogout)
                         },
                     ) {
                         Text("Logout")
@@ -142,14 +98,14 @@ fun ProfileScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            ProfilePicture(userData!!.imageUrl)
+                            ProfilePicture(userData.imageUrl)
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            InfoRow("Email", userData!!.email)
-                            InfoRow("Name", userData!!.name ?: "Not provided")
-                            InfoRow("Role", userData!!.role.name)
-                            userData!!.batch?.let { InfoRow("Batch", it) }
-                            userData!!.branch?.let { InfoRow("Branch", it) }
+                            InfoRow("Email", userData.email)
+                            InfoRow("Name", userData.name ?: "Not provided")
+                            InfoRow("Role", userData.role.name)
+                            userData.batch?.let { InfoRow("Batch", it) }
+                            userData.branch?.let { InfoRow("Branch", it) }
                         }
                     }
 
@@ -162,7 +118,7 @@ fun ProfileScreen(
                     }
 
                     val isAdmin =
-                        userData!!.role.let {
+                        userData.role.let {
                             it == UserRole.ADMIN || it == UserRole.LA
                         }
                     if (isAdmin) {
@@ -175,7 +131,7 @@ fun ProfileScreen(
                         }
                     }
 
-                    if (userData!!.role == UserRole.ADMIN) {
+                    if (userData.role == UserRole.ADMIN) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = onNavigateToUserManagement,

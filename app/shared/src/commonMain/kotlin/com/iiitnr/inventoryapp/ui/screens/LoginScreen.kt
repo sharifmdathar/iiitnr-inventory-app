@@ -15,7 +15,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -23,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -34,84 +32,19 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.iiitnr.inventoryapp.data.api.ApiClient
-import com.iiitnr.inventoryapp.data.models.GoogleSignInRequest
-import com.iiitnr.inventoryapp.data.models.LoginRequest
-import com.iiitnr.inventoryapp.data.storage.TokenManager
-import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    tokenManager: TokenManager,
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
+    viewModel: AuthViewModel = koinViewModel(),
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val isLoading = viewModel.isLoading
+    val errorMessage = viewModel.errorMessage
     val scope = rememberCoroutineScope()
     val passwordFocusRequester = remember { FocusRequester() }
-
-    fun performLogin() {
-        if (email.isBlank() || password.isBlank()) {
-            errorMessage = "Please fill in all fields"
-            return
-        }
-        isLoading = true
-        errorMessage = null
-        scope.launch {
-            try {
-                val authResponse = ApiClient.authApiService.login(LoginRequest(email.trim(), password))
-                tokenManager.saveToken(authResponse.token)
-                onLoginSuccess()
-            } catch (e: Throwable) {
-                errorMessage =
-                    when {
-                        e.message?.contains(
-                            "400",
-                        ) == true ||
-                            e.message?.contains("Bad Request") == true -> "Invalid request. Please check your input."
-
-                        e.message?.contains(
-                            "401",
-                        ) == true ||
-                            e.message?.contains("Unauthorized") == true -> {
-                            when {
-                                e.message?.contains("invalid credentials") == true -> "Invalid email or password"
-                                e.message?.contains(
-                                    "this account uses Google Sign-In",
-                                ) == true -> "This account uses Google Sign-In. Please use Sign in with Google instead."
-
-                                else -> "Unauthorized. Please check your credentials"
-                            }
-                        }
-
-                        e.message?.contains(
-                            "403",
-                        ) == true ||
-                            e.message?.contains(
-                                "Forbidden",
-                            ) == true ->
-                            "This account is currently pending approval. " +
-                                "Please contact an admin for assistance"
-
-                        e.message?.contains(
-                            "Network",
-                        ) == true ||
-                            e.message?.contains("timeout") == true ||
-                            e.message?.contains(
-                                "fetch",
-                            ) == true -> "Network error (CORS or offline). Please check your connection."
-
-                        else -> "Login failed: ${e.message ?: "Please check your credentials"}"
-                    }
-                isLoading = false
-            }
-        }
-    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -125,10 +58,10 @@ fun LoginScreen(
         )
 
         OutlinedTextField(
-            value = email,
+            value = viewModel.email,
             onValueChange = {
-                email = it
-                errorMessage = null
+                viewModel.email = it
+                viewModel.errorMessage = null
             },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -138,8 +71,8 @@ fun LoginScreen(
             keyboardActions =
                 KeyboardActions(
                     onNext = {
-                        if (password.isNotBlank()) {
-                            performLogin()
+                        if (viewModel.password.isNotBlank()) {
+                            viewModel.login(onLoginSuccess)
                         } else {
                             passwordFocusRequester.requestFocus()
                         }
@@ -148,10 +81,10 @@ fun LoginScreen(
         )
 
         OutlinedTextField(
-            value = password,
+            value = viewModel.password,
             onValueChange = {
-                password = it
-                errorMessage = null
+                viewModel.password = it
+                viewModel.errorMessage = null
             },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp).focusRequester(passwordFocusRequester),
@@ -161,7 +94,7 @@ fun LoginScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions =
                 KeyboardActions(
-                    onDone = { performLogin() },
+                    onDone = { viewModel.login(onLoginSuccess) },
                 ),
         )
 
@@ -174,7 +107,7 @@ fun LoginScreen(
         }
 
         Button(
-            onClick = { performLogin() },
+            onClick = { viewModel.login(onLoginSuccess) },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             enabled = !isLoading,
         ) {
@@ -190,86 +123,30 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        var isGoogleLoading by remember { mutableStateOf(false) }
         OutlinedButton(
             onClick = {
-                isGoogleLoading = true
                 onGoogleSignInClick { idToken ->
-                    isGoogleLoading = false
                     if (idToken != null) {
-                        scope.launch {
-                            try {
-                                val authResponse =
-                                    ApiClient.authApiService.signInWithGoogle(
-                                        GoogleSignInRequest(idToken),
-                                    )
-                                tokenManager.saveToken(authResponse.token)
-                                onLoginSuccess()
-                            } catch (e: Throwable) {
-                                val errorMsg = e.message ?: "Unknown error"
-                                errorMessage =
-                                    when {
-                                        errorMsg.contains("403") -> {
-                                            when {
-                                                errorMsg.contains("email addresses are allowed") -> {
-                                                    errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
-                                                        ?: "Only @iiitnr.edu.in email addresses are allowed."
-                                                }
-
-                                                else ->
-                                                    "Access denied. " +
-                                                        "Only @iiitnr.edu.in email addresses are allowed."
-                                            }
-                                        }
-
-                                        errorMsg.contains("401") -> "Google Sign-In failed: Unauthorized"
-                                        errorMsg.contains("400") -> {
-                                            when {
-                                                errorMsg.contains(
-                                                    "audience",
-                                                ) -> "Token verification failed. Check backend configuration."
-
-                                                errorMsg.contains(
-                                                    "email not verified",
-                                                ) -> "Google account email is not verified"
-
-                                                else ->
-                                                    errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
-                                                        ?: "Google Sign-In failed"
-                                            }
-                                        }
-
-                                        else ->
-                                            errorMsg.substringAfter(": ").takeIf { it.isNotBlank() }
-                                                ?: "Google Sign-In failed"
-                                    }
-                            }
-                        }
+                        viewModel.googleSignIn(idToken, onLoginSuccess)
                     } else {
-                        errorMessage = "Google Sign-In was cancelled"
+                        viewModel.errorMessage = "Google Sign-In was cancelled"
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),
-            enabled = !isLoading && !isGoogleLoading,
+            enabled = !isLoading,
         ) {
-            if (isGoogleLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Image(
+                    painter = googleSignInPainter(),
+                    contentDescription = "Google",
+                    modifier = Modifier.size(20.dp),
                 )
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Image(
-                        painter = googleSignInPainter(),
-                        contentDescription = "Google",
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sign in with Google")
-                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sign in with Google")
             }
         }
 

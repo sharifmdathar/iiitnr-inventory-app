@@ -1,29 +1,45 @@
 package com.iiitnr.inventoryapp.di
 
 import com.iiitnr.inventoryapp.data.api.ApiClient
-import com.iiitnr.inventoryapp.data.api.AuthApiService
-import com.iiitnr.inventoryapp.data.api.ComponentApiService
-import com.iiitnr.inventoryapp.data.api.RequestApiService
-import com.iiitnr.inventoryapp.data.api.AuditLogApiService
-import com.iiitnr.inventoryapp.data.api.UserApiService
-import com.iiitnr.inventoryapp.data.api.VersionApiService
-import com.iiitnr.inventoryapp.data.storage.createTokenManager
+import com.iiitnr.inventoryapp.ui.screens.AuditLogViewModel
+import com.iiitnr.inventoryapp.ui.screens.AuthViewModel
+import com.iiitnr.inventoryapp.ui.screens.ComponentsViewModel
+import com.iiitnr.inventoryapp.ui.screens.ProfileViewModel
+import com.iiitnr.inventoryapp.ui.screens.RequestsViewModel
+import com.iiitnr.inventoryapp.ui.screens.UserManagementViewModel
+import org.koin.core.module.Module
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
-val apiModule = module {
-    single { ApiClient.client }
-    single { ApiClient.authApiService }
-    single { ApiClient.componentApiService }
-    single { ApiClient.requestApiService }
-    single { ApiClient.auditLogApiService }
-    single { ApiClient.userApiService }
-    single { ApiClient.versionApiService }
-}
+val apiModule =
+    module {
+        single { ApiClient.client }
+        single { ApiClient.authApiService }
+        single { ApiClient.componentApiService }
+        single { ApiClient.requestApiService }
+        single { ApiClient.auditLogApiService }
+        single { ApiClient.userApiService }
+        single { ApiClient.versionApiService }
+    }
 
-val storageModule = module {
-    single { createTokenManager() }
-}
+val storageModule =
+    module {
+        // Platform specific storage provided in platformModule
+    }
 
-val appModule = module {
-    includes(apiModule, storageModule)
-}
+val viewModelModule =
+    module {
+        viewModel { RequestsViewModel(get()) }
+        viewModel { ComponentsViewModel(get(), getOrNull()) }
+        viewModel { AuthViewModel(get()) }
+        viewModel { ProfileViewModel(get()) }
+        viewModel { AuditLogViewModel(get()) }
+        viewModel { UserManagementViewModel(get()) }
+    }
+
+expect val platformModule: Module
+
+val appModule =
+    module {
+        includes(apiModule, storageModule, viewModelModule, platformModule)
+    }

@@ -9,8 +9,9 @@ enum class ComponentCategory(
     ACTUATORS("Actuators"),
     MICROCONTROLLERS("Microcontrollers"),
     MICROPROCESSORS("Microprocessors"),
-    OTHERS("Others"),
-    ;
+    OTHERS(
+        "Others",
+    ), ;
 
     companion object {
         val labels: List<String> = entries.map { it.label }
@@ -22,8 +23,7 @@ enum class ComponentLocation(
 ) {
     IOT_LAB("IoT Lab"),
     ROBO_LAB("Robo Lab"),
-    VLSI_LAB("VLSI Lab"),
-    ;
+    VLSI_LAB("VLSI Lab"), ;
 
     companion object {
         val labels: List<String> = entries.map { it.label }

@@ -17,6 +17,7 @@ private fun filteredEmptyMessage(
     if (searchQuery.isNotBlank()) {
         return "No requests match your search"
     }
+
     return when (statusFilter) {
         RequestStatus.PENDING -> "No pending requests"
         RequestStatus.APPROVED -> "No approved requests"

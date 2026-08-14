@@ -7,6 +7,7 @@ import com.iiitnr.inventoryapp.data.models.RequestsResponse
 import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.sse.sse
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
@@ -17,10 +18,8 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import io.ktor.client.plugins.sse.sse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import io.ktor.client.plugins.sse.ClientSSESession
 
 class RequestApiService(
     private val client: HttpClient,

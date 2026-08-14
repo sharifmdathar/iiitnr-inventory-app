@@ -5,10 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.remember
 import com.iiitnr.inventoryapp.data.auth.GoogleSignInHelper
-import com.iiitnr.inventoryapp.data.cache.createComponentsCache
-import com.iiitnr.inventoryapp.data.storage.createTokenManager
+import com.iiitnr.inventoryapp.di.initKoin
 import com.iiitnr.inventoryapp.shared.App
 import com.iiitnr.inventoryapp.ui.platform.ImagePickerLauncher
 import com.iiitnr.inventoryapp.ui.platform.exportComponentsCsvAndroid
@@ -17,6 +15,7 @@ import com.iiitnr.inventoryapp.ui.theme.IIITNRInventoryAppTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.koin.android.ext.koin.androidContext
 
 class MainActivity : ComponentActivity() {
     private lateinit var googleSignInHelper: GoogleSignInHelper
@@ -32,14 +31,15 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             enableEdgeToEdge()
         }
+
+        initKoin {
+            androidContext(this@MainActivity)
+        }
+
         setContent {
             IIITNRInventoryAppTheme {
                 ImagePickerLauncher()
-                val tokenManager = createTokenManager(this@MainActivity)
-                val componentsCache = remember { createComponentsCache(this@MainActivity) }
                 App(
-                    tokenManager = tokenManager,
-                    componentsCache = componentsCache,
                     onGoogleSignInClick = { callback ->
                         onGoogleSignInResult = callback
                         coroutineScope.launch {

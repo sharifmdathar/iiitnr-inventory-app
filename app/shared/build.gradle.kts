@@ -14,37 +14,38 @@ plugins {
 val packageJsonFile = rootProject.layout.projectDirectory.file("../backend/package.json")
 val generatedVersionDir = layout.buildDirectory.dir("generated/source/appVersion/commonMain/kotlin")
 
-val generateVersionKt by tasks.registering {
-    description = "Generates Version for the App"
-    val versionInput = packageJsonFile.asFile
-    val versionOutputDir = generatedVersionDir.get().asFile
+val generateVersionKt =
+    tasks.register("generateVersionKt") {
+        description = "Generates Version for the App"
+        val versionInput = packageJsonFile.asFile
+        val versionOutputDir = generatedVersionDir.get().asFile
 
-    inputs.file(versionInput)
-    outputs.dir(versionOutputDir)
+        inputs.file(versionInput)
+        outputs.dir(versionOutputDir)
 
-    doLast {
-        val packageJson = versionInput.readText()
-        val version =
-            (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
-                ?.toString()
-                ?.takeIf { it.isNotBlank() }
-                ?: error("Could not find version in backend/package.json")
-        val versionFile =
-            versionOutputDir.resolve("com/iiitnr/inventoryapp/data/GeneratedVersion.kt")
+        doLast {
+            val packageJson = versionInput.readText()
+            val version =
+                (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
+                    ?.toString()
+                    ?.takeIf { it.isNotBlank() }
+                    ?: error("Could not find version in backend/package.json")
+            val versionFile =
+                versionOutputDir.resolve("com/iiitnr/inventoryapp/data/GeneratedVersion.kt")
 
-        versionOutputDir.deleteRecursively()
-        versionFile.parentFile.mkdirs()
-        versionFile.writeText(
-            """
-            package com.iiitnr.inventoryapp.data
+            versionOutputDir.deleteRecursively()
+            versionFile.parentFile.mkdirs()
+            versionFile.writeText(
+                """
+                package com.iiitnr.inventoryapp.data
 
-            internal object GeneratedVersion {
-                const val CURRENT_VERSION = "$version"
-            }
-            """.trimIndent() + "\n",
-        )
+                internal object GeneratedVersion {
+                    const val CURRENT_VERSION = "$version"
+                }
+                """.trimIndent() + "\n",
+            )
+        }
     }
-}
 
 kotlin {
     compilerOptions {
@@ -79,63 +80,72 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
-            kotlin.srcDir(generateVersionKt)
+        val commonMain =
+            sourceSets.getByName("commonMain") {
+                kotlin.srcDir(generateVersionKt)
 
-            dependencies {
-                val composeVersion = libs.versions.composeMultiplatform.get()
+                dependencies {
+                    val composeVersion = libs.versions.composeMultiplatform.get()
 
-                implementation("org.jetbrains.compose.ui:ui-tooling-preview:$composeVersion")
+                    implementation("org.jetbrains.compose.ui:ui-tooling-preview:$composeVersion")
 
-                implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
-                implementation("org.jetbrains.compose.ui:ui:$composeVersion")
-                implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
-                implementation("org.jetbrains.compose.material3:material3:${libs.versions.material3.get()}")
+                    implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
+                    implementation("org.jetbrains.compose.ui:ui:$composeVersion")
+                    implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
+                    implementation("org.jetbrains.compose.material3:material3:${libs.versions.material3.get()}")
 
-                implementation(libs.material.icons.extended)
-                implementation("org.jetbrains.compose.components:components-resources:$composeVersion")
+                    implementation(libs.material.icons.extended)
+                    implementation("org.jetbrains.compose.components:components-resources:$composeVersion")
 
-                implementation(libs.ktor.client.core)
-                implementation(libs.ktor.client.content.negotiation)
-                implementation(libs.ktor.serialization.kotlinx.json)
+                    implementation(libs.ktor.client.core)
+                    implementation(libs.ktor.client.content.negotiation)
+                    implementation(libs.ktor.serialization.kotlinx.json)
 
-                implementation(libs.kotlinx.serialization.json)
+                    implementation(libs.kotlinx.serialization.json)
 
-                implementation(libs.kotlinx.coroutines.core)
+                    implementation(libs.kotlinx.coroutines.core)
 
-                implementation(libs.navigation.compose)
+                    implementation(libs.navigation.compose)
 
-                implementation(libs.coil.compose)
-                implementation(libs.coil.network)
-                implementation(libs.qrose)
-                implementation(libs.sqldelight.runtime)
-                implementation(libs.sqldelight.coroutines.extensions)
-                implementation(libs.kotlinx.datetime)
+                    implementation(libs.coil.compose)
+                    implementation(libs.coil.network)
+                    implementation(libs.qrose)
+                    implementation(libs.sqldelight.runtime)
+                    implementation(libs.sqldelight.coroutines.extensions)
+                    implementation(libs.kotlinx.datetime)
+
+                    implementation(libs.insert.koin.koin.compose)
+                    implementation(libs.insert.koin.koin.compose.viewmodel)
+                    implementation(libs.androidx.lifecycle.viewmodel.compose)
+                }
             }
-        }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
+        val commonTest =
+            sourceSets.getByName("commonTest") {
+                dependencies {
+                    implementation(kotlin("test"))
+                }
             }
-        }
 
-        val androidMain by getting {
-            dependencies {
-                implementation(libs.sqldelight.driver.android)
-                implementation(libs.ktor.client.android)
-                implementation(libs.androidx.activity.compose)
-                implementation(libs.androidx.datastore.preferences)
-                implementation(libs.androidx.credentials)
-                implementation(libs.androidx.credentials.play.services.auth)
-                implementation(libs.googleid)
-                implementation(libs.androidx.camera.core)
-                implementation(libs.androidx.camera.camera2)
-                implementation(libs.androidx.camera.lifecycle)
-                implementation(libs.androidx.camera.view)
-                implementation(libs.zxing.core)
+        val androidMain =
+            sourceSets.getByName("androidMain") {
+                dependencies {
+                    api("io.insert-koin:koin-android:${libs.versions.koin.get()}")
+                    implementation(libs.kotlinx.coroutines.android)
+                    implementation(libs.sqldelight.driver.android)
+                    implementation(libs.ktor.client.android)
+                    implementation(libs.androidx.activity.compose)
+                    implementation(libs.androidx.datastore.preferences)
+                    implementation(libs.androidx.credentials)
+                    implementation(libs.androidx.credentials.play.services.auth)
+                    implementation(libs.googleid)
+                    implementation(libs.androidx.camera.core)
+                    implementation(libs.androidx.camera.camera2)
+                    implementation(libs.androidx.camera.lifecycle)
+                    implementation(libs.androidx.camera.view)
+                    implementation(libs.zxing.core)
+                }
             }
-        }
 
         if (isMac) {
             val iosTargets =
@@ -148,19 +158,22 @@ kotlin {
             }
         }
 
-        val jvmMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.cio)
-                implementation(libs.sqldelight.driver.sqlite)
+        val jvmMain =
+            sourceSets.getByName("jvmMain") {
+                dependencies {
+                    implementation(libs.ktor.client.cio)
+                    implementation(libs.sqldelight.driver.sqlite)
+                    implementation(libs.kotlinx.coroutines.swing)
+                }
             }
-        }
 
-        val wasmJsMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.js)
-                implementation(libs.sqldelight.driver.web.worker)
+        val wasmJsMain =
+            sourceSets.getByName("wasmJsMain") {
+                dependencies {
+                    implementation(libs.ktor.client.js)
+                    implementation(libs.sqldelight.driver.web.worker)
+                }
             }
-        }
     }
 }
 

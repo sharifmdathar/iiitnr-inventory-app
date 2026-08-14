@@ -49,8 +49,7 @@ private val LocalInventoryColors =
     }
 
 val MaterialTheme.inventoryColors: InventoryColors
-    @Composable
-    @ReadOnlyComposable
+    @Composable @ReadOnlyComposable
     get() = LocalInventoryColors.current
 
 private val DarkInventoryColors =

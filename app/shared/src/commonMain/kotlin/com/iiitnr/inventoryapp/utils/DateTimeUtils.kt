@@ -15,8 +15,7 @@ val LocalToday =
     }
 
 val currentToday: LocalDate
-    @Composable
-    @ReadOnlyComposable
+    @Composable @ReadOnlyComposable
     get() = LocalToday.current
 
 fun getRelativeDays(

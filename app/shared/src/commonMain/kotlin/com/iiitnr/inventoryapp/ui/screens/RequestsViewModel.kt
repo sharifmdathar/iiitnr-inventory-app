@@ -16,7 +16,6 @@ import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
-import com.iiitnr.inventoryapp.utils.requestStatusDisplayLabel
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.delay
@@ -73,21 +72,15 @@ class RequestsViewModel(
         startSseOrPolling()
     }
 
-    private fun startSseOrPolling() {
+    private fun loadUserData() {
         viewModelScope.launch {
-            tokenManager.token.first()?.let { token ->
-                try {
-                    ApiClient.requestApiService.streamRequestEvents("Bearer $token").collect {
-                        loadRequests(pollingMode = true)
-                    }
-                } catch (e: Exception) {
-                    while (true) {
-                        delay(10000.milliseconds)
-                        if (errorMessage == null && !isLoading && !isRefreshing) {
-                            loadRequests(pollingMode = true)
-                        }
-                    }
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val response = ApiClient.authApiService.getMe("Bearer $token")
+                    currentUser = response.user
                 }
+            } catch (_: Exception) {
             }
         }
     }
@@ -123,8 +116,13 @@ class RequestsViewModel(
 
                     errorMessage =
                         when {
-                            e.message?.contains("Network") == true ||
-                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
+                            e.message?.contains(
+                                "Network",
+                            ) == true ||
+                                e.message?.contains(
+                                    "timeout",
+                                ) == true -> "Network error. Please check your connection."
+
                             else -> "Error: ${e.message ?: "Failed to load requests"}"
                         }
                 }
@@ -133,6 +131,25 @@ class RequestsViewModel(
                     isRefreshing = false
                 } else {
                     isLoading = false
+                }
+            }
+        }
+    }
+
+    private fun startSseOrPolling() {
+        viewModelScope.launch {
+            tokenManager.token.first()?.let { token ->
+                try {
+                    ApiClient.requestApiService.streamRequestEvents("Bearer $token").collect {
+                        loadRequests(pollingMode = true)
+                    }
+                } catch (e: Exception) {
+                    while (true) {
+                        delay(10000.milliseconds)
+                        if (errorMessage == null && !isLoading && !isRefreshing) {
+                            loadRequests(pollingMode = true)
+                        }
+                    }
                 }
             }
         }
@@ -184,19 +201,6 @@ class RequestsViewModel(
                 }
             } catch (e: Throwable) {
                 errorMessage = "Error: ${e.message ?: "Failed to update request status"}"
-            }
-        }
-    }
-
-    private fun loadUserData() {
-        viewModelScope.launch {
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    val response = ApiClient.authApiService.getMe("Bearer $token")
-                    currentUser = response.user
-                }
-            } catch (_: Exception) {
             }
         }
     }

@@ -33,7 +33,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,9 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.AuditLogEntry
-import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.InventoryTable
 import com.iiitnr.inventoryapp.ui.components.common.PaginationBar
@@ -56,11 +53,10 @@ import com.iiitnr.inventoryapp.ui.components.common.TableColumn
 import com.iiitnr.inventoryapp.ui.components.common.auditActionColor
 import com.iiitnr.inventoryapp.ui.theme.SemanticDanger
 import com.iiitnr.inventoryapp.ui.theme.SemanticSuccess
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.koin.compose.viewmodel.koinViewModel
 
 private val actionLabels =
     mapOf(
@@ -89,49 +85,19 @@ private val jsonParser = Json { ignoreUnknownKeys = true }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuditLogScreen(
-    tokenManager: TokenManager,
     onNavigateBack: () -> Unit,
+    viewModel: AuditLogViewModel = koinViewModel(),
 ) {
-    var logs by remember { mutableStateOf<List<AuditLogEntry>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var totalCount by remember { mutableStateOf(0) }
-    var currentOffset by remember { mutableStateOf(0) }
-    var selectedAction by remember { mutableStateOf<String?>(null) }
+    val logs = viewModel.logs
+    val isLoading = viewModel.isLoading
+    val errorMessage = viewModel.errorMessage
+    val totalCount = viewModel.totalCount
+    val currentOffset = viewModel.currentOffset
+    val selectedAction = viewModel.selectedAction
+    val pageSize = viewModel.pageSize
+
     var selectedEntry by remember { mutableStateOf<AuditLogEntry?>(null) }
-    val pageSize = 50
     val scope = rememberCoroutineScope()
-
-    fun loadLogs() {
-        scope.launch {
-            isLoading = true
-            errorMessage = null
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    val response =
-                        ApiClient.auditLogApiService.getAuditLogs(
-                            token = "Bearer $token",
-                            limit = pageSize,
-                            offset = currentOffset,
-                            action = selectedAction,
-                        )
-                    logs = response.logs
-                    totalCount = response.pagination.total
-                } else {
-                    errorMessage = "No authentication token"
-                }
-            } catch (e: Throwable) {
-                errorMessage = e.message ?: "Failed to load audit logs"
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    LaunchedEffect(currentOffset, selectedAction) {
-        loadLogs()
-    }
 
     Scaffold(
         topBar = {
@@ -146,10 +112,7 @@ fun AuditLogScreen(
         ) {
             AuditFilterBar(
                 selectedAction = selectedAction,
-                onActionSelected = {
-                    selectedAction = it
-                    currentOffset = 0
-                },
+                onActionSelected = { viewModel.onActionSelected(it) },
             )
 
             when {
@@ -167,7 +130,7 @@ fun AuditLogScreen(
                                 color = MaterialTheme.colorScheme.error,
                             )
                             Spacer(Modifier.height(8.dp))
-                            TextButton(onClick = { loadLogs() }) { Text("Retry") }
+                            TextButton(onClick = { viewModel.loadLogs() }) { Text("Retry") }
                         }
                     }
                 }
@@ -199,8 +162,8 @@ fun AuditLogScreen(
                         currentOffset = currentOffset,
                         pageSize = pageSize,
                         totalCount = totalCount,
-                        onPrevious = { currentOffset = (currentOffset - pageSize).coerceAtLeast(0) },
-                        onNext = { currentOffset += pageSize },
+                        onPrevious = { viewModel.onPreviousPage() },
+                        onNext = { viewModel.onNextPage() },
                     )
                 }
             }

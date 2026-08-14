@@ -226,9 +226,7 @@ fun RequestDetailDialogContent(
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color =
-                                        if (item.returnedQuantity >
-                                            0
-                                        ) {
+                                        if (item.returnedQuantity > 0) {
                                             MaterialTheme.inventoryColors.neutral
                                         } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -246,9 +244,7 @@ fun RequestDetailDialogContent(
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     color =
-                                        if (item.fulfilledQuantity >
-                                            0
-                                        ) {
+                                        if (item.fulfilledQuantity > 0) {
                                             MaterialTheme.inventoryColors.info
                                         } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant

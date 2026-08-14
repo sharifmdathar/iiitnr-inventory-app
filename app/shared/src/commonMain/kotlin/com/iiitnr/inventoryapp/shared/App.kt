@@ -34,13 +34,14 @@ import com.iiitnr.inventoryapp.ui.screens.RequestsScreen
 import com.iiitnr.inventoryapp.ui.screens.UserManagementScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 @Composable
 fun App(
-    tokenManager: TokenManager,
     onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
     onExportComponentsCsv: ((String) -> Boolean)? = null,
     componentsCache: ComponentsCache? = null,
+    tokenManager: TokenManager = koinInject(),
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         val navController = rememberNavController()
@@ -103,7 +104,6 @@ fun App(
                     ) {
                         composable("login") {
                             LoginScreen(
-                                tokenManager = tokenManager,
                                 onLoginSuccess = {
                                     navController.navigate("components") {
                                         popUpTo("login") { inclusive = true }
@@ -116,7 +116,7 @@ fun App(
                             )
                         }
                         composable("register") {
-                            RegisterScreen(tokenManager = tokenManager, onRegisterSuccess = {
+                            RegisterScreen(onRegisterSuccess = {
                                 navController.navigate("components") {
                                     popUpTo("register") { inclusive = true }
                                 }
@@ -128,8 +128,6 @@ fun App(
                         }
                         composable("components") {
                             ComponentsScreen(
-                                tokenManager = tokenManager,
-                                componentsCache = componentsCache,
                                 onNavigateToRequests = {
                                     navController.navigate("requests")
                                 },
@@ -140,7 +138,7 @@ fun App(
                             )
                         }
                         composable("profile") {
-                            ProfileScreen(tokenManager = tokenManager, onLogout = {
+                            ProfileScreen(onLogout = {
                                 navController.navigate("login") {
                                     popUpTo(0) { inclusive = true }
                                 }
@@ -155,19 +153,17 @@ fun App(
                             })
                         }
                         composable("requests") {
-                            RequestsScreen(tokenManager = tokenManager, onNavigateBack = {
+                            RequestsScreen(onNavigateBack = {
                                 navController.popBackStack()
                             })
                         }
                         composable("audit_log") {
                             AuditLogScreen(
-                                tokenManager = tokenManager,
                                 onNavigateBack = { navController.popBackStack() },
                             )
                         }
                         composable("user_management") {
                             UserManagementScreen(
-                                tokenManager = tokenManager,
                                 onNavigateBack = { navController.popBackStack() },
                             )
                         }

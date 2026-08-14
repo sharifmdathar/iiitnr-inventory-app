@@ -17,38 +17,27 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.iiitnr.inventoryapp.data.api.ApiClient
-import com.iiitnr.inventoryapp.data.models.RegisterRequest
-import com.iiitnr.inventoryapp.data.storage.TokenManager
-import kotlinx.coroutines.launch
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
-    tokenManager: TokenManager,
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit,
+    viewModel: AuthViewModel = koinViewModel(),
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val isLoading = viewModel.isLoading
+    val errorMessage = viewModel.errorMessage
     val scope = rememberCoroutineScope()
 
     Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -59,46 +48,37 @@ fun RegisterScreen(
         )
 
         OutlinedTextField(
-            value = name,
+            value = viewModel.name,
             onValueChange = {
-                name = it
-                errorMessage = null
+                viewModel.name = it
+                viewModel.errorMessage = null
             },
             label = { Text("Name (Optional)") },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             singleLine = true,
             enabled = !isLoading,
         )
 
         OutlinedTextField(
-            value = email,
+            value = viewModel.email,
             onValueChange = {
-                email = it
-                errorMessage = null
+                viewModel.email = it
+                viewModel.errorMessage = null
             },
             label = { Text("Email") },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             singleLine = true,
             enabled = !isLoading,
         )
 
         OutlinedTextField(
-            value = password,
+            value = viewModel.password,
             onValueChange = {
-                password = it
-                errorMessage = null
+                viewModel.password = it
+                viewModel.errorMessage = null
             },
             label = { Text("Password") },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
             enabled = !isLoading,
@@ -114,53 +94,17 @@ fun RegisterScreen(
 
         Button(
             onClick = {
-                if (email.isBlank() || password.isBlank()) {
-                    errorMessage = "Email and password are required"
+                if (viewModel.email.isBlank() || viewModel.password.isBlank()) {
+                    viewModel.errorMessage = "Email and password are required"
                     return@Button
                 }
-                if (password.length < 3) {
-                    errorMessage = "Password must be at least 3 characters"
+                if (viewModel.password.length < 8) {
+                    viewModel.errorMessage = "Password must be at least 8 characters long"
                     return@Button
                 }
-                isLoading = true
-                errorMessage = null
-                scope.launch {
-                    try {
-                        val response =
-                            ApiClient.authApiService.register(
-                                RegisterRequest(
-                                    email = email.trim(),
-                                    password = password,
-                                    name = name.takeIf { it.isNotBlank() },
-                                ),
-                            )
-                        tokenManager.saveToken(response.token)
-                        onRegisterSuccess()
-                    } catch (e: Throwable) {
-                        errorMessage =
-                            when {
-                                e.message?.contains("400") == true || e.message?.contains("Bad Request") == true ->
-                                    "Invalid request. Please check your input."
-
-                                e.message?.contains("409") == true || e.message?.contains("Conflict") == true ->
-                                    "Email already exists"
-
-                                e.message?.contains("Network") == true ||
-                                    e.message?.contains("timeout") == true ||
-                                    e.message?.contains("fetch") == true ->
-                                    "Network error (CORS or offline). Please check your connection."
-
-                                else ->
-                                    "Registration failed: ${e.message ?: "Please try again"}"
-                            }
-                        isLoading = false
-                    }
-                }
+                viewModel.register(onRegisterSuccess)
             },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             enabled = !isLoading,
         ) {
             if (isLoading) {

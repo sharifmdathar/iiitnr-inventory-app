@@ -48,45 +48,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.IssueItemPayload
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestItem
 import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.ReturnItemPayload
-import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
-import com.iiitnr.inventoryapp.data.models.User
-import com.iiitnr.inventoryapp.data.models.UserRole
-import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.components.requests.FulfillByIdDialog
-import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
 import com.iiitnr.inventoryapp.ui.components.requests.RenewReasonDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestDetailDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
-import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
 import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
 import com.iiitnr.inventoryapp.ui.theme.AppTheme
 import com.iiitnr.inventoryapp.utils.requestStatusDisplayLabel
-import io.ktor.client.plugins.ResponseException
-import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun RequestsScreen(
-    tokenManager: TokenManager,
     onNavigateBack: () -> Unit,
+    viewModel: RequestsViewModel = koinViewModel(),
 ) {
-    var requests by remember { mutableStateOf<List<Request>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isRefreshing by remember { mutableStateOf(false) }
     var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
     var pendingRenewRequestId by remember { mutableStateOf<String?>(null) }
     var renewReasonInput by remember { mutableStateOf("") }
@@ -94,9 +79,6 @@ fun RequestsScreen(
     var showRequestIdDialog by remember { mutableStateOf(false) }
     var showQrScanner by remember { mutableStateOf(false) }
     var requestIdInput by remember { mutableStateOf("") }
-    var currentUser by remember { mutableStateOf<User?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
-    var statusFilter by remember { mutableStateOf<RequestStatus?>(null) }
     var pendingActionSelectionRequest by remember { mutableStateOf<Request?>(null) }
     var pendingPartialIssueRequest by remember { mutableStateOf<Request?>(null) }
     var issueItemsInput by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
@@ -105,126 +87,15 @@ fun RequestsScreen(
     var selectedRequestForDetail by remember { mutableStateOf<Request?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val isFaculty = currentUser?.role == UserRole.FACULTY
-    val isAdminOrLA = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.LA
 
-    val query: String = searchQuery.trim()
-    val filteredRequests =
-        requests.filter { request ->
-            val matchesStatus = statusFilter?.let { it == request.status } ?: true
-            val textMatches =
-                listOfNotNull(
-                    request.projectTitle,
-                    request.user?.name,
-                    request.user?.email,
-                    request.targetFaculty?.name,
-                    request.targetFaculty?.email,
-                ).any { it.contains(query, ignoreCase = true) }
-            val itemMatches = request.items.any { it.component?.name?.contains(query, ignoreCase = true) == true }
-
-            matchesStatus && (query.isBlank() || textMatches || itemMatches)
-        }
-
-    fun loadRequests(pollingMode: Boolean = false) {
-        scope.launch {
-            if (pollingMode && isRefreshing) {
-                return@launch
-            }
-
-            if (pollingMode) {
-                isRefreshing = true
-            } else {
-                isLoading = true
-                errorMessage = null
-            }
-
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    val response = ApiClient.requestApiService.getRequests("Bearer $token")
-                    requests = response.requests
-                    if (pollingMode && errorMessage != null) {
-                        errorMessage = null
-                    }
-                } else {
-                    if (!pollingMode) {
-                        errorMessage = "No authentication token"
-                    }
-                }
-            } catch (e: Throwable) {
-                if (!pollingMode) {
-                    val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
-                    if (isAuthError) return@launch
-
-                    errorMessage =
-                        when {
-                            e.message?.contains(
-                                "Network",
-                            ) == true ||
-                                e.message?.contains("timeout") == true -> "Network error. Please check your connection."
-
-                            else -> "Error: ${e.message ?: "Failed to load requests"}"
-                        }
-                }
-            } finally {
-                if (pollingMode) {
-                    isRefreshing = false
-                } else {
-                    isLoading = false
-                }
-            }
-        }
-    }
-
-    fun deleteRequest(requestId: String) {
-        scope.launch {
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    ApiClient.requestApiService.deleteRequest("Bearer $token", requestId)
-                    loadRequests()
-                } else {
-                    errorMessage = "No authentication token"
-                }
-            } catch (e: Throwable) {
-                errorMessage = "Error: ${e.message ?: "Failed to delete request"}"
-            }
-        }
-    }
-
-    fun updateRequestStatus(
-        requestId: String,
-        status: RequestStatus,
-        lastRenewReason: String? = null,
-        issueItems: List<IssueItemPayload>? = null,
-        returnItems: List<ReturnItemPayload>? = null,
-    ) {
-        scope.launch {
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    ApiClient.requestApiService.updateRequestStatus(
-                        "Bearer $token",
-                        requestId,
-                        UpdateRequestStatusPayload(
-                            status = status,
-                            lastRenewReason = lastRenewReason,
-                            issueItems = issueItems,
-                            returnItems = returnItems,
-                        ),
-                    )
-                    loadRequests()
-                    requestStatusActionSnackbarMessage(status)?.let { message ->
-                        snackbarHostState.showSnackbar(message)
-                    }
-                } else {
-                    errorMessage = "No authentication token"
-                }
-            } catch (e: Throwable) {
-                errorMessage = "Error: ${e.message ?: "Failed to update request status"}"
-            }
-        }
-    }
+    val requests = viewModel.requests
+    val isLoading = viewModel.isLoading
+    val errorMessage = viewModel.errorMessage
+    val isRefreshing = viewModel.isRefreshing
+    val currentUser = viewModel.currentUser
+    val filteredRequests = viewModel.filteredRequests
+    val isFaculty = viewModel.isFaculty
+    val isAdminOrLA = viewModel.isAdminOrLA
 
     fun updateRequestStatusPartialIssue(request: Request) {
         pendingPartialIssueRequest = request
@@ -252,7 +123,7 @@ fun RequestsScreen(
             }
         pendingPartialIssueRequest = null
         issueItemsInput = emptyMap()
-        updateRequestStatus(request.id, RequestStatus.ISSUED, issueItems = items)
+        viewModel.updateRequestStatus(request.id, RequestStatus.ISSUED, issueItems = items)
     }
 
     fun confirmPartialReturn() {
@@ -263,24 +134,13 @@ fun RequestsScreen(
             }
         pendingPartialReturnRequest = null
         returnItemsInput = emptyMap()
-        updateRequestStatus(request.id, RequestStatus.RETURNED, returnItems = items)
+        viewModel.updateRequestStatus(request.id, RequestStatus.RETURNED, returnItems = items)
     }
 
     fun openScannedRequest(rawValue: String) {
-        val requestId = rawValue.trim().removePrefix(REQUEST_QR_PREFIX).trim()
-        if (requestId.isBlank()) {
-            return
-        }
+        val request = viewModel.handleQrResult(rawValue) ?: return
 
-        val request = requests.firstOrNull { it.id == requestId }
-        if (request == null) {
-            scope.launch {
-                snackbarHostState.showSnackbar("Request not found. Refresh and try again.")
-            }
-            return
-        }
-
-        requestIdInput = requestId
+        requestIdInput = request.id
         showRequestIdDialog = false
 
         when (request.status) {
@@ -305,38 +165,9 @@ fun RequestsScreen(
         }
     }
 
-    fun loadUserData() {
-        scope.launch {
-            try {
-                val token = tokenManager.token.first()
-                if (token != null) {
-                    val response = ApiClient.authApiService.getMe("Bearer $token")
-                    currentUser = response.user
-                }
-            } catch (_: Exception) {
-            }
-        }
-    }
-
     LaunchedEffect(Unit) {
-        loadUserData()
-        loadRequests(pollingMode = false)
-
-        scope.launch {
-            tokenManager.token.first()?.let { token ->
-                try {
-                    ApiClient.requestApiService.streamRequestEvents("Bearer $token").collect {
-                        loadRequests(pollingMode = true)
-                    }
-                } catch (e: Exception) {
-                    while (true) {
-                        delay(10000.milliseconds)
-                        if (errorMessage == null && !isLoading && !isRefreshing) {
-                            loadRequests(pollingMode = true)
-                        }
-                    }
-                }
-            }
+        viewModel.snackbarMessages.collect { message ->
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -344,7 +175,7 @@ fun RequestsScreen(
         RequestsDialogs(
             pendingDeleteRequestId = pendingDeleteRequestId,
             onDismissDelete = { pendingDeleteRequestId = null },
-            onConfirmDelete = { id -> deleteRequest(id) },
+            onConfirmDelete = { id -> viewModel.deleteRequest(id) },
             requestToShowQr = requestToShowQr,
             onDismissQr = { requestToShowQr = null },
             pendingRenewRequestId = pendingRenewRequestId,
@@ -356,7 +187,7 @@ fun RequestsScreen(
                 pendingRenewRequestId = null
                 renewReasonInput = ""
                 if (id != null && reason.isNotEmpty()) {
-                    updateRequestStatus(id, RequestStatus.REQUESTED_RENEW, lastRenewReason = reason)
+                    viewModel.updateRequestStatus(id, RequestStatus.REQUESTED_RENEW, lastRenewReason = reason)
                 }
             },
             onDismissRenew = {
@@ -402,15 +233,15 @@ fun RequestsScreen(
             onDismissRequestDetail = { selectedRequestForDetail = null },
             isFaculty = isFaculty,
             onDeleteRequest = { id -> pendingDeleteRequestId = id },
-            onApproveRequest = { id -> updateRequestStatus(id, RequestStatus.APPROVED) },
-            onRejectRequest = { id -> updateRequestStatus(id, RequestStatus.REJECTED) },
+            onApproveRequest = { id -> viewModel.updateRequestStatus(id, RequestStatus.APPROVED) },
+            onRejectRequest = { id -> viewModel.updateRequestStatus(id, RequestStatus.REJECTED) },
             onFulfillRequest = { id -> requests.firstOrNull { it.id == id }?.let(::updateRequestStatusPartialIssue) },
             onReturnRequest = { id -> requests.firstOrNull { it.id == id }?.let(::updateRequestStatusPartialReturn) },
             onRequestRenew = { id ->
                 pendingRenewRequestId = id
                 renewReasonInput = ""
             },
-            onApproveRenew = { id -> updateRequestStatus(id, RequestStatus.RENEWED) },
+            onApproveRenew = { id -> viewModel.updateRequestStatus(id, RequestStatus.RENEWED) },
             onShowQr = { request -> requestToShowQr = request },
         )
 
@@ -450,15 +281,15 @@ fun RequestsScreen(
         ) { paddingValues ->
             RequestsScreenBody(
                 paddingValues = paddingValues,
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
-                statusFilter = statusFilter,
-                onStatusFilterChange = { statusFilter = it },
+                searchQuery = viewModel.searchQuery,
+                onSearchQueryChange = { viewModel.searchQuery = it },
+                statusFilter = viewModel.statusFilter,
+                onStatusFilterChange = { viewModel.statusFilter = it },
                 isLoading = isLoading,
                 errorMessage = errorMessage,
                 requests = requests,
                 filteredRequests = filteredRequests,
-                onRetry = { loadRequests() },
+                onRetry = { viewModel.loadRequests() },
                 isFaculty = isFaculty,
                 onDeleteRequest =
                     if (isFaculty) {
@@ -470,7 +301,7 @@ fun RequestsScreen(
                     if (isFaculty) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.APPROVED)
+                                viewModel.updateRequestStatus(requestId, RequestStatus.APPROVED)
                             }
                         )
                     } else {
@@ -480,7 +311,7 @@ fun RequestsScreen(
                     if (isFaculty) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.REJECTED)
+                                viewModel.updateRequestStatus(requestId, RequestStatus.REJECTED)
                             }
                         )
                     } else {
@@ -519,7 +350,7 @@ fun RequestsScreen(
                     if (isFaculty) {
                         (
                             { requestId ->
-                                updateRequestStatus(requestId, RequestStatus.RENEWED)
+                                viewModel.updateRequestStatus(requestId, RequestStatus.RENEWED)
                             }
                         )
                     } else {
