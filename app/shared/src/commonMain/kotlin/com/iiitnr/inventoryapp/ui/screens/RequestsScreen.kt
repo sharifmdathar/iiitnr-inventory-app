@@ -321,10 +321,21 @@ fun RequestsScreen(
     LaunchedEffect(Unit) {
         loadUserData()
         loadRequests(pollingMode = false)
-        while (true) {
-            delay(8000.milliseconds)
-            if (errorMessage == null && !isLoading && !isRefreshing) {
-                loadRequests(pollingMode = true)
+
+        scope.launch {
+            tokenManager.token.first()?.let { token ->
+                try {
+                    ApiClient.requestApiService.streamRequestEvents("Bearer $token").collect {
+                        loadRequests(pollingMode = true)
+                    }
+                } catch (e: Exception) {
+                    while (true) {
+                        delay(10000.milliseconds)
+                        if (errorMessage == null && !isLoading && !isRefreshing) {
+                            loadRequests(pollingMode = true)
+                        }
+                    }
+                }
             }
         }
     }

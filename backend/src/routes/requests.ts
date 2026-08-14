@@ -7,6 +7,9 @@ import { RequestStatus, requestStatusValues, UserRole, AuditActionType } from '.
 import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
 import { expireOverdueRequests, REQUEST_RETURN_LIMIT_MS } from '../services/request-expiry.js';
+import { events, EventType, notifyRequestsUpdated } from '../utils/events.js';
+import type { EventMessage } from 'fastify-sse-v2';
+import { pushable } from 'it-pushable';
 interface CurrentUser {
   sub?: string;
   role?: UserRoleValue;
@@ -160,6 +163,7 @@ async function updateRequestStatus(id: string, status: RequestStatusValue) {
     .update(request)
     .set({ status, updatedAt: new Date().toISOString() })
     .where(eq(request.id, id));
+  notifyRequestsUpdated();
 }
 
 async function validateFacultyExists(facultyId: string): Promise<boolean> {
@@ -365,6 +369,7 @@ async function issueRequestTransaction(
         returnDueAt,
       })
       .where(eq(request.id, existingRequest.id));
+    notifyRequestsUpdated();
   });
 }
 
@@ -382,6 +387,7 @@ async function requestForRenewalTransaction(
         lastRenewReason,
       })
       .where(eq(request.id, existingRequest.id));
+    notifyRequestsUpdated();
   });
 }
 
@@ -399,6 +405,7 @@ async function approveRenewRequestTransaction(existingRequest: NonNullable<Reque
         lastRenewDate: renewedAt,
       })
       .where(eq(request.id, existingRequest.id));
+    notifyRequestsUpdated();
   });
 }
 
@@ -489,6 +496,7 @@ async function returnRequestTransaction(
         returnedAt: newStatus === RequestStatus.RETURNED ? returnedAt : null,
       })
       .where(eq(request.id, existingRequest.id));
+    notifyRequestsUpdated();
   });
 }
 
@@ -586,6 +594,7 @@ async function handleCreateRequest(
     );
 
     reply.code(201).send({ request: createdRequest });
+    notifyRequestsUpdated();
   } catch (err) {
     app.log.error(err);
     reply.code(500).send({ error: 'failed to create request' });
@@ -1064,6 +1073,8 @@ async function handleDeleteRequest(
       req,
     );
 
+    notifyRequestsUpdated();
+
     reply.code(204).send();
   } catch (err) {
     app.log.error(err);
@@ -1091,6 +1102,22 @@ const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {
   app.delete('/requests/:id', { preHandler: requireAuth }, (req, reply) =>
     handleDeleteRequest(app, req, reply),
   );
+
+  app.get('/requests/events', { preHandler: requireAuth }, (req, reply) => {
+    const p = pushable<EventMessage>({ objectMode: true });
+    const onUpdate = () => {
+      p.push({ data: 'updated' });
+    };
+
+    events.on(EventType.REQUESTS_UPDATED, onUpdate);
+
+    req.raw.on('close', () => {
+      events.off(EventType.REQUESTS_UPDATED, onUpdate);
+      p.end();
+    });
+
+    reply.sse(p);
+  });
 
   done();
 };

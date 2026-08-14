@@ -9,10 +9,12 @@ import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import staticFiles from '@fastify/static';
+import { FastifySSEPlugin } from 'fastify-sse-v2';
 import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
 import imagesRoutes from './routes/images.js';
 import { startRequestExpirySweep } from './services/request-expiry.js';
+import { notifyRequestsUpdated } from './utils/events.js';
 
 interface AppEnvironment {
   isTest: boolean;
@@ -219,6 +221,8 @@ async function registerPlugins(app: FastifyInstance, env: AppEnvironment) {
     limits: { fileSize: 10 * 1024 * 1024 },
   });
 
+  await app.register(FastifySSEPlugin);
+
   await app.register(staticFiles, {
     root: join(process.cwd(), 'uploads'),
     prefix: '/uploads/',
@@ -248,6 +252,7 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
     app.addHook('onReady', (done) => {
       stopRequestExpirySweep = startRequestExpirySweep((err) => {
         app.log.error({ err }, 'Request expiry sweep failed');
+        notifyRequestsUpdated();
       });
       done();
     });

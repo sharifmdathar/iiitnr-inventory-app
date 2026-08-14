@@ -17,6 +17,10 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.client.plugins.sse.sse
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import io.ktor.client.plugins.sse.ClientSSESession
 
 class RequestApiService(
     private val client: HttpClient,
@@ -81,4 +85,17 @@ class RequestApiService(
                     append(HttpHeaders.Authorization, token)
                 }
             }.body()
+
+    fun streamRequestEvents(token: String): Flow<Unit> =
+        flow {
+            client.sse("$baseUrl/requests/events", {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+            }) {
+                incoming.collect {
+                    emit(Unit)
+                }
+            }
+        }
 }
