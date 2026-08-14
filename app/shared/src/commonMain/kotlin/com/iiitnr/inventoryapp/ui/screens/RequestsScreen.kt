@@ -62,6 +62,7 @@ import com.iiitnr.inventoryapp.ui.components.common.SearchBar
 import com.iiitnr.inventoryapp.ui.components.requests.FulfillByIdDialog
 import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
 import com.iiitnr.inventoryapp.ui.components.requests.RenewReasonDialog
+import com.iiitnr.inventoryapp.ui.components.requests.RequestDetailDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestQrDialog
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsContent
 import com.iiitnr.inventoryapp.ui.components.requests.RequestsTopBar
@@ -101,6 +102,7 @@ fun RequestsScreen(
     var issueItemsInput by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var pendingPartialReturnRequest by remember { mutableStateOf<Request?>(null) }
     var returnItemsInput by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var selectedRequestForDetail by remember { mutableStateOf<Request?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val isFaculty = currentUser?.role == UserRole.FACULTY
@@ -385,6 +387,20 @@ fun RequestsScreen(
                 pendingPartialReturnRequest = null
                 returnItemsInput = emptyMap()
             },
+            selectedRequestForDetail = selectedRequestForDetail,
+            onDismissRequestDetail = { selectedRequestForDetail = null },
+            isFaculty = isFaculty,
+            onDeleteRequest = { id -> pendingDeleteRequestId = id },
+            onApproveRequest = { id -> updateRequestStatus(id, RequestStatus.APPROVED) },
+            onRejectRequest = { id -> updateRequestStatus(id, RequestStatus.REJECTED) },
+            onFulfillRequest = { id -> requests.firstOrNull { it.id == id }?.let(::updateRequestStatusPartialIssue) },
+            onReturnRequest = { id -> requests.firstOrNull { it.id == id }?.let(::updateRequestStatusPartialReturn) },
+            onRequestRenew = { id ->
+                pendingRenewRequestId = id
+                renewReasonInput = ""
+            },
+            onApproveRenew = { id -> updateRequestStatus(id, RequestStatus.RENEWED) },
+            onShowQr = { request -> requestToShowQr = request },
         )
 
         pendingActionSelectionRequest?.let { request ->
@@ -508,6 +524,7 @@ fun RequestsScreen(
                     } else {
                         null
                     },
+                onCardClick = { request -> selectedRequestForDetail = request },
             )
         }
 
@@ -557,7 +574,34 @@ private fun RequestsDialogs(
     onReturnItemQtyChange: (String, Int) -> Unit,
     onConfirmPartialReturn: () -> Unit,
     onDismissPartialReturn: () -> Unit,
+    selectedRequestForDetail: Request?,
+    onDismissRequestDetail: () -> Unit,
+    isFaculty: Boolean,
+    onDeleteRequest: ((String) -> Unit)?,
+    onApproveRequest: ((String) -> Unit)?,
+    onRejectRequest: ((String) -> Unit)?,
+    onFulfillRequest: ((String) -> Unit)?,
+    onReturnRequest: ((String) -> Unit)?,
+    onRequestRenew: ((String) -> Unit)?,
+    onApproveRenew: ((String) -> Unit)?,
+    onShowQr: ((Request) -> Unit)?,
 ) {
+    if (selectedRequestForDetail != null) {
+        RequestDetailDialog(
+            request = selectedRequestForDetail,
+            onDeleteRequest = onDeleteRequest,
+            onApproveRequest = onApproveRequest,
+            onRejectRequest = onRejectRequest,
+            onFulfillRequest = onFulfillRequest,
+            onReturnRequest = onReturnRequest,
+            onRequestRenew = onRequestRenew,
+            onApproveRenew = onApproveRenew,
+            onShowQr = onShowQr,
+            isFaculty = isFaculty,
+            onDismiss = onDismissRequestDetail,
+        )
+    }
+
     if (pendingDeleteRequestId != null) {
         AlertDialog(
             onDismissRequest = onDismissDelete,
@@ -651,6 +695,7 @@ private fun RequestsScreenBody(
     onRequestRenew: ((String) -> Unit)?,
     onApproveRenew: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
+    onCardClick: (Request) -> Unit,
 ) {
     Column(modifier = Modifier.padding(paddingValues)) {
         SearchBar(
@@ -681,6 +726,7 @@ private fun RequestsScreenBody(
             onRequestRenew = onRequestRenew,
             onApproveRenew = onApproveRenew,
             onShowQr = onShowQr,
+            onCardClick = onCardClick,
             isFaculty = isFaculty,
             modifier = Modifier.padding(),
         )

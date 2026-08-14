@@ -26,6 +26,7 @@ fun RequestsList(
     onRequestRenew: ((String) -> Unit)? = null,
     onApproveRenew: ((String) -> Unit)? = null,
     onShowQr: ((Request) -> Unit)? = null,
+    onCardClick: (Request) -> Unit,
     isFaculty: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -48,6 +49,7 @@ fun RequestsList(
                     onRequestRenew = onRequestRenew,
                     onApproveRenew = onApproveRenew,
                     onShowQr = onShowQr,
+                    onCardClick = onCardClick,
                     isFaculty = isFaculty,
                 )
             }

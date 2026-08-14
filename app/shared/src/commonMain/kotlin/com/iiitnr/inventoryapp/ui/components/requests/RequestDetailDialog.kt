@@ -182,79 +182,94 @@ fun RequestDetailDialogContent(
         item {
             InventoryTable(
                 items = request.items,
-                columns = listOf(
-                    TableColumn(
-                        header = "Component",
-                        weight = 0.52f,
-                        content = { item ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                ComponentImage(
-                                    imageUrl = item.component?.imageUrl,
-                                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(4.dp)),
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = item.component?.name ?: item.componentId ?: "Unknown",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        maxLines = 1,
-                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                columns =
+                    listOf(
+                        TableColumn(
+                            header = "Component",
+                            weight = 0.52f,
+                            content = { item ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    ComponentImage(
+                                        imageUrl = item.component?.imageUrl,
+                                        modifier = Modifier.size(36.dp).clip(RoundedCornerShape(4.dp)),
                                     )
-                                    item.component?.description?.let { desc ->
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
                                         Text(
-                                            text = desc,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            text = item.component?.name ?: item.componentId ?: "Unknown",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
                                             maxLines = 1,
                                             modifier = Modifier.horizontalScroll(rememberScrollState()),
                                         )
+                                        item.component?.description?.let { desc ->
+                                            Text(
+                                                text = desc,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                            )
+                                        }
                                     }
                                 }
-                            }
-                        },
+                            },
+                        ),
+                        TableColumn(
+                            header = "RET",
+                            weight = 0.16f,
+                            alignment = Alignment.Center,
+                            content = { item ->
+                                Text(
+                                    text = item.returnedQuantity.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color =
+                                        if (item.returnedQuantity >
+                                            0
+                                        ) {
+                                            MaterialTheme.inventoryColors.neutral
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                )
+                            },
+                        ),
+                        TableColumn(
+                            header = "ISS",
+                            weight = 0.16f,
+                            alignment = Alignment.Center,
+                            content = { item ->
+                                Text(
+                                    text = item.fulfilledQuantity.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color =
+                                        if (item.fulfilledQuantity >
+                                            0
+                                        ) {
+                                            MaterialTheme.inventoryColors.info
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                )
+                            },
+                        ),
+                        TableColumn(
+                            header = "REQ",
+                            weight = 0.16f,
+                            alignment = Alignment.Center,
+                            content = { item ->
+                                Text(
+                                    text = item.quantity.toString(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            },
+                        ),
                     ),
-                    TableColumn(
-                        header = "RET",
-                        weight = 0.16f,
-                        alignment = Alignment.Center,
-                        content = { item ->
-                            Text(
-                                text = item.returnedQuantity.toString(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (item.returnedQuantity > 0) MaterialTheme.inventoryColors.neutral else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                    ),
-                    TableColumn(
-                        header = "ISS",
-                        weight = 0.16f,
-                        alignment = Alignment.Center,
-                        content = { item ->
-                            Text(
-                                text = item.fulfilledQuantity.toString(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (item.fulfilledQuantity > 0) MaterialTheme.inventoryColors.info else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
-                    ),
-                    TableColumn(
-                        header = "REQ",
-                        weight = 0.16f,
-                        alignment = Alignment.Center,
-                        content = { item ->
-                            Text(
-                                text = item.quantity.toString(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        },
-                    ),
-                ),
             )
         }
     }
@@ -290,11 +305,12 @@ private fun RequestDetailDatesFlow(
                     icon = Icons.Default.Timer,
                     label = "Return Due",
                     value = getRelativeDays(it, today),
-                    tint = if (getRelativeDays(it, today).contains("ago")) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.secondary
-                    },
+                    tint =
+                        if (getRelativeDays(it, today).contains("ago")) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.secondary
+                        },
                 )
             }
         }
@@ -371,80 +387,86 @@ private fun DateItem(
 @Preview
 @Composable
 fun RequestDetailDialogContentPreview() {
-    val sampleStudent = User(
-        id = "s1",
-        name = "John Doe",
-        role = UserRole.STUDENT,
-        email = "student24100@iiitnr.edu.in",
-        batch = "2024-28",
-        branch = "CSE",
-    )
+    val sampleStudent =
+        User(
+            id = "s1",
+            name = "John Doe",
+            role = UserRole.STUDENT,
+            email = "student24100@iiitnr.edu.in",
+            batch = "2024-28",
+            branch = "CSE",
+        )
 
-    val sampleFaculty = User(
-        id = "f1",
-        name = "Faculty A",
-        role = UserRole.FACULTY,
-        email = "faculty@iiitnr.edu.in",
-    )
+    val sampleFaculty =
+        User(
+            id = "f1",
+            name = "Faculty A",
+            role = UserRole.FACULTY,
+            email = "faculty@iiitnr.edu.in",
+        )
 
-    val sampleComponent = Component(
-        id = "c1",
-        name = "Arduino Uno",
-        description = "Classic microcontroller board for IoT projects",
-        totalQuantity = 10,
-        availableQuantity = 5,
-        createdAt = "2023-08-11T10:00:00",
-        updatedAt = "2023-08-11T10:00:00",
-    )
+    val sampleComponent =
+        Component(
+            id = "c1",
+            name = "Arduino Uno",
+            description = "Classic microcontroller board for IoT projects",
+            totalQuantity = 10,
+            availableQuantity = 5,
+            createdAt = "2023-08-11T10:00:00",
+            updatedAt = "2023-08-11T10:00:00",
+        )
 
-    val sampleRequest = Request(
-        id = "r1",
-        userId = "s1",
-        targetFacultyId = "f1",
-        projectTitle = "IoT Weather Station",
-        status = RequestStatus.RENEWED,
-        createdAt = "2026-07-11T10:00:00",
-        updatedAt = "2026-08-11T10:00:00",
-        fulfilledAt = "2026-07-12T10:00:00",
-        lastRenewDate = "2026-08-01T10:00:00",
-        lastRenewReason = "Need more time for field testing.",
-        returnedAt = "2026-08-11T15:00:00",
-        items = listOf(
-            RequestItem(
-                id = "ri1",
-                requestId = "r1",
-                componentId = "c1",
-                quantity = 5,
-                fulfilledQuantity = 3,
-                returnedQuantity = 1,
-                component = sampleComponent,
-            ),
-            RequestItem(
-                id = "ri2",
-                requestId = "r1",
-                componentId = "c1",
-                quantity = 2,
-                fulfilledQuantity = 2,
-                returnedQuantity = 2,
-                component = sampleComponent.copy(
-                    name = "DHT11 Sensor",
-                    description = "Temperature and Humidity sensor",
+    val sampleRequest =
+        Request(
+            id = "r1",
+            userId = "s1",
+            targetFacultyId = "f1",
+            projectTitle = "IoT Weather Station",
+            status = RequestStatus.RENEWED,
+            createdAt = "2026-07-11T10:00:00",
+            updatedAt = "2026-08-11T10:00:00",
+            fulfilledAt = "2026-07-12T10:00:00",
+            lastRenewDate = "2026-08-01T10:00:00",
+            lastRenewReason = "Need more time for field testing.",
+            returnedAt = "2026-08-11T15:00:00",
+            items =
+                listOf(
+                    RequestItem(
+                        id = "ri1",
+                        requestId = "r1",
+                        componentId = "c1",
+                        quantity = 5,
+                        fulfilledQuantity = 3,
+                        returnedQuantity = 1,
+                        component = sampleComponent,
+                    ),
+                    RequestItem(
+                        id = "ri2",
+                        requestId = "r1",
+                        componentId = "c1",
+                        quantity = 2,
+                        fulfilledQuantity = 2,
+                        returnedQuantity = 2,
+                        component =
+                            sampleComponent.copy(
+                                name = "DHT11 Sensor",
+                                description = "Temperature and Humidity sensor",
+                            ),
+                    ),
+                    RequestItem(
+                        id = "ri3",
+                        requestId = "r1",
+                        componentId = "c1",
+                        quantity = 1,
+                        fulfilledQuantity = 0,
+                        returnedQuantity = 0,
+                        component = sampleComponent.copy(name = "ESP8266", description = "WiFi Module"),
+                    ),
                 ),
-            ),
-            RequestItem(
-                id = "ri3",
-                requestId = "r1",
-                componentId = "c1",
-                quantity = 1,
-                fulfilledQuantity = 0,
-                returnedQuantity = 0,
-                component = sampleComponent.copy(name = "ESP8266", description = "WiFi Module"),
-            ),
-        ),
-        user = sampleStudent,
-        targetFaculty = sampleFaculty,
-        returnDueAt = "2026-08-20T10:00:00",
-    )
+            user = sampleStudent,
+            targetFaculty = sampleFaculty,
+            returnDueAt = "2026-08-20T10:00:00",
+        )
 
     AppTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
