@@ -52,7 +52,9 @@ import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.AuditLogEntry
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
+import com.iiitnr.inventoryapp.ui.components.common.InventoryTable
 import com.iiitnr.inventoryapp.ui.components.common.PaginationBar
+import com.iiitnr.inventoryapp.ui.components.common.TableColumn
 import com.iiitnr.inventoryapp.ui.components.common.auditActionColor
 import com.iiitnr.inventoryapp.ui.theme.SemanticDanger
 import com.iiitnr.inventoryapp.ui.theme.SemanticSuccess
@@ -448,57 +450,68 @@ private fun DiffViewer(
         return
     }
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        allKeys.forEach { key ->
-            val oldVal = oldMap[key]
-            val newVal = newMap[key]
-            val changed = oldVal != newVal
+    val changedKeys = allKeys.filter { oldMap[it] != newMap[it] }
 
-            if (changed) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = key,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.width(120.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        if (oldVal != null) {
-                            Text(
-                                text = "- $oldVal",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = SemanticDanger,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        if (newVal != null) {
-                            Text(
-                                text = "+ $newVal",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontFamily = FontFamily.Monospace,
-                                color = SemanticSuccess,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    if (changedKeys.isEmpty()) {
+        Text(
+            "No values were changed",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
 
-        // Show unchanged count
+    Column {
+        InventoryTable(
+            items = changedKeys,
+            columns =
+                listOf(
+                    TableColumn(
+                        header = "Field",
+                        weight = 0.35f,
+                        content = { key ->
+                            Text(
+                                text = key,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        },
+                    ),
+                    TableColumn(
+                        header = "Changes",
+                        weight = 0.65f,
+                        content = { key ->
+                            val oldVal = oldMap[key]
+                            val newVal = newMap[key]
+                            Column {
+                                if (oldVal != null) {
+                                    Text(
+                                        text = "- $oldVal",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = SemanticDanger,
+                                        maxLines = 5,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                if (newVal != null) {
+                                    Text(
+                                        text = "+ $newVal",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = SemanticSuccess,
+                                        maxLines = 5,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        },
+                    ),
+                ),
+        )
+
         val unchangedCount =
             allKeys.count { oldMap[it] == newMap[it] && oldMap.containsKey(it) && newMap.containsKey(it) }
         if (unchangedCount > 0) {
@@ -506,7 +519,7 @@ private fun DiffViewer(
                 text = "$unchangedCount unchanged field(s)",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 8.dp, start = 4.dp),
             )
         }
     }
@@ -523,7 +536,6 @@ private fun parseJsonMap(json: String?): Map<String, String> {
 }
 
 private fun formatAuditTimestamp(iso: String): String {
-    // Simple formatting: extract date and time portion
     return try {
         val cleaned = iso.replace("T", " ").take(19)
         cleaned

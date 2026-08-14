@@ -32,11 +32,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.ui.components.common.InventoryTable
+import com.iiitnr.inventoryapp.ui.components.common.TableColumn
 
 @Composable
 fun CartDialog(
@@ -72,15 +75,80 @@ fun CartDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                cartItems.forEach { (component, quantity) ->
-                    CartItemRow(
-                        component = component,
-                        quantity = quantity,
-                        onUpdateQuantity = { delta -> onUpdateQuantity(component, delta) },
-                        onRemove = { onRemoveItem(component) },
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+                InventoryTable(
+                    items = cartItems,
+                    useCard = false,
+                    columns =
+                        listOf(
+                            TableColumn(
+                                header = "Component",
+                                weight = 0.55f,
+                                content = { (component, _) ->
+                                    Column {
+                                        Text(
+                                            text = component.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                        Text(
+                                            text = "Avl: ${component.availableQuantity}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
+                            ),
+                            TableColumn(
+                                header = "Quantity",
+                                weight = 0.45f,
+                                alignment = Alignment.CenterEnd,
+                                content = { (component, quantity) ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        IconButton(
+                                            onClick = { onUpdateQuantity(component, -1) },
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Remove,
+                                                contentDescription = "Decrease",
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                        Text(
+                                            text = quantity.toString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        IconButton(
+                                            onClick = { onUpdateQuantity(component, 1) },
+                                            enabled = quantity < component.availableQuantity,
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Add,
+                                                contentDescription = "Increase",
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { onRemoveItem(component) },
+                                            modifier = Modifier.size(32.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = "Remove",
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        }
+                                    }
+                                },
+                            ),
+                        ),
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -131,58 +199,6 @@ fun CartDialog(
     })
 }
 
-@Composable
-private fun CartItemRow(
-    component: Component,
-    quantity: Int,
-    onUpdateQuantity: (Int) -> Unit,
-    onRemove: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = component.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-            )
-            Text(
-                text = "Available: ${component.availableQuantity}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = { onUpdateQuantity(-1) }) {
-                Icon(Icons.Default.Remove, contentDescription = "Decrease")
-            }
-            Text(
-                text = quantity.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            IconButton(
-                onClick = { onUpdateQuantity(1) },
-                enabled = quantity < component.availableQuantity,
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Increase")
-            }
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Remove from cart",
-                    tint = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
