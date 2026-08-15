@@ -1,23 +1,23 @@
 import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastify';
-import { and, desc, eq, inArray } from 'drizzle-orm';
-import { db } from '../drizzle/db.js';
-import { component, request, requestItem, user } from '../drizzle/schema.js';
 import { requireAuth, isAdminOrLA } from '../middleware/auth.js';
 import { RequestStatus, requestStatusValues, UserRole, AuditActionType } from '../utils/enums.js';
 import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
-import { expireOverdueRequests, REQUEST_RETURN_LIMIT_MS } from '../services/request-expiry.js';
+import { expireOverdueRequests } from '../services/request-expiry.js';
 import { events, EventType, notifyRequestsUpdated } from '../utils/events.js';
 import type { EventMessage } from 'fastify-sse-v2';
 import { pushable } from 'it-pushable';
+import * as RequestService from '../services/RequestService.js';
+import type {
+  IssueItemInput,
+  ReturnItemInput,
+  RequestItemInput,
+  RequestWithRelations,
+} from '../services/RequestService.js';
+
 interface CurrentUser {
   sub?: string;
   role?: UserRoleValue;
-}
-
-interface RequestItemInput {
-  componentId?: string;
-  quantity?: number;
 }
 
 interface CreateRequestBody {
@@ -36,25 +36,12 @@ interface NormalizedItem {
   quantity: number;
 }
 
-interface IssueItemInput {
-  componentId: string;
-  quantity: number;
-}
-
-interface ReturnItemInput {
-  componentId: string;
-  quantity: number;
-}
-
 interface UpdateStatusBody {
   status?: string;
   lastRenewReason?: string;
   issueItems?: IssueItemInput[];
   returnItems?: ReturnItemInput[];
 }
-
-type RequestWithRelations = Awaited<ReturnType<typeof fetchRequestWithItems>>;
-type FullRequest = Awaited<ReturnType<typeof fetchFullRequest>>;
 
 const createRequestSchema = {
   body: {
@@ -118,68 +105,6 @@ const updateRequestStatusSchema = {
 
 function getCurrentUser(req: FastifyRequest): CurrentUser {
   return req.user as CurrentUser;
-}
-
-async function fetchRequestWithItems(id: string) {
-  const [row] = await db.query.request.findMany({
-    where: eq(request.id, id),
-    with: { requestItems: { with: { component: true } } },
-  });
-  return row;
-}
-
-async function fetchFullRequest(id: string) {
-  const [row] = await db.query.request.findMany({
-    where: eq(request.id, id),
-    with: {
-      requestItems: { with: { component: true } },
-      user_userId: {
-        columns: { id: true, email: true, name: true, role: true, batch: true, branch: true },
-      },
-      user_targetFacultyId: {
-        columns: { id: true, email: true, name: true, role: true, batch: true, branch: true },
-      },
-    },
-  });
-  return row;
-}
-
-function shapeRequest(row: NonNullable<FullRequest>) {
-  return {
-    ...row,
-    items: row.requestItems,
-    user: row.user_userId,
-    targetFaculty: row.user_targetFacultyId,
-  };
-}
-
-async function fetchAndShapeRequest(id: string) {
-  const row = await fetchFullRequest(id);
-  return row ? shapeRequest(row) : null;
-}
-
-async function updateRequestStatus(id: string, status: RequestStatusValue) {
-  await db
-    .update(request)
-    .set({ status, updatedAt: new Date().toISOString() })
-    .where(eq(request.id, id));
-  notifyRequestsUpdated();
-}
-
-async function validateFacultyExists(facultyId: string): Promise<boolean> {
-  const facultyRow = await db.query.user.findFirst({
-    columns: { id: true },
-    where: (u, { eq, and }) => and(eq(u.id, facultyId), eq(u.role, UserRole.FACULTY)),
-  });
-  return Boolean(facultyRow);
-}
-
-async function validateComponentsExist(componentIds: string[]): Promise<boolean> {
-  const existingComponents = await db
-    .select({ id: component.id })
-    .from(component)
-    .where(inArray(component.id, componentIds));
-  return existingComponents.length === componentIds.length;
 }
 
 interface ValidationError {
@@ -247,7 +172,7 @@ function isValidationError(value: unknown): value is ValidationError {
 
 function canRenewApproveOrRejectRequest(
   currentUser: CurrentUser,
-  existingRequest: NonNullable<RequestWithRelations>,
+  existingRequest: { targetFacultyId: string | null },
 ): ValidationError | null {
   if (currentUser.role === UserRole.FACULTY) {
     if (existingRequest.targetFacultyId !== currentUser.sub) {
@@ -287,217 +212,6 @@ function canDeleteRequest(
     return { code: 400, message: 'request can only be deleted when status is PENDING' };
   }
   return null;
-}
-
-async function issueRequestTransaction(
-  existingRequest: NonNullable<RequestWithRelations>,
-  issueItems?: IssueItemInput[],
-) {
-  const fulfilledAt = new Date().toISOString();
-  await db.transaction(async (tx) => {
-    const requestItems = existingRequest.requestItems;
-    let hasRemainingToFulfill = false;
-
-    for (const item of requestItems) {
-      const requestedQty = item.quantity;
-      const alreadyFulfilled = item.fulfilledQuantity ?? 0;
-      const remainingToFulfill = requestedQty - alreadyFulfilled;
-
-      if (remainingToFulfill <= 0) {
-        continue;
-      }
-
-      const issueItem = issueItems?.find((i) => i.componentId === item.componentId);
-      const issueQty = issueItem
-        ? Math.min(issueItem.quantity, remainingToFulfill)
-        : issueItems
-          ? 0
-          : remainingToFulfill;
-
-      if (issueQty <= 0) {
-        hasRemainingToFulfill = true;
-        continue;
-      }
-
-      const [lockedComp] = await tx
-        .select({
-          id: component.id,
-          name: component.name,
-          availableQuantity: component.availableQuantity,
-          totalQuantity: component.totalQuantity,
-        })
-        .from(component)
-        .where(eq(component.id, item.componentId))
-        .for('update');
-
-      if (!lockedComp || lockedComp.availableQuantity < issueQty) {
-        const name = lockedComp?.name ?? item.component?.name ?? 'unknown';
-        throw new Error(`INSUFFICIENT_QUANTITY:${name}:${issueQty}`);
-      }
-
-      const newFulfilled = alreadyFulfilled + issueQty;
-      await tx
-        .update(requestItem)
-        .set({
-          fulfilledQuantity: newFulfilled,
-          updatedAt: fulfilledAt,
-        })
-        .where(eq(requestItem.id, item.id));
-
-      await tx
-        .update(component)
-        .set({
-          availableQuantity: lockedComp.availableQuantity - issueQty,
-          updatedAt: fulfilledAt,
-        })
-        .where(eq(component.id, item.componentId));
-
-      if (newFulfilled < requestedQty) {
-        hasRemainingToFulfill = true;
-      }
-    }
-
-    const returnDueAt = new Date(Date.now() + REQUEST_RETURN_LIMIT_MS).toISOString();
-    const newStatus = hasRemainingToFulfill ? RequestStatus.PARTIALLY_ISSUED : RequestStatus.ISSUED;
-
-    await tx
-      .update(request)
-      .set({
-        status: newStatus,
-        updatedAt: fulfilledAt,
-        fulfilledAt,
-        returnDueAt,
-      })
-      .where(eq(request.id, existingRequest.id));
-    notifyRequestsUpdated();
-  });
-}
-
-async function requestForRenewalTransaction(
-  existingRequest: NonNullable<RequestWithRelations>,
-  lastRenewReason: string | undefined,
-) {
-  const requestedRenewalAt = new Date().toISOString();
-  await db.transaction(async (tx) => {
-    await tx
-      .update(request)
-      .set({
-        status: RequestStatus.REQUESTED_RENEW,
-        updatedAt: requestedRenewalAt,
-        lastRenewReason,
-      })
-      .where(eq(request.id, existingRequest.id));
-    notifyRequestsUpdated();
-  });
-}
-
-async function approveRenewRequestTransaction(existingRequest: NonNullable<RequestWithRelations>) {
-  const renewedAt = new Date().toISOString();
-  const newReturnDueAt = new Date(Date.now() + REQUEST_RETURN_LIMIT_MS).toISOString();
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(request)
-      .set({
-        status: RequestStatus.RENEWED,
-        updatedAt: renewedAt,
-        returnDueAt: newReturnDueAt,
-        lastRenewDate: renewedAt,
-      })
-      .where(eq(request.id, existingRequest.id));
-    notifyRequestsUpdated();
-  });
-}
-
-async function returnRequestTransaction(
-  existingRequest: NonNullable<RequestWithRelations>,
-  returnItems?: ReturnItemInput[],
-) {
-  const returnedAt = new Date().toISOString();
-  await db.transaction(async (tx) => {
-    let hasIssuedRemaining = false;
-    let hasAnyReturned = false;
-
-    for (const item of existingRequest.requestItems) {
-      const issuedQty = item.fulfilledQuantity ?? 0;
-      const alreadyReturnedQty = item.returnedQuantity ?? 0;
-      const currentlyHeldQty = issuedQty - alreadyReturnedQty;
-
-      if (currentlyHeldQty <= 0) {
-        continue;
-      }
-
-      const returnItem = returnItems?.find((i) => i.componentId === item.componentId);
-      const returnQty = returnItem
-        ? Math.min(returnItem.quantity, currentlyHeldQty)
-        : returnItems
-          ? 0
-          : currentlyHeldQty;
-
-      if (returnQty <= 0) {
-        hasIssuedRemaining = true;
-        continue;
-      }
-
-      hasAnyReturned = true;
-
-      const [lockedComp] = await tx
-        .select({
-          id: component.id,
-          name: component.name,
-          availableQuantity: component.availableQuantity,
-          totalQuantity: component.totalQuantity,
-        })
-        .from(component)
-        .where(eq(component.id, item.componentId))
-        .for('update');
-
-      if (!lockedComp) {
-        const name = item.component?.name ?? 'unknown';
-        throw new Error(`COMPONENT_NOT_FOUND:${name}`);
-      }
-
-      const newReturned = alreadyReturnedQty + returnQty;
-      await tx
-        .update(requestItem)
-        .set({
-          returnedQuantity: newReturned,
-          updatedAt: returnedAt,
-        })
-        .where(eq(requestItem.id, item.id));
-
-      const nextAvailable = lockedComp.availableQuantity + returnQty;
-      const nextTotal = Math.max(lockedComp.totalQuantity, nextAvailable);
-
-      await tx
-        .update(component)
-        .set({
-          availableQuantity: nextAvailable,
-          totalQuantity: nextTotal,
-          updatedAt: returnedAt,
-        })
-        .where(eq(component.id, item.componentId));
-
-      if (issuedQty - newReturned > 0) {
-        hasIssuedRemaining = true;
-      }
-    }
-
-    const newStatus =
-      hasIssuedRemaining && hasAnyReturned
-        ? RequestStatus.PARTIALLY_RETURNED
-        : RequestStatus.RETURNED;
-
-    await tx
-      .update(request)
-      .set({
-        status: newStatus,
-        updatedAt: returnedAt,
-        returnedAt: newStatus === RequestStatus.RETURNED ? returnedAt : null,
-      })
-      .where(eq(request.id, existingRequest.id));
-    notifyRequestsUpdated();
-  });
 }
 
 function parseInsufficientQuantityError(error: Error): string | null {
@@ -541,44 +255,27 @@ async function handleCreateRequest(
   const normalizedItems = itemsResult;
 
   try {
-    if (!(await validateFacultyExists(targetFacultyId))) {
-      reply.code(400).send({ error: 'invalid targetFacultyId' });
+    if (!(await RequestService.validateFacultyExists(targetFacultyId))) {
+      await reply.code(400).send({ error: 'invalid targetFacultyId' });
       return;
     }
 
     const componentIds = normalizedItems.map((item) => item.componentId);
-    if (!(await validateComponentsExist(componentIds))) {
-      reply.code(400).send({ error: 'one or more components not found' });
+    if (!(await RequestService.validateComponentsExist(componentIds))) {
+      await reply.code(400).send({ error: 'one or more components not found' });
       return;
     }
 
-    const now = new Date().toISOString();
-    const requestId = crypto.randomUUID();
-
-    await db.insert(request).values({
-      id: requestId,
+    const requestId = await RequestService.createRequest(
       userId,
       targetFacultyId,
       projectTitle,
-      status: RequestStatus.PENDING,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await db.insert(requestItem).values(
-      normalizedItems.map((item) => ({
-        id: crypto.randomUUID(),
-        requestId,
-        componentId: item.componentId,
-        quantity: item.quantity,
-        createdAt: now,
-        updatedAt: now,
-      })),
+      normalizedItems,
     );
 
-    const createdRequest = await fetchAndShapeRequest(requestId);
+    const createdRequest = await RequestService.fetchAndShapeRequest(requestId);
     if (!createdRequest) {
-      reply.code(500).send({ error: 'failed to create request' });
+      await reply.code(500).send({ error: 'failed to create request' });
       return;
     }
 
@@ -606,12 +303,7 @@ async function handleGetFaculty(
   reply: FastifyReply,
 ) {
   try {
-    const faculty = await db
-      .select({ id: user.id, email: user.email, name: user.name, role: user.role })
-      .from(user)
-      .where(eq(user.role, UserRole.FACULTY))
-      .orderBy(desc(user.createdAt));
-
+    const faculty = await RequestService.getFaculty();
     reply.send({ faculty });
   } catch (err) {
     app.log.error(err);
@@ -640,44 +332,21 @@ async function handleGetRequests(
     return;
   }
 
-  const conditions = [];
-
-  if (status) {
-    conditions.push(eq(request.status, status as RequestStatusValue));
-  }
-
-  if (currentUser.role === UserRole.FACULTY) {
-    conditions.push(eq(request.targetFacultyId, currentUserId));
-  } else if (isAdminOrLA(currentUser.role)) {
-    if (requestedUserId) {
-      conditions.push(eq(request.userId, requestedUserId));
-    }
-  } else {
-    conditions.push(eq(request.userId, currentUserId));
-  }
-
   try {
     if (status === RequestStatus.EXPIRED) {
       await expireOverdueRequests();
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const isAdmin = isAdminOrLA(currentUser.role);
+    const isFaculty = currentUser.role === UserRole.FACULTY;
 
-    const rows = await db.query.request.findMany({
-      where: whereClause,
-      orderBy: desc(request.createdAt),
-      with: {
-        requestItems: { with: { component: true } },
-        user_userId: {
-          columns: { id: true, email: true, name: true, role: true, batch: true, branch: true },
-        },
-        user_targetFacultyId: {
-          columns: { id: true, email: true, name: true, role: true, batch: true, branch: true },
-        },
-      },
+    const requests = await RequestService.getRequests({
+      userId: isAdmin ? requestedUserId : isFaculty ? undefined : currentUserId,
+      targetFacultyId: isFaculty ? currentUserId : undefined,
+      status: status as RequestStatusValue,
+      isAdmin,
     });
 
-    const requests = rows.map(shapeRequest);
     reply.send({ requests });
   } catch (err) {
     app.log.error(err);
@@ -708,8 +377,8 @@ async function handlePendingStatusUpdate(
     return;
   }
 
-  await updateRequestStatus(existingRequest.id, newStatus);
-  const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+  await RequestService.updateRequestStatus(existingRequest.id, newStatus);
+  const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
     {
@@ -748,8 +417,8 @@ async function handleApprovedStatusUpdate(
   const issueItems = body.issueItems;
 
   try {
-    await issueRequestTransaction(existingRequest, issueItems);
-    const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+    await RequestService.issueRequestTransaction(existingRequest, issueItems);
+    const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
     await logAudit(
       {
@@ -795,8 +464,8 @@ async function handleRequestedRenewalStatusUpdate(
     reply.code(authError.code).send({ error: authError.message });
     return;
   }
-  await approveRenewRequestTransaction(existingRequest);
-  const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+  await RequestService.approveRenewRequestTransaction(existingRequest);
+  const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
     {
@@ -839,11 +508,11 @@ async function handleIssuedStatusUpdate(
     }
     const body = req.body as UpdateStatusBody;
     const returnItems = body.returnItems;
-    await returnRequestTransaction(existingRequest, returnItems);
+    await RequestService.returnRequestTransaction(existingRequest, returnItems);
   } else if (newStatus === RequestStatus.REQUESTED_RENEW) {
-    await requestForRenewalTransaction(existingRequest, lastRenewReason);
+    await RequestService.requestForRenewalTransaction(existingRequest, lastRenewReason);
   }
-  const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+  const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
     {
@@ -880,8 +549,8 @@ async function handleExpiredStatusUpdate(
     return;
   }
 
-  await returnRequestTransaction(existingRequest);
-  const updatedRequest = await fetchAndShapeRequest(existingRequest.id);
+  await RequestService.returnRequestTransaction(existingRequest);
+  const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
     {
@@ -935,7 +604,7 @@ async function handleUpdateRequestStatus(
   try {
     await expireOverdueRequests({ requestId: id });
 
-    const existingRequest = await fetchRequestWithItems(id);
+    const existingRequest = await RequestService.fetchRequestWithItems(id);
 
     if (!existingRequest) {
       reply.code(404).send({ error: 'request not found' });
@@ -1044,9 +713,7 @@ async function handleDeleteRequest(
   try {
     await expireOverdueRequests({ requestId: id });
 
-    const existingRequest = await db.query.request.findFirst({
-      where: (r, { eq }) => eq(r.id, id),
-    });
+    const existingRequest = await RequestService.fetchRequestWithItems(id);
 
     if (!existingRequest) {
       reply.code(404).send({ error: 'request not found' });
@@ -1059,8 +726,7 @@ async function handleDeleteRequest(
       return;
     }
 
-    await db.delete(requestItem).where(eq(requestItem.requestId, id));
-    await db.delete(request).where(eq(request.id, id));
+    await RequestService.deleteRequest(id);
 
     await logAudit(
       {
@@ -1072,8 +738,6 @@ async function handleDeleteRequest(
       },
       req,
     );
-
-    notifyRequestsUpdated();
 
     reply.code(204).send();
   } catch (err) {
