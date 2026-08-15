@@ -22,5 +22,9 @@ enum class UserRole {
     FACULTY,
     STUDENT,
     LA,
-    PENDING,
+    PENDING;
+
+    companion object {
+        val ALL: List<UserRole> = entries.toList()
+    }
 }
