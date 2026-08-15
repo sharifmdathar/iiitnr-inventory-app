@@ -427,7 +427,10 @@ async function handleApprovedStatusUpdate(
         entityType: 'Request',
         entityId: existingRequest.id,
         oldValues: { status: existingRequest.status },
-        newValues: { status: newStatus, fulfilledItems: existingRequest.requestItems },
+        newValues: {
+          status: updatedRequest?.status ?? newStatus,
+          fulfilledItems: updatedRequest?.items ?? existingRequest.requestItems,
+        },
       },
       req,
     );

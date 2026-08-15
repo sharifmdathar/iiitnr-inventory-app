@@ -95,6 +95,7 @@ export const request = pgTable(
       table.targetFacultyId.asc().nullsLast().op('text_ops'),
     ),
     index('Request_userId_idx').using('btree', table.userId.asc().nullsLast().op('text_ops')),
+    index('Request_status_idx').using('btree', table.status.asc().nullsLast()),
     foreignKey({
       columns: [table.targetFacultyId],
       foreignColumns: [user.id],

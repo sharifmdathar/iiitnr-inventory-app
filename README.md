@@ -43,6 +43,11 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 
 ### 👤 Role-Based Auth & Profiles (RBAC)
 - **Multi-Role Matrix:** Features strict role-based verification supporting five tiers: `STUDENT`, `LA` (Lab Assistant), `FACULTY`, `ADMIN`, and `PENDING`.
+  - **`ADMIN`:** Full access across the system — component CRUD & images, request fulfillment/lifecycle, user management (search users, change roles/batches/branches), and exclusive access to the immutable audit log ledger.
+  - **`LA` (Lab Assistant):** Inventory operations & request fulfillment — component CRUD & images, QR-code scanning, issuing/partially issuing approved requests, returning/partially returning items, and exporting CSV data.
+  - **`FACULTY`:** Component catalog viewing & CSV export, supervision and approval/rejection of student project requests and renewal requests nominated to them.
+  - **`STUDENT`:** Component catalog browsing, submitting item issue and renewal requests nominated under faculty supervisors, and tracking/retracting personal requests.
+  - **`PENDING`:** New registrations awaiting administrator role verification.
 - **Automatic Batch/Branch Derivation:** Student batch (graduation range, e.g., `2024-2028`) and branch (`CSE`, `ECE`, `DSAI`) are derived automatically from their institutional email address during signup or profile fetches.
 - **Domain Gatekeeping:** Restricts registration/login to IIIT-NR emails via `ALLOWED_EMAIL_DOMAIN` configuration (e.g., `@iiitnr.edu.in`), protecting college resources.
 - **Dual Authentication:** Supports traditional email-password credentials alongside secure Google Sign-in.
@@ -53,20 +58,20 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 - **Physical Locations:** Tracks lab inventory mapping directly to physical college labs (`IoT_Lab`, `Robo_Lab`, `VLSI_Lab`).
 - **Real-time Stock Auditing:** Separates `totalQuantity` from `availableQuantity` dynamically, updating automatically as items are requested, approved, and returned.
 - **Cross-Platform Image Workflow:** Component images can be selected on Android, Desktop, and iOS, uploaded to the backend, and recorded in the audit log when they change.
-- **Upload Guardrails:** Image uploads are restricted to common formats (`JPEG`, `PNG`, `WEBP`, `GIF`, `AVIF`) and capped at `5 MB`.
+- **Upload Guardrails:** Image uploads are restricted to common formats (`JPEG`, `PNG`, `WEBP`, `GIF`, `AVIF`) and capped at `10 MB`.
 - **Platform-Native Data Export:** Built-in tool to export the component database to a CSV file from the client top bar (uses platform-specific storage on Android and Desktop).
 
 ### 🔄 Multi-State Issue, Return & Renewal System
-- **Project Nominated Issues:** Students/TAs issue items under specific project titles and name a nominating `FACULTY` supervisor.
-- **QR-Based Fulfillment:** Admins and TAs can fulfill and return requests instantly by scanning a student's unique Request QR code.
-- **Fulfillment & Due Tracking:** Approved requests are fulfilled by admins/TAs, automatically setting a 30-day return due date (`returnDueAt`).
+- **Project Nominated Issues:** Students issue items under specific project titles and name a nominating `FACULTY` supervisor.
+- **QR-Based Fulfillment:** Admins and LAs can fulfill and return requests instantly by scanning a student's unique Request QR code.
+- **Fulfillment & Due Tracking:** Approved requests are fulfilled by admins/LAs, automatically setting a 30-day return due date (`returnDueAt`).
 - **Auto-Expiry:** Fulfilled or renewed requests past their `returnDueAt` are automatically marked `EXPIRED` by a periodic background sweep.
-- **Request Renewals:** Students/TAs can submit renewal requests with a detailed reason, allowing nominating faculty or admins to extend the due date by another 30 days.
+- **Request Renewals:** Students can submit renewal requests with a detailed reason, allowing nominating faculty or admins/LAs to extend the due date by another 30 days.
 - **Automatic Stock Restocking:** Returning components automatically increments `availableQuantity` on the backend, checking against `totalQuantity`.
 - **Partial Issue & Return:** Admins/LAs can issue/return specific quantities per item when stock is limited or partial returns occur. Requests track `fulfilledQuantity` per item with `PARTIALLY_ISSUED` and `PARTIALLY_RETURNED` statuses, enabling multi-step fulfillment and granular inventory control.
 
 ### 🛡️ Enterprise-Grade Admin Audit Logging
-- **Immutable Ledger:** Records all system activities like `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`, `REQUEST_STATUS_CHANGE`, and `INVENTORY_ADJUST`.
+- **Admin-Exclusive Immutable Ledger:** Records all system activities like `CREATE`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`, `REQUEST_STATUS_CHANGE`, and `INVENTORY_ADJUST`. Only Administrators have permission to query and view audit logs.
 - **System-Wide Accountability:** Stores state changes using highly detailed diffs (`oldValues` and `newValues`), tracking IP addresses, and user-agent details for advanced security audits.
 
 ### 🔄 Automatic Version Compatibility Check

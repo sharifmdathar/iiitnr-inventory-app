@@ -1,0 +1,1 @@
+CREATE INDEX "Request_status_idx" ON "Request" USING btree ("status");

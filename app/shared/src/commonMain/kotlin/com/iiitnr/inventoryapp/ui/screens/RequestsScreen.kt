@@ -299,41 +299,33 @@ fun RequestsScreen(
                     },
                 onApproveRequest =
                     if (isFaculty) {
-                        (
-                            { requestId ->
-                                viewModel.updateRequestStatus(requestId, RequestStatus.APPROVED)
-                            }
-                        )
+                        { requestId ->
+                            viewModel.updateRequestStatus(requestId, RequestStatus.APPROVED)
+                        }
                     } else {
                         null
                     },
                 onRejectRequest =
                     if (isFaculty) {
-                        (
-                            { requestId ->
-                                viewModel.updateRequestStatus(requestId, RequestStatus.REJECTED)
-                            }
-                        )
+                        { requestId ->
+                            viewModel.updateRequestStatus(requestId, RequestStatus.REJECTED)
+                        }
                     } else {
                         null
                     },
                 onFulfillRequest =
                     if (isAdminOrLA) {
-                        (
-                            { requestId ->
-                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
-                            }
-                        )
+                        { requestId ->
+                            requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
+                        }
                     } else {
                         null
                     },
                 onReturnRequest =
                     if (isAdminOrLA) {
-                        (
-                            { requestId ->
-                                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
-                            }
-                        )
+                        { requestId ->
+                            requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
+                        }
                     } else {
                         null
                     },
@@ -348,21 +340,17 @@ fun RequestsScreen(
                     },
                 onApproveRenew =
                     if (isFaculty) {
-                        (
-                            { requestId ->
-                                viewModel.updateRequestStatus(requestId, RequestStatus.RENEWED)
-                            }
-                        )
+                        { requestId ->
+                            viewModel.updateRequestStatus(requestId, RequestStatus.RENEWED)
+                        }
                     } else {
                         null
                     },
                 onShowQr =
                     if (!isFaculty) {
-                        (
-                            { request ->
-                                requestToShowQr = request
-                            }
-                        )
+                        { request ->
+                            requestToShowQr = request
+                        }
                     } else {
                         null
                     },
@@ -697,7 +685,7 @@ fun PartialIssueDialogContent(
                             ) {
                                 IconButton(
                                     onClick = { onItemQtyChange(compId, (qty + 1).coerceAtMost(remaining)) },
-                                    enabled = (fulfilled + qty) < total,
+                                    enabled = fulfilled + qty < total,
                                     modifier = Modifier.size(24.dp),
                                 ) {
                                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase")

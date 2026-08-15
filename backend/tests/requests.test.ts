@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app.js';
 import { db } from '../src/drizzle/db.js';
 import { component, request } from '../src/drizzle/schema.js';
+import * as RequestService from '../src/services/RequestService.js';
 import {
   createComponent,
   createRequest,
@@ -1668,6 +1669,256 @@ describe('Request API', () => {
       const updatedReq = await findRequestById(req.id);
       assert.equal(updatedReq?.items[0].fulfilledQuantity, 2);
       assert.equal(updatedReq?.items[0].returnedQuantity, 2);
+    });
+  });
+
+  describe('Concurrent Issue and Return', () => {
+    test('two parallel PUT /requests/:id full ISSUED decrements stock exactly once', async () => {
+      const item = await createComponent({
+        name: 'Concurrent Full Issue Comp',
+        totalQuantity: 20,
+        availableQuantity: 20,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Concurrent Full Issue Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 10 }],
+      });
+
+      const responses = await Promise.all([
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: { status: 'ISSUED' },
+        }),
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: { status: 'ISSUED' },
+        }),
+      ]);
+
+      for (const res of responses) {
+        assert.ok(res.statusCode === 200 || res.statusCode === 400);
+      }
+      assert.ok(responses.some((res) => res.statusCode === 200));
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'ISSUED');
+      assert.equal(updatedReq.items[0].fulfilledQuantity, 10);
+
+      const comp = await findComponentById(item.id);
+      assert.equal(comp?.availableQuantity, 10);
+    });
+
+    test('two parallel PUT /requests/:id partial ISSUED accumulates fulfilledQuantity and decrements stock properly', async () => {
+      const item = await createComponent({
+        name: 'Concurrent Partial Issue Comp',
+        totalQuantity: 20,
+        availableQuantity: 20,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Concurrent Partial Issue Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 10 }],
+      });
+
+      const [res1, res2] = await Promise.all([
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: {
+            status: 'ISSUED',
+            issueItems: [{ componentId: item.id, quantity: 5 }],
+          },
+        }),
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: {
+            status: 'ISSUED',
+            issueItems: [{ componentId: item.id, quantity: 5 }],
+          },
+        }),
+      ]);
+
+      assert.equal(res1.statusCode, 200);
+      assert.equal(res2.statusCode, 200);
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'ISSUED');
+      assert.equal(updatedReq.items[0].fulfilledQuantity, 10);
+
+      const comp = await findComponentById(item.id);
+      assert.equal(comp?.availableQuantity, 10);
+    });
+
+    test('two parallel issueRequestTransaction direct calls with Promise.all decrements stock exactly once', async () => {
+      const item = await createComponent({
+        name: 'Direct Concurrent Issue Comp',
+        totalQuantity: 20,
+        availableQuantity: 20,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Direct Concurrent Issue Test',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 10 }],
+      });
+
+      await Promise.all([
+        RequestService.issueRequestTransaction(req),
+        RequestService.issueRequestTransaction(req),
+      ]);
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'ISSUED');
+      assert.equal(updatedReq.items[0].fulfilledQuantity, 10);
+
+      const comp = await findComponentById(item.id);
+      assert.equal(comp?.availableQuantity, 10);
+    });
+
+    test('two parallel PUT /requests/:id full RETURNED increments stock exactly once', async () => {
+      const item = await createComponent({
+        name: 'Concurrent Full Return Comp',
+        totalQuantity: 20,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Concurrent Full Return Test',
+        status: 'ISSUED',
+        items: [{ componentId: item.id, quantity: 10, fulfilledQuantity: 10 }],
+      });
+
+      const responses = await Promise.all([
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: { status: 'RETURNED' },
+        }),
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: { status: 'RETURNED' },
+        }),
+      ]);
+
+      for (const res of responses) {
+        assert.ok(res.statusCode === 200 || res.statusCode === 400);
+      }
+      assert.ok(responses.some((res) => res.statusCode === 200));
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'RETURNED');
+      assert.equal(updatedReq.items[0].returnedQuantity, 10);
+
+      const comp = await findComponentById(item.id);
+      assert.equal(comp?.availableQuantity, 20);
+    });
+
+    test('two parallel PUT /requests/:id partial RETURNED accumulates returnedQuantity and increments stock properly', async () => {
+      const item = await createComponent({
+        name: 'Concurrent Partial Return Comp',
+        totalQuantity: 20,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Concurrent Partial Return Test',
+        status: 'ISSUED',
+        items: [{ componentId: item.id, quantity: 10, fulfilledQuantity: 10 }],
+      });
+
+      const [res1, res2] = await Promise.all([
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: {
+            status: 'RETURNED',
+            returnItems: [{ componentId: item.id, quantity: 5 }],
+          },
+        }),
+        app.inject({
+          method: 'PUT',
+          url: `/requests/${req.id}`,
+          headers: { authorization: `Bearer ${adminToken}` },
+          payload: {
+            status: 'RETURNED',
+            returnItems: [{ componentId: item.id, quantity: 5 }],
+          },
+        }),
+      ]);
+
+      assert.equal(res1.statusCode, 200);
+      assert.equal(res2.statusCode, 200);
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'RETURNED');
+      assert.equal(updatedReq.items[0].returnedQuantity, 10);
+
+      const comp = await findComponentById(item.id);
+      assert.equal(comp?.availableQuantity, 20);
+    });
+
+    test('two parallel returnRequestTransaction direct calls with Promise.all increments stock exactly once', async () => {
+      const item = await createComponent({
+        name: 'Direct Concurrent Return Comp',
+        totalQuantity: 20,
+        availableQuantity: 10,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Direct Concurrent Return Test',
+        status: 'ISSUED',
+        items: [{ componentId: item.id, quantity: 10, fulfilledQuantity: 10 }],
+      });
+
+      await Promise.all([
+        RequestService.returnRequestTransaction(req),
+        RequestService.returnRequestTransaction(req),
+      ]);
+
+      const updatedReq = await findRequestById(req.id);
+      assert.ok(updatedReq);
+      assert.equal(updatedReq.status, 'RETURNED');
+      assert.equal(updatedReq.items[0].returnedQuantity, 10);
+
+      const comp = await findComponentById(item.id);
+      assert.equal(comp?.availableQuantity, 20);
     });
   });
 

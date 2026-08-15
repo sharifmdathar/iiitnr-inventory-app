@@ -140,7 +140,7 @@ private fun RequestCardMeta(request: Request) {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    if ((request.user != null) || (request.targetFaculty != null)) {
+    if (request.user != null || request.targetFaculty != null) {
         Spacer(modifier = Modifier.height(4.dp))
         val requester = request.user?.let { compactUserLabel(it) }
         val faculty = request.targetFaculty?.let { it.name ?: it.email }

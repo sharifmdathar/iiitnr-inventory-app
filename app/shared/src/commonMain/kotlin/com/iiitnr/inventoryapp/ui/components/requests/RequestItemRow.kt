@@ -33,7 +33,7 @@ fun RequestItemRow(
     val issuedQty = item.fulfilledQuantity
     val returnedQty = item.returnedQuantity
 
-    val isPartial = (issuedQty in 1..<requestedQty) || (returnedQty in 1..<issuedQty)
+    val isPartial = issuedQty in 1..<requestedQty || returnedQty in 1..<issuedQty
 
     val quantityColor =
         if (isPartial) {

@@ -117,11 +117,7 @@ fun ProfileScreen(
                         Text("Requests")
                     }
 
-                    val isAdmin =
-                        userData.role.let {
-                            it == UserRole.ADMIN || it == UserRole.LA
-                        }
-                    if (isAdmin) {
+                    if (userData.role == UserRole.ADMIN) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = onNavigateToAuditLog,

@@ -64,6 +64,13 @@
       "when": 1786099168745,
       "tag": "0008_same_slipstream",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786789652941,
+      "tag": "0009_lively_lifeguard",
+      "breakpoints": true
     }
   ]
 }

@@ -31,7 +31,7 @@ fun getRelativeDays(
         }
     val date = dateTime.date
 
-    val days = (date.toEpochDays() - today.toEpochDays())
+    val days = date.toEpochDays() - today.toEpochDays()
 
     return if (days == 0L) {
         "Today"

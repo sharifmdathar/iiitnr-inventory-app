@@ -21,6 +21,7 @@ let app: Awaited<ReturnType<typeof buildApp>>;
 let adminToken: string;
 let taToken: string;
 let studentToken: string;
+let facultyToken: string;
 
 let adminUserId: string;
 let taUserId: string;
@@ -79,6 +80,7 @@ beforeAll(async () => {
     role: UserRole.FACULTY,
   });
   facultyUserId = facultyUser.id;
+  facultyToken = app.jwt.sign({ sub: facultyUser.id, role: facultyUser.role }, { expiresIn: '1h' });
 });
 
 afterAll(async () => {
@@ -341,6 +343,60 @@ describe('Audit Logging', () => {
       assert.equal(oldValues.status, 'PENDING');
 
       await deleteAllData();
+    });
+  });
+
+  describe('GET /admin/audit-logs - Authorization & Access', () => {
+    test('returns 401 without token', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin/audit-logs',
+      });
+
+      assert.equal(response.statusCode, 401);
+    });
+
+    test('returns 403 for STUDENT', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin/audit-logs',
+        headers: { authorization: `Bearer ${studentToken}` },
+      });
+
+      assert.equal(response.statusCode, 403);
+    });
+
+    test('returns 403 for FACULTY', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin/audit-logs',
+        headers: { authorization: `Bearer ${facultyToken}` },
+      });
+
+      assert.equal(response.statusCode, 403);
+    });
+
+    test('returns 403 for LA role (audit logs restricted to Admin)', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin/audit-logs',
+        headers: { authorization: `Bearer ${taToken}` },
+      });
+
+      assert.equal(response.statusCode, 403);
+    });
+
+    test('returns 200 with audit logs for ADMIN', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin/audit-logs',
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const body = response.json();
+      assert.ok(Array.isArray(body.logs));
+      assert.ok(body.pagination);
     });
   });
 });

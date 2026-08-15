@@ -88,12 +88,28 @@ export async function validateComponentsExist(componentIds: string[]): Promise<b
 }
 
 export async function issueRequestTransaction(
-  existingRequest: NonNullable<RequestWithRelations>,
+  existingRequest: { id: string } | NonNullable<RequestWithRelations>,
   issueItems?: IssueItemInput[],
 ) {
   const fulfilledAt = new Date().toISOString();
   await db.transaction(async (tx) => {
-    const requestItems = existingRequest.requestItems;
+    const [lockedRequest] = await tx
+      .select()
+      .from(request)
+      .where(eq(request.id, existingRequest.id))
+      .for('update');
+
+    if (!lockedRequest) {
+      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+    }
+
+    const requestItems = await tx
+      .select()
+      .from(requestItem)
+      .where(eq(requestItem.requestId, existingRequest.id))
+      .orderBy(requestItem.id)
+      .for('update');
+
     let hasRemainingToFulfill = false;
 
     for (const item of requestItems) {
@@ -129,7 +145,7 @@ export async function issueRequestTransaction(
         .for('update');
 
       if (!lockedComp || lockedComp.availableQuantity < issueQty) {
-        const name = lockedComp?.name ?? item.component?.name ?? 'unknown';
+        const name = lockedComp?.name ?? 'unknown';
         throw new Error(`INSUFFICIENT_QUANTITY:${name}:${issueQty}`);
       }
 
@@ -177,6 +193,16 @@ export async function requestForRenewalTransaction(
 ) {
   const requestedRenewalAt = new Date().toISOString();
   await db.transaction(async (tx) => {
+    const [lockedRequest] = await tx
+      .select()
+      .from(request)
+      .where(eq(request.id, existingRequest.id))
+      .for('update');
+
+    if (!lockedRequest) {
+      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+    }
+
     await tx
       .update(request)
       .set({
@@ -194,6 +220,16 @@ export async function approveRenewRequestTransaction(existingRequest: { id: stri
   const newReturnDueAt = new Date(Date.now() + REQUEST_RETURN_LIMIT_MS).toISOString();
 
   await db.transaction(async (tx) => {
+    const [lockedRequest] = await tx
+      .select()
+      .from(request)
+      .where(eq(request.id, existingRequest.id))
+      .for('update');
+
+    if (!lockedRequest) {
+      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+    }
+
     await tx
       .update(request)
       .set({
@@ -208,15 +244,32 @@ export async function approveRenewRequestTransaction(existingRequest: { id: stri
 }
 
 export async function returnRequestTransaction(
-  existingRequest: NonNullable<RequestWithRelations>,
+  existingRequest: { id: string } | NonNullable<RequestWithRelations>,
   returnItems?: ReturnItemInput[],
 ) {
   const returnedAt = new Date().toISOString();
   await db.transaction(async (tx) => {
+    const [lockedRequest] = await tx
+      .select()
+      .from(request)
+      .where(eq(request.id, existingRequest.id))
+      .for('update');
+
+    if (!lockedRequest) {
+      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+    }
+
+    const requestItems = await tx
+      .select()
+      .from(requestItem)
+      .where(eq(requestItem.requestId, existingRequest.id))
+      .orderBy(requestItem.id)
+      .for('update');
+
     let hasIssuedRemaining = false;
     let hasAnyReturned = false;
 
-    for (const item of existingRequest.requestItems) {
+    for (const item of requestItems) {
       const issuedQty = item.fulfilledQuantity ?? 0;
       const alreadyReturnedQty = item.returnedQuantity ?? 0;
       const currentlyHeldQty = issuedQty - alreadyReturnedQty;
@@ -251,7 +304,7 @@ export async function returnRequestTransaction(
         .for('update');
 
       if (!lockedComp) {
-        const name = item.component?.name ?? 'unknown';
+        const name = 'unknown';
         throw new Error(`COMPONENT_NOT_FOUND:${name}`);
       }
 
