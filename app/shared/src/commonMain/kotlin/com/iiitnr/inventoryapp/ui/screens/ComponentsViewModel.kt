@@ -29,7 +29,7 @@ class ComponentsViewModel(
 ) : ViewModel() {
     var components by mutableStateOf<List<Component>>(emptyList())
         private set
-    var isLoading by mutableStateOf(componentsCache == null)
+    var isLoading by mutableStateOf(true)
         private set
     var isRefreshing by mutableStateOf(false)
         private set
@@ -113,8 +113,8 @@ class ComponentsViewModel(
     private fun observeCache() {
         viewModelScope.launch {
             componentsCache?.componentsFlow()?.collect { cached ->
-                if (components.isEmpty() && cached.isNotEmpty()) {
-                    components = cached
+                components = cached
+                if (cached.isNotEmpty()) {
                     isLoading = false
                 }
             }
@@ -141,7 +141,11 @@ class ComponentsViewModel(
             if (pollingMode) {
                 isRefreshing = true
             } else {
-                isLoading = true
+                if (components.isEmpty()) {
+                    isLoading = true
+                } else {
+                    isRefreshing = true
+                }
                 errorMessage = null
             }
 
@@ -149,23 +153,37 @@ class ComponentsViewModel(
                 val token = tokenManager.token.first()
                 if (token != null) {
                     val response = ApiClient.componentApiService.getComponents("Bearer $token")
-                    components = response.components
-                    componentsCache?.save(components, null)
-                    if (pollingMode && errorMessage != null) {
-                        errorMessage = null
+                    if (componentsCache != null) {
+                        componentsCache.save(response.components, null)
+                    } else {
+                        components = response.components
                     }
+                    errorMessage = null
                 }
             } catch (e: Throwable) {
+                val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
+                if (isAuthError) return@launch
+
                 if (!pollingMode) {
-                    val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
-                    if (isAuthError) return@launch
-                    errorMessage = "Error: ${e.message ?: "Failed to load components"}"
+                    if (components.isEmpty()) {
+                        errorMessage =
+                            when {
+                                e.message?.contains("Unable to resolve host") == true ||
+                                    e.message?.contains("Network") == true ->
+                                    "Network error. Please check your internet connection."
+
+                                else -> "Error: ${e.message ?: "Failed to load components"}"
+                            }
+                    } else {
+                        _snackbarMessages.emit("Network error: Using cached data")
+                    }
                 }
             } finally {
                 if (pollingMode) {
                     isRefreshing = false
                 } else {
                     isLoading = false
+                    isRefreshing = false
                 }
             }
         }

@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import { execSync } from 'node:child_process';
-import { Pool } from 'pg';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
@@ -50,34 +49,19 @@ if (!dbUrlForMigrations) {
   );
 }
 
-async function waitForDb(url: string, maxAttempts = 30): Promise<void> {
-  const p = new Pool({ connectionString: url });
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      await p.query('SELECT 1');
-      await p.end();
-      return;
-    } catch {
-      await new Promise((r) => setTimeout(r, 500));
-    }
-  }
-  await p.end();
-  throw new Error('Database not ready after 15 seconds');
-}
-
 try {
-  console.log('📦 Waiting for test database...');
-  await waitForDb(dbUrlForMigrations);
-  console.log('📦 Running Drizzle migrations for test database...');
-  execSync('bun run migrate', {
+  console.log('📦 Preparing test database (wait + migrate + truncate)...');
+  execSync('bun run tests/db-prepare.ts', {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DATABASE_URL: dbUrlForMigrations,
       NODE_ENV: 'test',
+      DATABASE_URL: dbUrlForMigrations,
+      TEST_DATABASE_URL: dbUrlForMigrations,
     },
+    timeout: 120_000,
   });
 } catch (err) {
-  console.error('❌ Failed to run Drizzle migrations for tests.', err);
+  console.error('❌ Failed to prepare the test database.', err);
   throw err;
 }

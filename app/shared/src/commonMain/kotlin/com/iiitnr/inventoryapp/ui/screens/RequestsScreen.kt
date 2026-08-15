@@ -592,7 +592,7 @@ private fun RequestStatusFilterRow(
     }
 }
 
-private val REQUEST_STATUS_OPTIONS: List<RequestStatus?> = listOf(null) + RequestStatus.FILTER_OPTIONS
+private val REQUEST_STATUS_OPTIONS: List<RequestStatus?> = listOf(null) + RequestStatus.entries
 
 @Composable
 fun PartialIssueDialog(

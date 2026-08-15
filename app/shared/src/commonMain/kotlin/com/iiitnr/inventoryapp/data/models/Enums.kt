@@ -14,11 +14,6 @@ enum class RequestStatus {
     EXPIRED,
     RENEWED,
     REQUESTED_RENEW,
-    ;
-
-    companion object {
-        val FILTER_OPTIONS: List<RequestStatus> = entries
-    }
 }
 
 @Serializable
@@ -28,9 +23,4 @@ enum class UserRole {
     STUDENT,
     LA,
     PENDING,
-    ;
-
-    companion object {
-        val ALL: List<UserRole> = entries
-    }
 }

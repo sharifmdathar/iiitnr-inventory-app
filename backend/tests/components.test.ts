@@ -153,11 +153,14 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 200);
       const body = response.json();
       assert.ok(Array.isArray(body.components));
-      assert.equal(body.components.length, 2);
 
-      // Components should be ordered by createdAt desc
-      assert.equal(body.components[0].id, component2.id);
-      assert.equal(body.components[1].id, component1.id);
+      // LA should see both created components, ordered by createdAt desc
+      const owned = body.components.filter(
+        (c: { id: string }) => c.id === component1.id || c.id === component2.id,
+      );
+      assert.equal(owned.length, 2);
+      assert.equal(owned[0].id, component2.id);
+      assert.equal(owned[1].id, component1.id);
 
       // Clean up created components
       await deleteComponents([component1.id, component2.id]);
@@ -218,7 +221,7 @@ describe('Component CRUD API', () => {
       });
 
       test('returns 200 and CSV content for ADMIN', async () => {
-        await createComponent({
+        const csvComponent = await createComponent({
           name: 'CSV Component',
           totalQuantity: 10,
           availableQuantity: 10,
@@ -226,16 +229,20 @@ describe('Component CRUD API', () => {
           location: Location.IoT_Lab,
         });
 
-        const response = await app.inject({
-          method: 'GET',
-          url: '/components/export/csv',
-          headers: { authorization: `Bearer ${adminToken}` },
-        });
+        try {
+          const response = await app.inject({
+            method: 'GET',
+            url: '/components/export/csv',
+            headers: { authorization: `Bearer ${adminToken}` },
+          });
 
-        assert.equal(response.statusCode, 200);
-        assert.equal(response.headers['content-type'], 'text/csv');
-        assert.ok(response.payload.includes('CSV Component'));
-        assert.ok(response.payload.includes('Name,Description,Category,Location'));
+          assert.equal(response.statusCode, 200);
+          assert.equal(response.headers['content-type'], 'text/csv');
+          assert.ok(response.payload.includes('CSV Component'));
+          assert.ok(response.payload.includes('Name,Description,Category,Location'));
+        } finally {
+          await deleteComponents([csvComponent.id]);
+        }
       });
 
       test('returns 200 and CSV content for FACULTY', async () => {

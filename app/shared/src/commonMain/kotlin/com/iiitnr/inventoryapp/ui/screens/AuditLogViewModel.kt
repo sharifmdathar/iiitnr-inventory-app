@@ -33,7 +33,9 @@ class AuditLogViewModel(
 
     fun loadLogs() {
         viewModelScope.launch {
-            isLoading = true
+            if (logs.isEmpty()) {
+                isLoading = true
+            }
             errorMessage = null
             try {
                 val token = tokenManager.token.first()
@@ -47,9 +49,12 @@ class AuditLogViewModel(
                         )
                     logs = response.logs
                     totalCount = response.pagination.total
+                    errorMessage = null
                 }
             } catch (e: Throwable) {
-                errorMessage = "Failed to load audit logs: ${e.message}"
+                if (logs.isEmpty()) {
+                    errorMessage = "Failed to load audit logs: ${e.message}"
+                }
             } finally {
                 isLoading = false
             }

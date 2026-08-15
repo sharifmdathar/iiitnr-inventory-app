@@ -581,6 +581,41 @@ describe('Request API', () => {
       assert.equal((await findRequestById(req.id))?.status, 'EXPIRED');
     });
 
+    for (const partialStatus of ['PARTIALLY_ISSUED', 'PARTIALLY_RETURNED'] as const) {
+      test(`overdue ${partialStatus} requests are swept to EXPIRED`, async () => {
+        const item = await createComponent({
+          name: `Overdue ${partialStatus} Sensor`,
+          totalQuantity: 10,
+          availableQuantity: 9,
+        });
+        createdComponentIds.push(item.id);
+        const req = await createRequest({
+          userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: `Overdue ${partialStatus} Checkout`,
+          status: partialStatus,
+          items: [{ componentId: item.id, quantity: 2, fulfilledQuantity: 1 }],
+        });
+        const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
+        await db.update(request).set({ returnDueAt: overdueAt }).where(eq(request.id, req.id));
+
+        const response = await app.inject({
+          method: 'GET',
+          url: '/requests?status=EXPIRED',
+          headers: { authorization: `Bearer ${adminToken}` },
+        });
+
+        assert.equal(response.statusCode, 200);
+        const body = response.json();
+        assert.ok(
+          body.requests.some(
+            (r: { id: string; status: string }) => r.id === req.id && r.status === 'EXPIRED',
+          ),
+        );
+        assert.equal((await findRequestById(req.id))?.status, 'EXPIRED');
+      });
+    }
+
     test('faculty sees all requests targeting them', async () => {
       const item = await createComponent({
         name: 'Sensor',

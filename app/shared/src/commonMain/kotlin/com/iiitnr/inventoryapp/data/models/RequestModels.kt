@@ -38,17 +38,8 @@ data class RequestItemPayload(
     val quantity: Int,
 )
 
-@Serializable
-data class IssueItemPayload(
-    val componentId: String,
-    val quantity: Int,
-)
-
-@Serializable
-data class ReturnItemPayload(
-    val componentId: String,
-    val quantity: Int,
-)
+typealias IssueItemPayload = RequestItemPayload
+typealias ReturnItemPayload = RequestItemPayload
 
 @Serializable
 data class CreateRequestPayload(

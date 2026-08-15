@@ -38,7 +38,9 @@ class UserManagementViewModel(
 
     fun loadUsers() {
         viewModelScope.launch {
-            isLoading = true
+            if (users.isEmpty()) {
+                isLoading = true
+            }
             errorMessage = null
             try {
                 val token = tokenManager.token.first()
@@ -52,9 +54,10 @@ class UserManagementViewModel(
                         )
                     users = response.users
                     totalCount = response.pagination.total
+                    errorMessage = null
                 }
             } catch (e: Throwable) {
-                errorMessage =
+                val errorMsg =
                     when (e) {
                         is ResponseException ->
                             if (e.response.status == HttpStatusCode.Unauthorized) {
@@ -62,8 +65,12 @@ class UserManagementViewModel(
                             } else {
                                 e.message ?: "Failed to load users"
                             }
+
                         else -> e.message ?: "Failed to load users"
                     }
+                if (users.isEmpty()) {
+                    errorMessage = errorMsg
+                }
             } finally {
                 isLoading = false
             }

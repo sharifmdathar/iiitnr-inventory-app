@@ -9,6 +9,8 @@ export const REQUEST_EXPIRY_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 const expirableStatuses: RequestStatusValue[] = [
   RequestStatus.ISSUED,
+  RequestStatus.PARTIALLY_ISSUED,
+  RequestStatus.PARTIALLY_RETURNED,
   RequestStatus.REQUESTED_RENEW,
   RequestStatus.RENEWED,
 ];

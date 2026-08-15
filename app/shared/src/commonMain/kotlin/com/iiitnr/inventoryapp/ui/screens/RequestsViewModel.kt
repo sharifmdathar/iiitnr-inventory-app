@@ -92,7 +92,11 @@ class RequestsViewModel(
             if (pollingMode) {
                 isRefreshing = true
             } else {
-                isLoading = true
+                if (requests.isEmpty()) {
+                    isLoading = true
+                } else {
+                    isRefreshing = true
+                }
                 errorMessage = null
             }
 
@@ -101,37 +105,34 @@ class RequestsViewModel(
                 if (token != null) {
                     val response = ApiClient.requestApiService.getRequests("Bearer $token")
                     requests = response.requests
-                    if (pollingMode && errorMessage != null) {
-                        errorMessage = null
-                    }
+                    errorMessage = null
                 } else {
-                    if (!pollingMode) {
+                    if (!pollingMode && requests.isEmpty()) {
                         errorMessage = "No authentication token"
                     }
                 }
             } catch (e: Throwable) {
+                val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
+                if (isAuthError) return@launch
+
                 if (!pollingMode) {
-                    val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
-                    if (isAuthError) return@launch
+                    if (requests.isEmpty()) {
+                        errorMessage =
+                            when {
+                                e.message?.contains("Unable to resolve host") == true ||
+                                    e.message?.contains("Network") == true ||
+                                    e.message?.contains("timeout") == true ->
+                                    "Network error. Please check your connection."
 
-                    errorMessage =
-                        when {
-                            e.message?.contains(
-                                "Network",
-                            ) == true ||
-                                e.message?.contains(
-                                    "timeout",
-                                ) == true -> "Network error. Please check your connection."
-
-                            else -> "Error: ${e.message ?: "Failed to load requests"}"
-                        }
+                                else -> "Error: ${e.message ?: "Failed to load requests"}"
+                            }
+                    } else {
+                        _snackbarMessages.emit("Network error: Using latest data")
+                    }
                 }
             } finally {
-                if (pollingMode) {
-                    isRefreshing = false
-                } else {
-                    isLoading = false
-                }
+                isLoading = false
+                isRefreshing = false
             }
         }
     }

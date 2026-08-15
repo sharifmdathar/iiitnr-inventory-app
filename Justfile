@@ -35,7 +35,7 @@ logs:
 
 test:
     cd backend && podman compose -f compose.db.yaml --profile test up -d
-    cd backend && bun test
+    cd backend && bun test --parallel=1
     cd backend && podman compose -f compose.db.yaml --profile test down
 
 [unix]
