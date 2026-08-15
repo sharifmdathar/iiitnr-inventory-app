@@ -30,7 +30,7 @@ data class InventoryColors(
     val actionCyan: Color,
 )
 
-private val LocalInventoryColors =
+val LocalInventoryColors =
     staticCompositionLocalOf {
         InventoryColors(
             success = Color.Unspecified,
@@ -52,7 +52,7 @@ val MaterialTheme.inventoryColors: InventoryColors
     @Composable @ReadOnlyComposable
     get() = LocalInventoryColors.current
 
-private val DarkInventoryColors =
+val DarkInventoryColors =
     InventoryColors(
         success = SemanticSuccessDark,
         warning = SemanticWarningDark,
@@ -68,7 +68,7 @@ private val DarkInventoryColors =
         actionCyan = ActionCyanDark,
     )
 
-private val LightInventoryColors =
+val LightInventoryColors =
     InventoryColors(
         success = SemanticSuccess,
         warning = SemanticWarning,
@@ -84,7 +84,7 @@ private val LightInventoryColors =
         actionCyan = ActionCyan,
     )
 
-private val DarkColorScheme =
+val DarkColorScheme =
     darkColorScheme(
         primary = IIITNRPrimaryDark,
         onPrimary = IIITNROnSurface,
@@ -98,7 +98,7 @@ private val DarkColorScheme =
         onSurface = IIITNROnSurfaceDark,
     )
 
-private val LightColorScheme =
+val LightColorScheme =
     lightColorScheme(
         primary = IIITNRPrimary,
         onPrimary = IIITNRSurface,

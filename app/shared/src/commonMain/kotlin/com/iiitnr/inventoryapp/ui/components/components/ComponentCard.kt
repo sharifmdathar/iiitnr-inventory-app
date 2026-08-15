@@ -96,7 +96,7 @@ fun ComponentCard(
                     modifier = Modifier.size(64.dp),
                     onClick = component.imageUrl?.let { { enlargedImageUrl = it } },
                 )
-                Spacer(modifier = modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -191,12 +191,19 @@ fun ComponentCard(
                     } else {
                         0f
                     }
+
+                val colors = MaterialTheme.inventoryColors
                 val quantityColor =
-                    lerp(
-                        start = MaterialTheme.colorScheme.error,
-                        stop = MaterialTheme.inventoryColors.success,
-                        fraction = quantityRatio,
-                    )
+                    when {
+                        available <= 0 -> colors.danger
+                        available >= total -> colors.success
+                        else ->
+                            lerp(
+                                start = colors.danger,
+                                stop = colors.success,
+                                fraction = quantityRatio,
+                            )
+                    }
 
                 if (!component.category.isNullOrBlank()) {
                     InfoChip(
