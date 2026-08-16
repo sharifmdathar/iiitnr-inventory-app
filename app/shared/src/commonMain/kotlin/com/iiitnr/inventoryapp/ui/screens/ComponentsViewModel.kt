@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.cache.ComponentsCache
+import com.iiitnr.inventoryapp.data.models.AppError
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
@@ -14,8 +15,7 @@ import com.iiitnr.inventoryapp.data.models.RequestItemPayload
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
-import io.ktor.client.plugins.ResponseException
-import io.ktor.http.HttpStatusCode
+import com.iiitnr.inventoryapp.utils.toAppError
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -161,19 +161,12 @@ class ComponentsViewModel(
                     errorMessage = null
                 }
             } catch (e: Throwable) {
-                val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
-                if (isAuthError) return@launch
+                val appError = e.toAppError()
+                if (appError is AppError.Unauthorized) return@launch
 
                 if (!pollingMode) {
                     if (components.isEmpty()) {
-                        errorMessage =
-                            when {
-                                e.message?.contains("Unable to resolve host") == true ||
-                                    e.message?.contains("Network") == true ->
-                                    "Network error. Please check your internet connection."
-
-                                else -> "Error: ${e.message ?: "Failed to load components"}"
-                            }
+                        errorMessage = appError.message
                     } else {
                         _snackbarMessages.emit("Network error: Using cached data")
                     }
@@ -266,7 +259,7 @@ class ComponentsViewModel(
                     loadComponents(pollingMode = true)
                 }
             } catch (e: Throwable) {
-                cartError = "Failed to submit request: ${e.message}"
+                cartError = "Failed to submit request: ${e.toAppError().message}"
             } finally {
                 isSubmittingRequest = false
             }
@@ -283,7 +276,7 @@ class ComponentsViewModel(
                     _snackbarMessages.emit("Component deleted successfully")
                 }
             } catch (e: Throwable) {
-                _snackbarMessages.emit("Failed to delete component: ${e.message}")
+                _snackbarMessages.emit("Failed to delete component: ${e.toAppError().message}")
             } finally {
                 showDeleteDialog = null
             }
@@ -315,7 +308,7 @@ class ComponentsViewModel(
                     loadComponents()
                 }
             } catch (e: Throwable) {
-                _snackbarMessages.emit("Failed to save component: ${e.message}")
+                _snackbarMessages.emit("Failed to save component: ${e.toAppError().message}")
             }
         }
     }
@@ -341,7 +334,7 @@ class ComponentsViewModel(
                     _snackbarMessages.emit("Image uploaded successfully")
                 }
             } catch (e: Throwable) {
-                _snackbarMessages.emit("Failed to upload image: ${e.message}")
+                _snackbarMessages.emit("Failed to upload image: ${e.toAppError().message}")
             }
         }
     }
@@ -357,7 +350,7 @@ class ComponentsViewModel(
                     _snackbarMessages.emit("Image removed successfully")
                 }
             } catch (e: Throwable) {
-                _snackbarMessages.emit("Failed to remove image: ${e.message}")
+                _snackbarMessages.emit("Failed to remove image: ${e.toAppError().message}")
             }
         }
     }

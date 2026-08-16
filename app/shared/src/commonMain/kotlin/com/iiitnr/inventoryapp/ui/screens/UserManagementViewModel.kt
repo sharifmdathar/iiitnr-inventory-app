@@ -9,8 +9,7 @@ import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.UpdateUserRequest
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.storage.TokenManager
-import io.ktor.client.plugins.ResponseException
-import io.ktor.http.HttpStatusCode
+import com.iiitnr.inventoryapp.utils.toAppError
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -57,17 +56,7 @@ class UserManagementViewModel(
                     errorMessage = null
                 }
             } catch (e: Throwable) {
-                val errorMsg =
-                    when (e) {
-                        is ResponseException ->
-                            if (e.response.status == HttpStatusCode.Unauthorized) {
-                                "Session expired. Please login again."
-                            } else {
-                                e.message ?: "Failed to load users"
-                            }
-
-                        else -> e.message ?: "Failed to load users"
-                    }
+                val errorMsg = e.toAppError().message
                 if (users.isEmpty()) {
                     errorMessage = errorMsg
                 }
@@ -108,7 +97,7 @@ class UserManagementViewModel(
                     loadUsers()
                 }
             } catch (e: Throwable) {
-                errorMessage = "Failed to update user: ${e.message}"
+                errorMessage = "Failed to update user: ${e.toAppError().message}"
             }
         }
     }

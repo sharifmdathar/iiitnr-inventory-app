@@ -1,0 +1,42 @@
+export class DomainError extends Error {
+  public readonly isDomainError = true;
+  constructor(
+    public statusCode: number,
+    message: string,
+    public code?: string,
+  ) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class InsufficientQuantityError extends DomainError {
+  constructor(componentName: string, requestedQty?: number) {
+    super(400, `insufficient quantity for component "${componentName}"`, 'INSUFFICIENT_QUANTITY');
+  }
+}
+
+export class NotFoundError extends DomainError {
+  constructor(entity: string, id: string) {
+    super(404, `${entity} not found: ${id}`, 'NOT_FOUND');
+  }
+}
+
+export class UnauthorizedError extends DomainError {
+  constructor(message: string = 'Unauthorized') {
+    super(401, message, 'UNAUTHORIZED');
+  }
+}
+
+export class ForbiddenError extends DomainError {
+  constructor(message: string = 'Forbidden') {
+    super(403, message, 'FORBIDDEN');
+  }
+}
+
+export class BadRequestError extends DomainError {
+  constructor(message: string) {
+    super(400, message, 'BAD_REQUEST');
+  }
+}

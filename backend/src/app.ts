@@ -15,6 +15,7 @@ import routes from './routes/index.js';
 import imagesRoutes from './routes/images.js';
 import { startRequestExpirySweep } from './services/request-expiry.js';
 import { notifyRequestsUpdated } from './utils/events.js';
+import { DomainError } from './utils/errors.js';
 
 interface AppEnvironment {
   isTest: boolean;
@@ -148,18 +149,33 @@ function handleError(error: Error, request: FastifyRequest, reply: FastifyReply)
     return;
   }
 
-  const err = error as ErrorWithStatus;
-  const statusCode = isValidHttpErrorCode(err.statusCode) ? err.statusCode : 500;
+  let statusCode = 500;
+  let message = 'Internal Server Error';
+  let code: string | undefined;
+
+  const isDomainError = error instanceof DomainError || (error as any).isDomainError === true;
+
+  if (isDomainError) {
+    const err = error as DomainError;
+    statusCode = err.statusCode;
+    message = err.message;
+    code = err.code;
+  } else {
+    const err = error as ErrorWithStatus;
+    if (isValidHttpErrorCode(err.statusCode)) {
+      statusCode = err.statusCode;
+      message = err.message ?? 'Request failed';
+      code = err.code;
+    }
+  }
 
   if (statusCode >= 500) {
     request.log.error(error);
   } else {
-    request.log.warn({ code: err.code, statusCode }, err.message);
+    request.log.warn({ code, statusCode }, message);
   }
 
-  const message = err.message ?? (statusCode === 500 ? 'Internal Server Error' : 'Request failed');
-
-  reply.code(statusCode).send({ error: message });
+  reply.code(statusCode).send({ error: message, code });
 }
 
 function isValidHttpErrorCode(code: number | undefined): code is number {

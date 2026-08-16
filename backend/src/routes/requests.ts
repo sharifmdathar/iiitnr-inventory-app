@@ -214,13 +214,6 @@ function canDeleteRequest(
   return null;
 }
 
-function parseInsufficientQuantityError(error: Error): string | null {
-  if (error.message.startsWith('INSUFFICIENT_QUANTITY:')) {
-    return error.message.split(':')[1] ?? 'unknown';
-  }
-  return null;
-}
-
 async function handleCreateRequest(
   app: { log: { error: (err: unknown) => void } },
   req: FastifyRequest,
@@ -254,61 +247,50 @@ async function handleCreateRequest(
   }
   const normalizedItems = itemsResult;
 
-  try {
-    if (!(await RequestService.validateFacultyExists(targetFacultyId))) {
-      await reply.code(400).send({ error: 'invalid targetFacultyId' });
-      return;
-    }
-
-    const componentIds = normalizedItems.map((item) => item.componentId);
-    if (!(await RequestService.validateComponentsExist(componentIds))) {
-      await reply.code(400).send({ error: 'one or more components not found' });
-      return;
-    }
-
-    const requestId = await RequestService.createRequest(
-      userId,
-      targetFacultyId,
-      projectTitle,
-      normalizedItems,
-    );
-
-    const createdRequest = await RequestService.fetchAndShapeRequest(requestId);
-    if (!createdRequest) {
-      await reply.code(500).send({ error: 'failed to create request' });
-      return;
-    }
-
-    await logAudit(
-      {
-        userId: getUserIdFromRequest(req),
-        action: AuditActionType.CREATE,
-        entityType: 'Request',
-        entityId: requestId,
-        newValues: createdRequest as Record<string, unknown>,
-      },
-      req,
-    );
-
-    reply.code(201).send({ request: createdRequest });
-    notifyRequestsUpdated();
-  } catch (err) {
-    app.log.error(err);
-    reply.code(500).send({ error: 'failed to create request' });
+  if (!(await RequestService.validateFacultyExists(targetFacultyId))) {
+    await reply.code(400).send({ error: 'invalid targetFacultyId' });
+    return;
   }
+
+  const componentIds = normalizedItems.map((item) => item.componentId);
+  if (!(await RequestService.validateComponentsExist(componentIds))) {
+    await reply.code(400).send({ error: 'one or more components not found' });
+    return;
+  }
+
+  const requestId = await RequestService.createRequest(
+    userId,
+    targetFacultyId,
+    projectTitle,
+    normalizedItems,
+  );
+
+  const createdRequest = await RequestService.fetchAndShapeRequest(requestId);
+  if (!createdRequest) {
+    throw new Error('failed to create request');
+  }
+
+  await logAudit(
+    {
+      userId: getUserIdFromRequest(req),
+      action: AuditActionType.CREATE,
+      entityType: 'Request',
+      entityId: requestId,
+      newValues: createdRequest as Record<string, unknown>,
+    },
+    req,
+  );
+
+  reply.code(201).send({ request: createdRequest });
+  notifyRequestsUpdated();
 }
 
 async function handleGetFaculty(
   app: { log: { error: (err: unknown) => void } },
   reply: FastifyReply,
 ) {
-  try {
     const faculty = await RequestService.getFaculty();
     reply.send({ faculty });
-  } catch (err) {
-    app.log.error(err);
-    reply.code(500).send({ error: 'failed to fetch faculty' });
-  }
 }
 
 async function handleGetRequests(
@@ -332,7 +314,6 @@ async function handleGetRequests(
     return;
   }
 
-  try {
     if (status === RequestStatus.EXPIRED) {
       await expireOverdueRequests();
     }
@@ -348,10 +329,6 @@ async function handleGetRequests(
     });
 
     reply.send({ requests });
-  } catch (err) {
-    app.log.error(err);
-    reply.code(500).send({ error: 'failed to fetch requests' });
-  }
 }
 
 async function handlePendingStatusUpdate(
@@ -416,38 +393,25 @@ async function handleApprovedStatusUpdate(
   const body = req.body as UpdateStatusBody;
   const issueItems = body.issueItems;
 
-  try {
-    await RequestService.issueRequestTransaction(existingRequest, issueItems);
-    const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
+  await RequestService.issueRequestTransaction(existingRequest, issueItems);
+  const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
-    await logAudit(
-      {
-        userId: getUserIdFromRequest(req),
-        action: AuditActionType.REQUEST_STATUS_CHANGE,
-        entityType: 'Request',
-        entityId: existingRequest.id,
-        oldValues: { status: existingRequest.status },
-        newValues: {
-          status: updatedRequest?.status ?? newStatus,
-          fulfilledItems: updatedRequest?.items ?? existingRequest.requestItems,
-        },
+  await logAudit(
+    {
+      userId: getUserIdFromRequest(req),
+      action: AuditActionType.REQUEST_STATUS_CHANGE,
+      entityType: 'Request',
+      entityId: existingRequest.id,
+      oldValues: { status: existingRequest.status },
+      newValues: {
+        status: updatedRequest?.status ?? newStatus,
+        fulfilledItems: updatedRequest?.items ?? existingRequest.requestItems,
       },
-      req,
-    );
+    },
+    req,
+  );
 
-    reply.send({ request: updatedRequest });
-  } catch (error) {
-    if (error instanceof Error) {
-      const componentName = parseInsufficientQuantityError(error);
-      if (componentName) {
-        reply.code(400).send({
-          error: `insufficient quantity for component "${componentName}"`,
-        });
-        return;
-      }
-    }
-    throw error;
-  }
+  reply.send({ request: updatedRequest });
 }
 
 async function handleRequestedRenewalStatusUpdate(
@@ -604,7 +568,6 @@ async function handleUpdateRequestStatus(
     return;
   }
 
-  try {
     await expireOverdueRequests({ requestId: id });
 
     const existingRequest = await RequestService.fetchRequestWithItems(id);
@@ -687,10 +650,6 @@ async function handleUpdateRequestStatus(
             'request status can only be updated when status is PENDING, APPROVED, ISSUED, PARTIALLY_ISSUED, REQUESTED_RENEW, RENEWED, PARTIALLY_RETURNED, or EXPIRED',
         });
     }
-  } catch (err) {
-    app.log.error(err);
-    reply.code(500).send({ error: 'failed to update request' });
-  }
 }
 
 async function handleDeleteRequest(
@@ -713,7 +672,6 @@ async function handleDeleteRequest(
     return;
   }
 
-  try {
     await expireOverdueRequests({ requestId: id });
 
     const existingRequest = await RequestService.fetchRequestWithItems(id);
@@ -743,10 +701,6 @@ async function handleDeleteRequest(
     );
 
     reply.code(204).send();
-  } catch (err) {
-    app.log.error(err);
-    reply.code(500).send({ error: 'failed to delete request' });
-  }
 }
 
 const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {

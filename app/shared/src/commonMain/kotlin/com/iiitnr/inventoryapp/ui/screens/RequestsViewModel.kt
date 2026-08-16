@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iiitnr.inventoryapp.data.api.ApiClient
+import com.iiitnr.inventoryapp.data.models.AppError
 import com.iiitnr.inventoryapp.data.models.IssueItemPayload
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestStatus
@@ -16,8 +17,7 @@ import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.components.requests.REQUEST_QR_PREFIX
 import com.iiitnr.inventoryapp.ui.components.requests.requestStatusActionSnackbarMessage
-import io.ktor.client.plugins.ResponseException
-import io.ktor.http.HttpStatusCode
+import com.iiitnr.inventoryapp.utils.toAppError
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -112,20 +112,12 @@ class RequestsViewModel(
                     }
                 }
             } catch (e: Throwable) {
-                val isAuthError = e is ResponseException && e.response.status == HttpStatusCode.Unauthorized
-                if (isAuthError) return@launch
+                val appError = e.toAppError()
+                if (appError is AppError.Unauthorized) return@launch
 
                 if (!pollingMode) {
                     if (requests.isEmpty()) {
-                        errorMessage =
-                            when {
-                                e.message?.contains("Unable to resolve host") == true ||
-                                    e.message?.contains("Network") == true ||
-                                    e.message?.contains("timeout") == true ->
-                                    "Network error. Please check your connection."
-
-                                else -> "Error: ${e.message ?: "Failed to load requests"}"
-                            }
+                        errorMessage = appError.message
                     } else {
                         _snackbarMessages.emit("Network error: Using latest data")
                     }
@@ -167,7 +159,7 @@ class RequestsViewModel(
                     errorMessage = "No authentication token"
                 }
             } catch (e: Throwable) {
-                errorMessage = "Error: ${e.message ?: "Failed to delete request"}"
+                errorMessage = e.toAppError().message
             }
         }
     }
@@ -201,7 +193,7 @@ class RequestsViewModel(
                     errorMessage = "No authentication token"
                 }
             } catch (e: Throwable) {
-                errorMessage = "Error: ${e.message ?: "Failed to update request status"}"
+                errorMessage = e.toAppError().message
             }
         }
     }

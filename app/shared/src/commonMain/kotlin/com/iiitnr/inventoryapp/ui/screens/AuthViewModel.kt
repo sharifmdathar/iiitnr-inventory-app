@@ -10,6 +10,7 @@ import com.iiitnr.inventoryapp.data.models.GoogleSignInRequest
 import com.iiitnr.inventoryapp.data.models.LoginRequest
 import com.iiitnr.inventoryapp.data.models.RegisterRequest
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.utils.toAppError
 import kotlinx.coroutines.launch
 
 class AuthViewModel(
@@ -31,7 +32,7 @@ class AuthViewModel(
                 tokenManager.saveToken(response.token)
                 onSuccess()
             } catch (e: Throwable) {
-                errorMessage = "Login failed: ${e.message}"
+                errorMessage = "Login failed: ${e.toAppError().message}"
             } finally {
                 isLoading = false
             }
@@ -50,7 +51,7 @@ class AuthViewModel(
                 tokenManager.saveToken(response.token)
                 onSuccess()
             } catch (e: Throwable) {
-                errorMessage = "Registration failed: ${e.message}"
+                errorMessage = "Registration failed: ${e.toAppError().message}"
             } finally {
                 isLoading = false
             }
@@ -69,7 +70,7 @@ class AuthViewModel(
                 tokenManager.saveToken(response.token)
                 onSuccess()
             } catch (e: Throwable) {
-                errorMessage = "Google Sign-In failed: ${e.message}"
+                errorMessage = "Google Sign-In failed: ${e.toAppError().message}"
             } finally {
                 isLoading = false
             }

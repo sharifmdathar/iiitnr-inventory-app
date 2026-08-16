@@ -5,6 +5,7 @@ import { RequestStatus, UserRole } from '../utils/enums.js';
 import type { RequestStatusValue } from '../utils/enums.js';
 import { notifyRequestsUpdated } from '../utils/events.js';
 import { REQUEST_RETURN_LIMIT_MS } from './request-expiry.js';
+import { InsufficientQuantityError, NotFoundError } from '../utils/errors.js';
 
 export interface RequestItemInput {
   componentId: string;
@@ -100,7 +101,7 @@ export async function issueRequestTransaction(
       .for('update');
 
     if (!lockedRequest) {
-      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+      throw new NotFoundError('Request', existingRequest.id);
     }
 
     const requestItems = await tx
@@ -145,8 +146,7 @@ export async function issueRequestTransaction(
         .for('update');
 
       if (!lockedComp || lockedComp.availableQuantity < issueQty) {
-        const name = lockedComp?.name ?? 'unknown';
-        throw new Error(`INSUFFICIENT_QUANTITY:${name}:${issueQty}`);
+        throw new InsufficientQuantityError(lockedComp?.name ?? 'unknown', issueQty);
       }
 
       const newFulfilled = alreadyFulfilled + issueQty;
@@ -200,7 +200,7 @@ export async function requestForRenewalTransaction(
       .for('update');
 
     if (!lockedRequest) {
-      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+      throw new NotFoundError('Request', existingRequest.id);
     }
 
     await tx
@@ -227,7 +227,7 @@ export async function approveRenewRequestTransaction(existingRequest: { id: stri
       .for('update');
 
     if (!lockedRequest) {
-      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+      throw new NotFoundError('Request', existingRequest.id);
     }
 
     await tx
@@ -256,7 +256,7 @@ export async function returnRequestTransaction(
       .for('update');
 
     if (!lockedRequest) {
-      throw new Error(`REQUEST_NOT_FOUND:${existingRequest.id}`);
+      throw new NotFoundError('Request', existingRequest.id);
     }
 
     const requestItems = await tx
@@ -304,8 +304,7 @@ export async function returnRequestTransaction(
         .for('update');
 
       if (!lockedComp) {
-        const name = 'unknown';
-        throw new Error(`COMPONENT_NOT_FOUND:${name}`);
+        throw new NotFoundError('Component', item.componentId);
       }
 
       const newReturned = alreadyReturnedQty + returnQty;
