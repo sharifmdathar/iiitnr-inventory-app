@@ -25,9 +25,10 @@
 <body>
     <canvas id="compose-app"></canvas>
     <script src="web.js"></script>
+    <script src="google-config.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
-            window.iiitnrGoogleClientId = '';
+            window._iiitnrGsiInitialized = false;
             window.iiitnrGoogleSignIn = function () {
                 return new Promise(function (resolve, reject) {
                     var clientId = window.iiitnrGoogleClientId || '';
@@ -39,16 +40,19 @@
                         reject(new Error('Google Identity Services failed to load'));
                         return;
                     }
-                    window.google.accounts.id.initialize({
-                        client_id: clientId,
-                        callback: function (resp) {
-                            if (resp && resp.credential) {
-                                resolve(resp.credential);
-                            } else {
-                                reject(new Error(resp && resp.error ? resp.error : 'Google sign-in was cancelled or failed'));
-                            }
-                        },
-                    });
+                    if (!window._iiitnrGsiInitialized) {
+                        window.google.accounts.id.initialize({
+                            client_id: clientId,
+                            callback: function (resp) {
+                                if (resp && resp.credential) {
+                                    resolve(resp.credential);
+                                } else {
+                                    reject(new Error(resp && resp.error ? resp.error : 'Google sign-in was cancelled or failed'));
+                                }
+                            },
+                        });
+                        window._iiitnrGsiInitialized = true;
+                    }
                     window.google.accounts.id.prompt();
                 });
             };

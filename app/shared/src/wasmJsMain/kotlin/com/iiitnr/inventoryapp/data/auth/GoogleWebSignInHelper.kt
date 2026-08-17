@@ -11,10 +11,16 @@ class GoogleWebSignInHelper {
     suspend fun signIn(): String? =
         try {
             startGoogleSignIn().await()?.toString()
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            logSignInError(t.message ?: t.toString())
             null
         }
 }
 
 @OptIn(ExperimentalWasmJsInterop::class)
 private fun startGoogleSignIn(): Promise<JsString?> = js("window.iiitnrGoogleSignIn()")
+
+@OptIn(ExperimentalWasmJsInterop::class)
+private fun logSignInError(message: String) {
+    js("console.error('[GoogleWebSignIn] ' + message)")
+}
