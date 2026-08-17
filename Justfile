@@ -103,3 +103,11 @@ web:
 [windows]
 web:
     cd app && ./gradlew :web:wasmJsBrowserDevelopmentRun -PappDebug=true
+
+[unix]
+deploy-web:
+    git pull
+    cd app && GOOGLE_WEB_CLIENT_ID="${GOOGLE_WEB_CLIENT_ID}" ./gradlew :web:wasmJsBrowserDistribution --no-configuration-cache -Pkotlin.native.ignoreDisabledTargets=true --no-daemon
+    mkdir -p /srv/web
+    cp -r app/web/build/dist/wasmJs/productionExecutable/. /srv/web/
+    echo "Web app deployed to /srv/web"

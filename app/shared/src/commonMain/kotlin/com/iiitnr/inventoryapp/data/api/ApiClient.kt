@@ -23,7 +23,7 @@ expect fun devBaseUrl(): String
 object ApiClient {
     private val BASE_URL: String = if (BuildFlags.IS_DEBUG) devBaseUrl() else PRODUCTION_BASE_URL
 
-    private const val PRODUCTION_BASE_URL = "https://inventory.iiitnr.ac.in"
+    private const val PRODUCTION_BASE_URL = "https://inventory.iiitnr.ac.in/api"
 
     private val errorJson = Json { ignoreUnknownKeys = true }
 

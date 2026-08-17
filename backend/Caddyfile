@@ -1,7 +1,15 @@
 inventory.iiitnr.ac.in {
     tls /etc/caddy/certs/acnew.pem /etc/caddy/certs/ac.key
 
-    reverse_proxy backend:4000
+    handle_path /api/* {
+        reverse_proxy backend:4000
+    }
+
+    handle {
+        root * /srv/web
+        try_files {path} /index.html
+        file_server
+    }
 
     encode zstd gzip
 
