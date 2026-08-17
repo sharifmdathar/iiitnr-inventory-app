@@ -26,9 +26,7 @@
     <canvas id="compose-app"></canvas>
     <script src="web.js"></script>
     <script src="google-config.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
-            window._iiitnrGsiInitialized = false;
             window.iiitnrGoogleSignIn = function () {
                 return new Promise(function (resolve, reject) {
                     var clientId = window.iiitnrGoogleClientId || '';
@@ -36,24 +34,82 @@
                         reject(new Error('Google client ID not configured'));
                         return;
                     }
-                    if (!window.google || !window.google.accounts || !window.google.accounts.id) {
-                        reject(new Error('Google Identity Services failed to load'));
+
+                    var basePath = window.location.pathname.replace(/[^/]*$/, '');
+                    var redirectUri = window.location.origin + basePath + 'oauth-callback.html';
+
+                    function randomHex(bytes) {
+                        var arr = new Uint8Array(bytes);
+                        window.crypto.getRandomValues(arr);
+                        var out = '';
+                        for (var i = 0; i < arr.length; i++) {
+                            out += ('0' + arr[i].toString(16)).slice(-2);
+                        }
+                        return out;
+                    }
+                    var nonce = randomHex(16);
+                    var state = randomHex(16);
+
+                    var authUrl = 'https://accounts.google.com/o/oauth2/v2/auth' +
+                        '?client_id=' + encodeURIComponent(clientId) +
+                        '&redirect_uri=' + encodeURIComponent(redirectUri) +
+                        '&response_type=id_token' +
+                        '&scope=' + encodeURIComponent('openid email profile') +
+                        '&nonce=' + encodeURIComponent(nonce) +
+                        '&state=' + encodeURIComponent(state) +
+                        '&prompt=select_account';
+
+                    var width = 500;
+                    var height = 600;
+                    var left = Math.max(0, (window.screen.width - width) / 2);
+                    var top = Math.max(0, (window.screen.height - height) / 2);
+                    var popup = window.open(
+                        authUrl,
+                        'iiitnrGoogleSignIn',
+                        'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top
+                    );
+
+                    if (!popup) {
+                        reject(new Error('Popup was blocked. Please allow popups for this site and try again.'));
                         return;
                     }
-                    if (!window._iiitnrGsiInitialized) {
-                        window.google.accounts.id.initialize({
-                            client_id: clientId,
-                            callback: function (resp) {
-                                if (resp && resp.credential) {
-                                    resolve(resp.credential);
-                                } else {
-                                    reject(new Error(resp && resp.error ? resp.error : 'Google sign-in was cancelled or failed'));
-                                }
-                            },
-                        });
-                        window._iiitnrGsiInitialized = true;
+
+                    var settled = false;
+                    var pollTimer = null;
+
+                    function cleanup() {
+                        window.removeEventListener('message', onMessage);
+                        if (pollTimer) {
+                            clearInterval(pollTimer);
+                            pollTimer = null;
+                        }
                     }
-                    window.google.accounts.id.prompt();
+
+                    function onMessage(event) {
+                        if (event.origin !== window.location.origin) {
+                            return;
+                        }
+                        if (!event.data || event.data.type !== 'iiitnr-google-idtoken') {
+                            return;
+                        }
+                        settled = true;
+                        cleanup();
+                        if (event.data.idToken) {
+                            resolve(event.data.idToken);
+                        } else {
+                            reject(new Error(event.data.error || 'Google sign-in failed'));
+                        }
+                    }
+
+                    window.addEventListener('message', onMessage);
+
+                    pollTimer = setInterval(function () {
+                        if (popup.closed && !settled) {
+                            settled = true;
+                            cleanup();
+                            reject(new Error('Sign-in window was closed'));
+                        }
+                    }, 500);
                 });
             };
 

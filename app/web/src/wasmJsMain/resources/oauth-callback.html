@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Signing in…</title>
+</head>
+<body>
+    <p>Signing you in…</p>
+    <script>
+        (function () {
+            try {
+                var hash = window.location.hash ? window.location.hash.substring(1) : '';
+                var params = new URLSearchParams(hash);
+                var idToken = params.get('id_token');
+                var error = params.get('error');
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'iiitnr-google-idtoken',
+                        idToken: idToken || null,
+                        error: error || null
+                    }, window.location.origin);
+                }
+            } catch (e) {
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'iiitnr-google-idtoken',
+                        idToken: null,
+                        error: String(e)
+                    }, window.location.origin);
+                }
+            } finally {
+                window.close();
+            }
+        })();
+    </script>
+</body>
+</html>
