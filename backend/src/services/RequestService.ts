@@ -5,7 +5,11 @@ import { RequestStatus, UserRole } from '../utils/enums.js';
 import type { RequestStatusValue } from '../utils/enums.js';
 import { notifyRequestsUpdated } from '../utils/events.js';
 import { REQUEST_RETURN_LIMIT_MS } from './request-expiry.js';
-import { InsufficientQuantityError, NotFoundError } from '../utils/errors.js';
+import {
+  ExcessReturnQuantityError,
+  InsufficientQuantityError,
+  NotFoundError,
+} from '../utils/errors.js';
 
 export interface RequestItemInput {
   componentId: string;
@@ -243,6 +247,33 @@ export async function approveRenewRequestTransaction(existingRequest: { id: stri
   });
 }
 
+export async function rejectRenewRequestTransaction(
+  existingRequest: { id: string },
+  revertStatus: RequestStatusValue,
+) {
+  const rejectedAt = new Date().toISOString();
+  await db.transaction(async (tx) => {
+    const [lockedRequest] = await tx
+      .select()
+      .from(request)
+      .where(eq(request.id, existingRequest.id))
+      .for('update');
+
+    if (!lockedRequest) {
+      throw new NotFoundError('Request', existingRequest.id);
+    }
+
+    await tx
+      .update(request)
+      .set({
+        status: revertStatus,
+        updatedAt: rejectedAt,
+      })
+      .where(eq(request.id, existingRequest.id));
+    notifyRequestsUpdated();
+  });
+}
+
 export async function returnRequestTransaction(
   existingRequest: { id: string } | NonNullable<RequestWithRelations>,
   returnItems?: ReturnItemInput[],
@@ -279,11 +310,16 @@ export async function returnRequestTransaction(
       }
 
       const returnItem = returnItems?.find((i) => i.componentId === item.componentId);
-      const returnQty = returnItem
-        ? Math.min(returnItem.quantity, currentlyHeldQty)
-        : returnItems
-          ? 0
-          : currentlyHeldQty;
+
+      if (returnItem && returnItem.quantity > currentlyHeldQty) {
+        throw new ExcessReturnQuantityError(
+          item.componentId,
+          returnItem.quantity,
+          currentlyHeldQty,
+        );
+      }
+
+      const returnQty = returnItem ? returnItem.quantity : returnItems ? 0 : currentlyHeldQty;
 
       if (returnQty <= 0) {
         hasIssuedRemaining = true;

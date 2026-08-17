@@ -131,18 +131,26 @@ class RequestsViewModel(
 
     private fun startSseOrPolling() {
         viewModelScope.launch {
-            tokenManager.token.first()?.let { token ->
+            val token = tokenManager.token.first() ?: return@launch
+
+            var pollAttempts = 0
+            while (true) {
                 try {
                     ApiClient.requestApiService.streamRequestEvents("Bearer $token").collect {
+                        pollAttempts = 0
                         loadRequests(pollingMode = true)
                     }
-                } catch (e: Exception) {
-                    while (true) {
-                        delay(10000.milliseconds)
+                    delay(SSE_RECONNECT_DELAY_MS.milliseconds)
+                } catch (_: Exception) {
+                    while (pollAttempts < MAX_POLL_ATTEMPTS) {
+                        val backoff = POLL_BASE_DELAY_MS * (1L shl pollAttempts)
+                        delay(minOf(backoff, MAX_POLL_DELAY_MS).milliseconds)
                         if (errorMessage == null && !isLoading && !isRefreshing) {
                             loadRequests(pollingMode = true)
                         }
+                        pollAttempts++
                     }
+                    pollAttempts = 0
                 }
             }
         }
@@ -210,5 +218,12 @@ class RequestsViewModel(
             return null
         }
         return request
+    }
+
+    private companion object {
+        const val MAX_POLL_ATTEMPTS = 6
+        const val POLL_BASE_DELAY_MS = 5_000L
+        const val MAX_POLL_DELAY_MS = 60_000L
+        const val SSE_RECONNECT_DELAY_MS = 3_000L
     }
 }

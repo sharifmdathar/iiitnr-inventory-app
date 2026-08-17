@@ -14,6 +14,35 @@ plugins {
 val packageJsonFile = rootProject.layout.projectDirectory.file("../backend/package.json")
 val generatedVersionDir = layout.buildDirectory.dir("generated/source/appVersion/commonMain/kotlin")
 
+val isDebugBuild = (project.findProperty("appDebug") as String?)?.toBoolean() ?: false
+val generatedBuildFlagsDir =
+    layout.buildDirectory.dir("generated/source/buildFlags/commonMain/kotlin")
+
+val generateBuildFlagsKt =
+    tasks.register("generateBuildFlagsKt") {
+        description = "Generates BuildFlags for the App"
+        val debug = isDebugBuild
+        val outputDir = generatedBuildFlagsDir.get().asFile
+
+        inputs.property("isDebug", debug)
+        outputs.dir(outputDir)
+
+        doLast {
+            val flagsFile = outputDir.resolve("com/iiitnr/inventoryapp/data/BuildFlags.kt")
+            outputDir.deleteRecursively()
+            flagsFile.parentFile.mkdirs()
+            flagsFile.writeText(
+                """
+                package com.iiitnr.inventoryapp.data
+
+                internal object BuildFlags {
+                    const val IS_DEBUG = $debug
+                }
+                """.trimIndent() + "\n",
+            )
+        }
+    }
+
 val generateVersionKt =
     tasks.register("generateVersionKt") {
         description = "Generates Version for the App"
@@ -83,6 +112,7 @@ kotlin {
         val commonMain =
             sourceSets.getByName("commonMain") {
                 kotlin.srcDir(generateVersionKt)
+                kotlin.srcDir(generateBuildFlagsKt)
 
                 dependencies {
                     val composeVersion = libs.versions.composeMultiplatform.get()

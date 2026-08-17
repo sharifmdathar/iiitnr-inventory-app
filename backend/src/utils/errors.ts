@@ -23,6 +23,16 @@ export class NotFoundError extends DomainError {
   }
 }
 
+export class ExcessReturnQuantityError extends DomainError {
+  constructor(componentId: string, requestedQty: number, heldQty: number) {
+    super(
+      400,
+      `cannot return ${requestedQty} of component "${componentId}"; only ${heldQty} currently held`,
+      'EXCESS_RETURN_QUANTITY',
+    );
+  }
+}
+
 export class UnauthorizedError extends DomainError {
   constructor(message: string = 'Unauthorized') {
     super(401, message, 'UNAUTHORIZED');

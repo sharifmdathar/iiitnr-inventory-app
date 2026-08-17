@@ -40,19 +40,19 @@ test:
 
 [unix]
 desk:
-    cd app && _JAVA_AWT_WM_NONREPARENTING=1 ./gradlew desktop:run
+    cd app && _JAVA_AWT_WM_NONREPARENTING=1 ./gradlew desktop:run -PappDebug=true
 
 [windows]
 desk:
-    cd app && .\gradlew.bat desktop:run
+    cd app && .\gradlew.bat desktop:run -PappDebug=true
 
 [unix]
 andro:
-    cd app && ./gradlew assembleDebug
+    cd app && ./gradlew assembleDebug -PappDebug=true
 
 [windows]
 andro:
-    cd app && .\gradlew.bat assembleDebug
+    cd app && .\gradlew.bat assembleDebug -PappDebug=true
 
 [unix]
 lint:
@@ -98,8 +98,8 @@ detekt:
 
 [unix]
 web:
-    cd app && ./gradlew :web:wasmJsBrowserDevelopmentRun
+    cd app && ./gradlew :web:wasmJsBrowserDevelopmentRun -PappDebug=true
 
 [windows]
 web:
-    cd app && ./gradlew :web:wasmJsBrowserDevelopmentRun
+    cd app && ./gradlew :web:wasmJsBrowserDevelopmentRun -PappDebug=true

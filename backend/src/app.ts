@@ -186,6 +186,15 @@ function handleRootRoute() {
   return { message: 'IIITNR Inventory App Backend' };
 }
 
+const APP_VERSION: string = (() => {
+  try {
+    const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
+    return typeof pkg.version === 'string' ? pkg.version : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+})();
+
 let appReady = false;
 
 export function markAppReady() {
@@ -287,12 +296,7 @@ function setupRoutes(app: FastifyInstance) {
   app.get('/health', (_, reply) => handleHealthCheck(reply));
   app.get('/ready', (_, reply) => handleReadyCheck(app, reply));
   app.get('/version', (_, reply) => {
-    try {
-      const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
-      reply.send({ version: pkg.version });
-    } catch {
-      reply.code(500).send({ error: 'Failed to read version' });
-    }
+    reply.send({ version: APP_VERSION });
   });
 }
 

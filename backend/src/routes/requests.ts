@@ -198,6 +198,23 @@ function canIssueRequest(currentUser: CurrentUser): ValidationError | null {
   return null;
 }
 
+function canRequestRenewal(
+  currentUser: CurrentUser,
+  existingRequest: { userId: string },
+): ValidationError | null {
+  if (existingRequest.userId !== currentUser.sub) {
+    return { code: 403, message: 'forbidden: can only request renewal for your own request' };
+  }
+  return null;
+}
+
+function statusBeforeRenewal(
+  items: { quantity: number; fulfilledQuantity: number | null }[],
+): RequestStatusValue {
+  const fullyIssued = items.every((item) => (item.fulfilledQuantity ?? 0) >= item.quantity);
+  return fullyIssued ? RequestStatus.ISSUED : RequestStatus.PARTIALLY_ISSUED;
+}
+
 function canDeleteRequest(
   currentUser: CurrentUser,
   existingRequest: { userId: string; status: string },
@@ -289,8 +306,8 @@ async function handleGetFaculty(
   app: { log: { error: (err: unknown) => void } },
   reply: FastifyReply,
 ) {
-    const faculty = await RequestService.getFaculty();
-    reply.send({ faculty });
+  const faculty = await RequestService.getFaculty();
+  reply.send({ faculty });
 }
 
 async function handleGetRequests(
@@ -314,21 +331,21 @@ async function handleGetRequests(
     return;
   }
 
-    if (status === RequestStatus.EXPIRED) {
-      await expireOverdueRequests();
-    }
+  if (status === RequestStatus.EXPIRED) {
+    await expireOverdueRequests();
+  }
 
-    const isAdmin = isAdminOrLA(currentUser.role);
-    const isFaculty = currentUser.role === UserRole.FACULTY;
+  const isAdmin = isAdminOrLA(currentUser.role);
+  const isFaculty = currentUser.role === UserRole.FACULTY;
 
-    const requests = await RequestService.getRequests({
-      userId: isAdmin ? requestedUserId : isFaculty ? undefined : currentUserId,
-      targetFacultyId: isFaculty ? currentUserId : undefined,
-      status: status as RequestStatusValue,
-      isAdmin,
-    });
+  const requests = await RequestService.getRequests({
+    userId: isAdmin ? requestedUserId : currentUserId,
+    targetFacultyId: isFaculty ? currentUserId : undefined,
+    status: status as RequestStatusValue,
+    isAdmin,
+  });
 
-    reply.send({ requests });
+  reply.send({ requests });
 }
 
 async function handlePendingStatusUpdate(
@@ -421,8 +438,22 @@ async function handleRequestedRenewalStatusUpdate(
   newStatus: RequestStatusValue,
   currentUser: CurrentUser,
 ) {
-  if (newStatus !== RequestStatus.RENEWED) {
-    reply.code(400).send({ error: 'requested renewal request can only be set to RENEWED' });
+  const isApproval = newStatus === RequestStatus.RENEWED;
+  const revertStatus = statusBeforeRenewal(existingRequest.requestItems);
+  const isRejection =
+    newStatus === RequestStatus.ISSUED || newStatus === RequestStatus.PARTIALLY_ISSUED;
+
+  if (!isApproval && !isRejection) {
+    reply.code(400).send({
+      error: 'requested renewal request can only be set to RENEWED, ISSUED, or PARTIALLY_ISSUED',
+    });
+    return;
+  }
+
+  if (isRejection && newStatus !== revertStatus) {
+    reply.code(400).send({
+      error: `renewal rejection for this request must set status to ${revertStatus}`,
+    });
     return;
   }
 
@@ -431,7 +462,12 @@ async function handleRequestedRenewalStatusUpdate(
     reply.code(authError.code).send({ error: authError.message });
     return;
   }
-  await RequestService.approveRenewRequestTransaction(existingRequest);
+
+  if (isApproval) {
+    await RequestService.approveRenewRequestTransaction(existingRequest);
+  } else {
+    await RequestService.rejectRenewRequestTransaction(existingRequest, revertStatus);
+  }
   const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
@@ -477,6 +513,11 @@ async function handleIssuedStatusUpdate(
     const returnItems = body.returnItems;
     await RequestService.returnRequestTransaction(existingRequest, returnItems);
   } else if (newStatus === RequestStatus.REQUESTED_RENEW) {
+    const ownerError = canRequestRenewal(currentUser, existingRequest);
+    if (ownerError) {
+      reply.code(ownerError.code).send({ error: ownerError.message });
+      return;
+    }
     await RequestService.requestForRenewalTransaction(existingRequest, lastRenewReason);
   }
   const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
@@ -568,25 +609,41 @@ async function handleUpdateRequestStatus(
     return;
   }
 
-    await expireOverdueRequests({ requestId: id });
+  await expireOverdueRequests({ requestId: id });
 
-    const existingRequest = await RequestService.fetchRequestWithItems(id);
+  const existingRequest = await RequestService.fetchRequestWithItems(id);
 
-    if (!existingRequest) {
-      reply.code(404).send({ error: 'request not found' });
-      return;
+  if (!existingRequest) {
+    reply.code(404).send({ error: 'request not found' });
+    return;
+  }
+
+  switch (existingRequest.status) {
+    case RequestStatus.PENDING:
+      await handlePendingStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+      break;
+
+    case RequestStatus.APPROVED:
+      await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+      break;
+
+    case RequestStatus.ISSUED: {
+      const lastRenewReason = body.lastRenewReason?.trim();
+      await handleIssuedStatusUpdate(
+        req,
+        reply,
+        existingRequest,
+        newStatus,
+        currentUser,
+        lastRenewReason,
+      );
+      break;
     }
 
-    switch (existingRequest.status) {
-      case RequestStatus.PENDING:
-        await handlePendingStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
-        break;
-
-      case RequestStatus.APPROVED:
+    case RequestStatus.PARTIALLY_ISSUED: {
+      if (newStatus === RequestStatus.ISSUED) {
         await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
-        break;
-
-      case RequestStatus.ISSUED: {
+      } else {
         const lastRenewReason = body.lastRenewReason?.trim();
         await handleIssuedStatusUpdate(
           req,
@@ -596,60 +653,38 @@ async function handleUpdateRequestStatus(
           currentUser,
           lastRenewReason,
         );
-        break;
       }
-
-      case RequestStatus.PARTIALLY_ISSUED: {
-        if (newStatus === RequestStatus.ISSUED) {
-          await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
-        } else {
-          const lastRenewReason = body.lastRenewReason?.trim();
-          await handleIssuedStatusUpdate(
-            req,
-            reply,
-            existingRequest,
-            newStatus,
-            currentUser,
-            lastRenewReason,
-          );
-        }
-        break;
-      }
-
-      case RequestStatus.REQUESTED_RENEW:
-        await handleRequestedRenewalStatusUpdate(
-          req,
-          reply,
-          existingRequest,
-          newStatus,
-          currentUser,
-        );
-        break;
-
-      case RequestStatus.RENEWED:
-      case RequestStatus.PARTIALLY_RETURNED: {
-        const renewedLastRenewReason = body.lastRenewReason?.trim();
-        await handleIssuedStatusUpdate(
-          req,
-          reply,
-          existingRequest,
-          newStatus,
-          currentUser,
-          renewedLastRenewReason,
-        );
-        break;
-      }
-
-      case RequestStatus.EXPIRED:
-        await handleExpiredStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
-        break;
-
-      default:
-        reply.code(400).send({
-          error:
-            'request status can only be updated when status is PENDING, APPROVED, ISSUED, PARTIALLY_ISSUED, REQUESTED_RENEW, RENEWED, PARTIALLY_RETURNED, or EXPIRED',
-        });
+      break;
     }
+
+    case RequestStatus.REQUESTED_RENEW:
+      await handleRequestedRenewalStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+      break;
+
+    case RequestStatus.RENEWED:
+    case RequestStatus.PARTIALLY_RETURNED: {
+      const renewedLastRenewReason = body.lastRenewReason?.trim();
+      await handleIssuedStatusUpdate(
+        req,
+        reply,
+        existingRequest,
+        newStatus,
+        currentUser,
+        renewedLastRenewReason,
+      );
+      break;
+    }
+
+    case RequestStatus.EXPIRED:
+      await handleExpiredStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
+      break;
+
+    default:
+      reply.code(400).send({
+        error:
+          'request status can only be updated when status is PENDING, APPROVED, ISSUED, PARTIALLY_ISSUED, REQUESTED_RENEW, RENEWED, PARTIALLY_RETURNED, or EXPIRED',
+      });
+  }
 }
 
 async function handleDeleteRequest(
@@ -672,35 +707,35 @@ async function handleDeleteRequest(
     return;
   }
 
-    await expireOverdueRequests({ requestId: id });
+  await expireOverdueRequests({ requestId: id });
 
-    const existingRequest = await RequestService.fetchRequestWithItems(id);
+  const existingRequest = await RequestService.fetchRequestWithItems(id);
 
-    if (!existingRequest) {
-      reply.code(404).send({ error: 'request not found' });
-      return;
-    }
+  if (!existingRequest) {
+    reply.code(404).send({ error: 'request not found' });
+    return;
+  }
 
-    const authError = canDeleteRequest(currentUser, existingRequest);
-    if (authError) {
-      reply.code(authError.code).send({ error: authError.message });
-      return;
-    }
+  const authError = canDeleteRequest(currentUser, existingRequest);
+  if (authError) {
+    reply.code(authError.code).send({ error: authError.message });
+    return;
+  }
 
-    await RequestService.deleteRequest(id);
+  await RequestService.deleteRequest(id);
 
-    await logAudit(
-      {
-        userId: getUserIdFromRequest(req),
-        action: AuditActionType.DELETE,
-        entityType: 'Request',
-        entityId: id,
-        oldValues: { status: existingRequest.status, userId: existingRequest.userId },
-      },
-      req,
-    );
+  await logAudit(
+    {
+      userId: getUserIdFromRequest(req),
+      action: AuditActionType.DELETE,
+      entityType: 'Request',
+      entityId: id,
+      oldValues: { status: existingRequest.status, userId: existingRequest.userId },
+    },
+    req,
+  );
 
-    reply.code(204).send();
+  reply.code(204).send();
 }
 
 const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {

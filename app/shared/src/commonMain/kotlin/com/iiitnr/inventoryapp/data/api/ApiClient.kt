@@ -1,46 +1,80 @@
 package com.iiitnr.inventoryapp.data.api
 
+import com.iiitnr.inventoryapp.data.models.ApiErrorResponse
+import com.iiitnr.inventoryapp.data.models.AppHttpException
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpResponseValidator
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.sse.SSE
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
+import com.iiitnr.inventoryapp.data.BuildFlags
 import kotlinx.serialization.json.Json
 
 expect fun createHttpClient(block: HttpClientConfig<*>.() -> Unit = {}): HttpClient
 
-object ApiClient {
-    private const val BASE_URL = "https://inventory.iiitnr.ac.in"
-    // For Release Build: "https://iiitnr-inventory-backend.onrender.com"
-    // For Android Emulator: "http://10.0.2.2:4000"
-    // For Desktop: "http://localhost:4000"
+expect fun devBaseUrl(): String
 
-    val client: HttpClient =
-        createHttpClient {
-            // HttpCache can cause issues on Web/Wasm with certain server configs
-            // install(HttpCache)
-            install(ContentNegotiation) {
-                json(
-                    Json {
-                        ignoreUnknownKeys = true
-                        encodeDefaults = false
-                    },
+object ApiClient {
+    private val BASE_URL: String = if (BuildFlags.IS_DEBUG) devBaseUrl() else PRODUCTION_BASE_URL
+
+    private const val PRODUCTION_BASE_URL = "https://inventory.iiitnr.ac.in"
+
+    private val errorJson = Json { ignoreUnknownKeys = true }
+
+    val client: HttpClient = createHttpClient {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    encodeDefaults = false
+                },
+            )
+        }
+        install(SSE)
+
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000
+            connectTimeoutMillis = 15_000
+            socketTimeoutMillis = 30_000
+        }
+
+        install(HttpRequestRetry) {
+            maxRetries = 3
+            retryOnExceptionIf { request, _ -> request.method.value == "GET" }
+            retryIf { request, response ->
+                request.method.value == "GET" && response.status.value >= 500
+            }
+            exponentialDelay()
+        }
+
+        expectSuccess = true
+        HttpResponseValidator {
+            handleResponseExceptionWithRequest { exception, _ ->
+                if (exception !is ResponseException) return@handleResponseExceptionWithRequest
+
+                val response = exception.response
+                if (response.status == HttpStatusCode.Unauthorized) {
+                    AuthEventManager.emit(AuthEvent.Unauthorized)
+                }
+
+                val body = runCatching { response.bodyAsText() }.getOrNull()
+                val apiError =
+                    body?.let { runCatching { errorJson.decodeFromString<ApiErrorResponse>(it) }.getOrNull() }
+
+                throw AppHttpException(
+                    status = response.status.value,
+                    errorMessage = apiError?.error,
+                    errorCode = apiError?.code,
                 )
             }
-            install(SSE)
-            expectSuccess = true
-            HttpResponseValidator {
-                handleResponseExceptionWithRequest { exception, _ ->
-                    if (exception is io.ktor.client.plugins.ResponseException &&
-                        exception.response.status == HttpStatusCode.Unauthorized
-                    ) {
-                        AuthEventManager.emit(AuthEvent.Unauthorized)
-                    }
-                }
-            }
         }
+    }
 
     val authApiService: AuthApiService = AuthApiService(client, BASE_URL)
     val componentApiService: ComponentApiService = ComponentApiService(client, BASE_URL)
