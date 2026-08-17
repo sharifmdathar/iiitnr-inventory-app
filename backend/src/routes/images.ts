@@ -64,7 +64,7 @@ function ensureUploadsDir() {
 function getPublicUrl(req: FastifyRequest, filename: string): string {
   const host = req.headers.host ?? 'localhost:4000';
   const protocol = req.headers['x-forwarded-proto'] === 'https' ? 'https' : req.protocol;
-  return `${protocol}://${host}/uploads/images/${filename}`;
+  return `${protocol}://${host}/api/uploads/images/${filename}`;
 }
 
 function deleteFileIfLocal(imageUrl: string | null | undefined): void {

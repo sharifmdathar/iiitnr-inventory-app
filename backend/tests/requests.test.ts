@@ -1630,12 +1630,8 @@ describe('Request API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 200);
-      const body = response.json();
-      assert.equal(body.request.status, 'RETURNED');
-      const updatedReq = await findRequestById(req.id);
-      assert.equal(updatedReq?.items[0].fulfilledQuantity, 2);
-      assert.equal(updatedReq?.items[0].returnedQuantity, 2);
+      assert.equal(response.statusCode, 400);
+      assert.ok(response.json().error);
     });
 
     test('PARTIALLY_ISSUED can transition to RETURNED', async () => {

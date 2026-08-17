@@ -625,14 +625,14 @@ describe('Component image URL validation', () => {
       headers: { authorization: `Bearer ${adminToken}` },
       payload: {
         name: 'Relative Image Component',
-        imageUrl: '/uploads/images/abc-123.png',
+        imageUrl: '/api/uploads/images/abc-123.png',
         totalQuantity: 1,
       },
     });
 
     assert.equal(response.statusCode, 201);
     const body = response.json();
-    assert.equal(body.component.imageUrl, '/uploads/images/abc-123.png');
+    assert.equal(body.component.imageUrl, '/api/uploads/images/abc-123.png');
 
     await deleteComponents([body.component.id]);
   });
@@ -649,12 +649,12 @@ describe('Component image URL validation', () => {
       url: `/components/${component.id}`,
       headers: { authorization: `Bearer ${adminToken}` },
       payload: {
-        imageUrl: '/uploads/images/def-456.jpg',
+        imageUrl: '/api/uploads/images/def-456.jpg',
       },
     });
 
     assert.equal(response.statusCode, 200);
-    assert.equal(response.json().component.imageUrl, '/uploads/images/def-456.jpg');
+    assert.equal(response.json().component.imageUrl, '/api/uploads/images/def-456.jpg');
 
     await deleteComponents([component.id]);
   });

@@ -46,3 +46,6 @@ __tests__
 .husky
 .eslintrc*
 .prettierrc*
+
+uploads/
+certs/

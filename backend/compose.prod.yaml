@@ -11,6 +11,7 @@ services:
       - ./certs:/etc/caddy/certs
       - caddy_data:/data
       - caddy_config:/config
+      - /srv/web:/srv/web:ro
     depends_on:
       backend:
         condition: service_healthy

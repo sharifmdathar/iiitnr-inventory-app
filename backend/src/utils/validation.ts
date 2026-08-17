@@ -2,7 +2,7 @@ import type { FastifyRequest } from 'fastify';
 import { filterXSS } from 'xss';
 
 export function isValidHttpUrl(urlString: string): boolean {
-  if (urlString.startsWith('/uploads/')) return true;
+  if (urlString.startsWith('/api/uploads/')) return true;
   try {
     const url = new URL(urlString);
     return url.protocol === 'http:' || url.protocol === 'https:';
