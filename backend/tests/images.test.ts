@@ -127,7 +127,7 @@ describe('Component image uploads', () => {
     assert.ok(uploadBody.imageUrl.endsWith('.webp'));
 
     let logs = await getImageAuditLogs(component.id);
-    let uploadLog = logs.find((entry) => entry.action === 'UPDATE');
+    const uploadLog = logs.find((entry) => entry.action === 'UPDATE');
     assert.ok(uploadLog, 'upload should create an UPDATE audit log');
     if (!uploadLog) throw new Error('upload audit log missing');
     assert.ok(uploadLog.newValues);
