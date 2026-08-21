@@ -309,10 +309,6 @@ async function handleGetComponents(
   try {
     const components = await getAllComponents();
 
-    if (components.length === 0) {
-      return reply.code(204).send();
-    }
-
     const latestDateStr = getLatestDateString(components);
 
     if (!latestDateStr) {

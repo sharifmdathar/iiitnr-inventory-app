@@ -52,14 +52,15 @@ services:
   db:
     image: docker.io/postgres:18-alpine
     restart: unless-stopped
+    env_file: .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: iiitnr_inventory
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U app -d iiitnr_inventory']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d iiitnr_inventory']
       interval: 10s
       timeout: 5s
       retries: 5

@@ -16,19 +16,25 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 
 class ComponentApiService(
     private val client: HttpClient,
     private val baseUrl: String,
 ) {
-    suspend fun getComponents(token: String): ComponentsResponse =
-        client
-            .get("$baseUrl/components") {
+    suspend fun getComponents(token: String): ComponentsResponse {
+        val response =
+            client.get("$baseUrl/components") {
                 headers {
                     append(HttpHeaders.Authorization, token)
                 }
-            }.body()
+            }
+        if (response.status == HttpStatusCode.NoContent) {
+            return ComponentsResponse(components = emptyList())
+        }
+        return response.body()
+    }
 
     suspend fun createComponent(
         token: String,

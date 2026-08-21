@@ -115,4 +115,4 @@ deploy-web:
 deploy:
     git pull
     just deploy-web
-    podman compose -f compose.prod.yaml up --build -d
+    podman compose -f backend/compose.prod.yaml up --build -d

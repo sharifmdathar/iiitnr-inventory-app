@@ -2,6 +2,7 @@ package com.iiitnr.inventoryapp.data.api
 
 import com.iiitnr.inventoryapp.data.models.UpdateUserRequest
 import com.iiitnr.inventoryapp.data.models.User
+import com.iiitnr.inventoryapp.data.models.UserPagination
 import com.iiitnr.inventoryapp.data.models.UserResponse
 import com.iiitnr.inventoryapp.data.models.UsersResponse
 import io.ktor.client.HttpClient
@@ -13,6 +14,7 @@ import io.ktor.client.request.patch
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 
 class UserApiService(
@@ -24,16 +26,24 @@ class UserApiService(
         limit: Int = 50,
         offset: Int = 0,
         search: String? = null,
-    ): UsersResponse =
-        client
-            .get("$baseUrl/admin/users") {
+    ): UsersResponse {
+        val response =
+            client.get("$baseUrl/admin/users") {
                 headers {
                     append(HttpHeaders.Authorization, token)
                 }
                 parameter("limit", limit)
                 parameter("offset", offset)
                 if (!search.isNullOrBlank()) parameter("search", search)
-            }.body()
+            }
+        if (response.status == HttpStatusCode.NoContent) {
+            return UsersResponse(
+                users = emptyList(),
+                pagination = UserPagination(0, limit, offset, false),
+            )
+        }
+        return response.body()
+    }
 
     suspend fun updateUser(
         token: String,

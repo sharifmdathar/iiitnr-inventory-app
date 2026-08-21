@@ -17,6 +17,7 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -41,16 +42,21 @@ class RequestApiService(
     suspend fun getRequests(
         token: String,
         status: String? = null,
-    ): RequestsResponse =
-        client
-            .get("$baseUrl/requests") {
+    ): RequestsResponse {
+        val response =
+            client.get("$baseUrl/requests") {
                 headers {
                     append(HttpHeaders.Authorization, token)
                 }
                 if (status != null) {
                     parameter("status", status)
                 }
-            }.body()
+            }
+        if (response.status == HttpStatusCode.NoContent) {
+            return RequestsResponse(requests = emptyList())
+        }
+        return response.body()
+    }
 
     suspend fun updateRequestStatus(
         token: String,
@@ -77,13 +83,18 @@ class RequestApiService(
         }
     }
 
-    suspend fun getFaculty(token: String): FacultyResponse =
-        client
-            .get("$baseUrl/faculty") {
+    suspend fun getFaculty(token: String): FacultyResponse {
+        val response =
+            client.get("$baseUrl/faculty") {
                 headers {
                     append(HttpHeaders.Authorization, token)
                 }
-            }.body()
+            }
+        if (response.status == HttpStatusCode.NoContent) {
+            return FacultyResponse(faculty = emptyList())
+        }
+        return response.body()
+    }
 
     fun streamRequestEvents(token: String): Flow<Unit> =
         flow {
