@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomBytes } from 'node:crypto';
 import { hash } from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { pool, db } from '../src/drizzle/db.js';
@@ -7,7 +8,7 @@ import { UserRole } from '../src/utils/enums.js';
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@test.com';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminPassword = process.env.ADMIN_PASSWORD || randomBytes(16).toString('base64url');
   const adminName = process.env.ADMIN_NAME || 'Test Admin';
 
   console.log('🌱 Seeding database...');

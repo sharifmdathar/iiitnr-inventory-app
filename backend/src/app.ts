@@ -12,7 +12,6 @@ import staticFiles from '@fastify/static';
 import { FastifySSEPlugin } from 'fastify-sse-v2';
 import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
-import imagesRoutes from './routes/images.js';
 import { startRequestExpirySweep } from './services/request-expiry.js';
 import { notifyRequestsUpdated } from './utils/events.js';
 import { DomainError } from './utils/errors.js';
@@ -153,7 +152,11 @@ function handleError(error: Error, request: FastifyRequest, reply: FastifyReply)
   let message = 'Internal Server Error';
   let code: string | undefined;
 
-  const isDomainError = error instanceof DomainError || (error as any).isDomainError === true;
+  const isDomainError =
+    error instanceof DomainError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      (error as { isDomainError?: boolean }).isDomainError === true);
 
   if (isDomainError) {
     const err = error as DomainError;

@@ -5,6 +5,7 @@ import { auditLog, user } from '../drizzle/schema.js';
 import { requireAdmin } from '../middleware/auth.js';
 import type { AuditActionTypeValue, UserRoleValue } from '../utils/enums.js';
 import { userRoleValues, AuditActionType } from '../utils/enums.js';
+import { sanitizeString } from '../utils/validation.js';
 
 interface AuditLogQueryParams {
   limit?: string;
@@ -26,6 +27,19 @@ interface UpdateUserBody {
   batch?: string;
   branch?: string;
 }
+
+const updateUserSchema = {
+  body: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', maxLength: 100 },
+      role: { type: 'string', maxLength: 50 },
+      batch: { type: 'string', maxLength: 50 },
+      branch: { type: 'string', maxLength: 50 },
+    },
+    additionalProperties: false,
+  },
+} as const;
 
 const VALID_ACTIONS = [
   'CREATE',
@@ -227,10 +241,10 @@ async function handleUpdateUser(
       updatedAt: new Date().toISOString(),
     };
 
-    if (body.name !== undefined) updateData.name = body.name.trim() || null;
+    if (body.name !== undefined) updateData.name = sanitizeString(body.name) || null;
     if (body.role !== undefined) updateData.role = body.role as UserRoleValue;
-    if (body.batch !== undefined) updateData.batch = body.batch.trim() || null;
-    if (body.branch !== undefined) updateData.branch = body.branch.trim() || null;
+    if (body.batch !== undefined) updateData.batch = sanitizeString(body.batch) || null;
+    if (body.branch !== undefined) updateData.branch = sanitizeString(body.branch) || null;
 
     const [updated] = await db
       .update(user)
@@ -283,7 +297,7 @@ const adminRoutes: FastifyPluginCallback = (app, _opts, done) => {
 
   app.get('/users', { preHandler: requireAdmin }, (req, reply) => handleGetUsers(app, req, reply));
 
-  app.patch('/users/:id', { preHandler: requireAdmin }, (req, reply) =>
+  app.patch('/users/:id', { preHandler: requireAdmin, schema: updateUserSchema }, (req, reply) =>
     handleUpdateUser(app, req, reply),
   );
 

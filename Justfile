@@ -34,9 +34,9 @@ logs:
     cd backend && podman compose logs -f
 
 test:
-    cd backend && podman compose -f compose.db.yaml --profile test up -d
+    cd backend && podman-compose -f compose.db.yaml --profile test up -d
     cd backend && bun test --parallel=1
-    cd backend && podman compose -f compose.db.yaml --profile test down
+    cd backend && podman-compose -f compose.db.yaml --profile test down
 
 [unix]
 desk:
@@ -115,7 +115,7 @@ deploy-web:
 deploy:
     git pull
     just deploy-web
-    podman compose -f backend/compose.prod.yaml up --build -d
+    podman compose -f backend/compose.prod.yaml up --build -d --force-recreate backend
 
 release version:
     git push origin main

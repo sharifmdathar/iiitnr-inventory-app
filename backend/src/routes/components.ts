@@ -13,7 +13,7 @@ import {
 } from '../utils/enums.js';
 import type { CategoryValue, LocationValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
-import { isValidHttpUrl } from '../utils/validation.js';
+import { isValidHttpUrl, sanitizeString } from '../utils/validation.js';
 
 interface ComponentBody {
   name?: string;
@@ -66,8 +66,8 @@ const updateComponentSchema = {
 
 function normalizeComponentInput(body: ComponentBody): NormalizedComponentInput {
   return {
-    name: body?.name?.trim(),
-    description: body?.description?.trim(),
+    name: sanitizeString(body?.name),
+    description: sanitizeString(body?.description),
     imageUrl: body?.imageUrl?.trim(),
     totalQuantity: body?.totalQuantity,
     availableQuantity: body?.availableQuantity,
@@ -198,16 +198,45 @@ async function insertComponent(data: {
   return created;
 }
 
-async function updateComponentById(
+type ComponentUpdateResult =
+  | { ok: true; existing: ComponentRecord; updated: ComponentRecord }
+  | { ok: false; status: 404 }
+  | { ok: false; status: 400; message: string };
+
+async function updateComponentInTransaction(
   id: string,
-  data: Record<string, unknown>,
-): Promise<ComponentRecord | undefined> {
-  const [updated] = await db
-    .update(component)
-    .set({ ...data, updatedAt: new Date().toISOString() } as typeof component.$inferInsert)
-    .where(eq(component.id, id))
-    .returning();
-  return updated;
+  input: NormalizedComponentInput,
+): Promise<ComponentUpdateResult> {
+  return db.transaction(async (tx) => {
+    const [lockedComponent] = await tx
+      .select()
+      .from(component)
+      .where(eq(component.id, id))
+      .for('update');
+
+    if (!lockedComponent) {
+      return { ok: false as const, status: 404 as const };
+    }
+
+    const { data, nextAvailable, nextTotal } = buildUpdateData(input, lockedComponent);
+
+    const quantityError = validateQuantityRelationship(nextAvailable, nextTotal);
+    if (quantityError) {
+      return { ok: false as const, status: 400 as const, message: quantityError.message };
+    }
+
+    const [updated] = await tx
+      .update(component)
+      .set({ ...data, updatedAt: new Date().toISOString() } as typeof component.$inferInsert)
+      .where(eq(component.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new Error('failed to update component');
+    }
+
+    return { ok: true as const, existing: lockedComponent, updated };
+  });
 }
 
 async function deleteComponentById(id: string): Promise<void> {
@@ -452,24 +481,16 @@ async function handleUpdateComponent(
   }
 
   try {
-    const existing = await findComponentById(id);
+    const result = await updateComponentInTransaction(id, input);
 
-    if (!existing) {
-      return reply.code(404).send({ error: 'component not found' });
+    if (!result.ok) {
+      if (result.status === 404) {
+        return reply.code(404).send({ error: 'component not found' });
+      }
+      return reply.code(400).send({ error: result.message });
     }
 
-    const { data, nextAvailable, nextTotal } = buildUpdateData(input, existing);
-
-    const quantityError = validateQuantityRelationship(nextAvailable, nextTotal);
-    if (quantityError) {
-      return reply.code(quantityError.code).send({ error: quantityError.message });
-    }
-
-    const updated = await updateComponentById(id, data);
-
-    if (!updated) {
-      return reply.code(500).send({ error: 'failed to update component' });
-    }
+    const { existing, updated } = result;
 
     await logAudit(
       {

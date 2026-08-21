@@ -24,8 +24,8 @@ jobs:
         uses: actions/setup-java@v5.2.0
         with:
           distribution: temurin
+          verify-signature: true
           java-version: 21
-          cache: "gradle"
 
       - name: Decode release keystore
         env:
@@ -75,8 +75,8 @@ jobs:
         uses: actions/setup-java@v5.2.0
         with:
           distribution: temurin
+          verify-signature: true
           java-version: 21
-          cache: "gradle"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -135,8 +135,8 @@ jobs:
         uses: actions/setup-java@v5.2.0
         with:
           distribution: temurin
+          verify-signature: true
           java-version: 21
-          cache: "gradle"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6

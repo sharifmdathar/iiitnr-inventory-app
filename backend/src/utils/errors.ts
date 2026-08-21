@@ -13,7 +13,13 @@ export class DomainError extends Error {
 
 export class InsufficientQuantityError extends DomainError {
   constructor(componentName: string, requestedQty?: number) {
-    super(400, `insufficient quantity for component "${componentName}"`, 'INSUFFICIENT_QUANTITY');
+    super(
+      400,
+      `insufficient quantity for component "${componentName}"${
+        requestedQty != null ? ` (requested ${requestedQty})` : ''
+      }`,
+      'INSUFFICIENT_QUANTITY',
+    );
   }
 }
 

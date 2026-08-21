@@ -7,6 +7,7 @@ import { user } from '../drizzle/schema.js';
 import { UserRole, AuditActionType } from '../utils/enums.js';
 import type { UserRoleValue } from '../utils/enums.js';
 import { logAudit } from '../utils/audit.js';
+import { sanitizeString } from '../utils/validation.js';
 import { deriveIiitnrProfileFromEmail, pickDerivedProfileUpdates } from '../utils/iiitnr-email.js';
 
 interface RegisterBody {
@@ -127,7 +128,7 @@ function validateRegisterInput(
 ): ValidationError | { email: string; password: string; name?: string } {
   const email = body?.email?.trim().toLowerCase();
   const password = body?.password;
-  const name = body?.name?.trim();
+  const name = sanitizeString(body?.name);
 
   if (!email || !password) {
     return { code: 400, message: 'email and password are required' };

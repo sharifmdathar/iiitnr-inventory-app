@@ -12,7 +12,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.iiitnr.inventoryapp.utils.LocalToday
-import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 @Immutable
 data class InventoryColors(
@@ -119,7 +121,10 @@ fun AppTheme(content: @Composable () -> Unit) {
     val inventoryColors = if (darkTheme) DarkInventoryColors else LightInventoryColors
     val today =
         remember {
-            LocalDateTime.parse("2026-08-12T00:00:00").date
+            Clock.System
+                .now()
+                .toLocalDateTime(TimeZone.currentSystemDefault())
+                .date
         }
 
     CompositionLocalProvider(

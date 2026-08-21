@@ -3,6 +3,7 @@ import { requireAuth, isAdminOrLA } from '../middleware/auth.js';
 import { RequestStatus, requestStatusValues, UserRole, AuditActionType } from '../utils/enums.js';
 import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
+import { sanitizeString } from '../utils/validation.js';
 import { expireOverdueRequests } from '../services/request-expiry.js';
 import { events, EventType, notifyRequestsUpdated } from '../utils/events.js';
 import type { EventMessage } from 'fastify-sse-v2';
@@ -250,7 +251,7 @@ async function handleCreateRequest(
   }
 
   const targetFacultyId = body.targetFacultyId?.trim();
-  const projectTitle = body.projectTitle?.trim();
+  const projectTitle = sanitizeString(body.projectTitle);
   const rawItems = body.items;
   if (!targetFacultyId || !projectTitle || !Array.isArray(rawItems)) {
     reply.code(400).send({ error: 'invalid request body' });
@@ -628,7 +629,7 @@ async function handleUpdateRequestStatus(
       break;
 
     case RequestStatus.ISSUED: {
-      const lastRenewReason = body.lastRenewReason?.trim();
+      const lastRenewReason = sanitizeString(body.lastRenewReason);
       await handleIssuedStatusUpdate(
         req,
         reply,
@@ -644,7 +645,7 @@ async function handleUpdateRequestStatus(
       if (newStatus === RequestStatus.ISSUED) {
         await handleApprovedStatusUpdate(req, reply, existingRequest, newStatus, currentUser);
       } else {
-        const lastRenewReason = body.lastRenewReason?.trim();
+        const lastRenewReason = sanitizeString(body.lastRenewReason);
         await handleIssuedStatusUpdate(
           req,
           reply,
@@ -663,7 +664,7 @@ async function handleUpdateRequestStatus(
 
     case RequestStatus.RENEWED:
     case RequestStatus.PARTIALLY_RETURNED: {
-      const renewedLastRenewReason = body.lastRenewReason?.trim();
+      const renewedLastRenewReason = sanitizeString(body.lastRenewReason);
       await handleIssuedStatusUpdate(
         req,
         reply,

@@ -87,7 +87,7 @@ describe('Component CRUD API', () => {
       assert.equal(response.statusCode, 401);
     });
 
-    test('returns 204 for STUDENT role', async () => {
+    test('returns 200 with empty list for STUDENT role', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -96,10 +96,11 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 204);
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(response.json().components, []);
     });
 
-    test('returns 204 for FACULTY role', async () => {
+    test('returns 200 with empty list for FACULTY role', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -108,10 +109,11 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 204);
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(response.json().components, []);
     });
 
-    test('returns 204 when no components exist (ADMIN)', async () => {
+    test('returns 200 with empty list when no components exist (ADMIN)', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/components',
@@ -120,7 +122,8 @@ describe('Component CRUD API', () => {
         },
       });
 
-      assert.equal(response.statusCode, 204);
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(response.json().components, []);
     });
 
     test('returns 200 with components (LA)', async () => {
