@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.data.api
 
+import com.iiitnr.inventoryapp.data.BuildFlags
 import com.iiitnr.inventoryapp.data.models.ApiErrorResponse
 import com.iiitnr.inventoryapp.data.models.AppHttpException
 import io.ktor.client.HttpClient
@@ -7,13 +8,12 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.sse.SSE
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
-import com.iiitnr.inventoryapp.data.BuildFlags
 import kotlinx.serialization.json.Json
 
 expect fun createHttpClient(block: HttpClientConfig<*>.() -> Unit = {}): HttpClient
@@ -27,54 +27,55 @@ object ApiClient {
 
     private val errorJson = Json { ignoreUnknownKeys = true }
 
-    val client: HttpClient = createHttpClient {
-        install(ContentNegotiation) {
-            json(
-                Json {
-                    ignoreUnknownKeys = true
-                    encodeDefaults = false
-                },
-            )
-        }
-        install(SSE)
-
-        install(HttpTimeout) {
-            requestTimeoutMillis = 30_000
-            connectTimeoutMillis = 15_000
-            socketTimeoutMillis = 30_000
-        }
-
-        install(HttpRequestRetry) {
-            maxRetries = 3
-            retryOnExceptionIf { request, _ -> request.method.value == "GET" }
-            retryIf { request, response ->
-                request.method.value == "GET" && response.status.value >= 500
-            }
-            exponentialDelay()
-        }
-
-        expectSuccess = true
-        HttpResponseValidator {
-            handleResponseExceptionWithRequest { exception, _ ->
-                if (exception !is ResponseException) return@handleResponseExceptionWithRequest
-
-                val response = exception.response
-                if (response.status == HttpStatusCode.Unauthorized) {
-                    AuthEventManager.emit(AuthEvent.Unauthorized)
-                }
-
-                val body = runCatching { response.bodyAsText() }.getOrNull()
-                val apiError =
-                    body?.let { runCatching { errorJson.decodeFromString<ApiErrorResponse>(it) }.getOrNull() }
-
-                throw AppHttpException(
-                    status = response.status.value,
-                    errorMessage = apiError?.error,
-                    errorCode = apiError?.code,
+    val client: HttpClient =
+        createHttpClient {
+            install(ContentNegotiation) {
+                json(
+                    Json {
+                        ignoreUnknownKeys = true
+                        encodeDefaults = false
+                    },
                 )
             }
+            install(SSE)
+
+            install(HttpTimeout) {
+                requestTimeoutMillis = 30_000
+                connectTimeoutMillis = 15_000
+                socketTimeoutMillis = 30_000
+            }
+
+            install(HttpRequestRetry) {
+                maxRetries = 3
+                retryOnExceptionIf { request, _ -> request.method.value == "GET" }
+                retryIf { request, response ->
+                    request.method.value == "GET" && response.status.value >= 500
+                }
+                exponentialDelay()
+            }
+
+            expectSuccess = true
+            HttpResponseValidator {
+                handleResponseExceptionWithRequest { exception, _ ->
+                    if (exception !is ResponseException) return@handleResponseExceptionWithRequest
+
+                    val response = exception.response
+                    if (response.status == HttpStatusCode.Unauthorized) {
+                        AuthEventManager.emit(AuthEvent.Unauthorized)
+                    }
+
+                    val body = runCatching { response.bodyAsText() }.getOrNull()
+                    val apiError =
+                        body?.let { runCatching { errorJson.decodeFromString<ApiErrorResponse>(it) }.getOrNull() }
+
+                    throw AppHttpException(
+                        status = response.status.value,
+                        errorMessage = apiError?.error,
+                        errorCode = apiError?.code,
+                    )
+                }
+            }
         }
-    }
 
     val authApiService: AuthApiService = AuthApiService(client, BASE_URL)
     val componentApiService: ComponentApiService = ComponentApiService(client, BASE_URL)
