@@ -116,3 +116,7 @@ deploy:
     git pull
     just deploy-web
     podman compose -f backend/compose.prod.yaml up --build -d
+
+release version:
+    git push origin main
+    gh release create v{{version}} --target main --generate-notes

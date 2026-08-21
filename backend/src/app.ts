@@ -252,6 +252,12 @@ async function registerPlugins(app: FastifyInstance, env: AppEnvironment) {
     root: join(process.cwd(), 'uploads'),
     prefix: '/uploads/',
   });
+
+  await app.register(staticFiles, {
+    root: join(process.cwd(), 'uploads'),
+    prefix: '/api/uploads/',
+    decorateReply: false,
+  });
 }
 
 function setupContentParsers(app: FastifyInstance) {

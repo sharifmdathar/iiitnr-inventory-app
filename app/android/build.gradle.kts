@@ -63,12 +63,15 @@ android {
         versionCode = versionCodeFrom(versionName!!)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["appName"] = "IIITNR Inventory App"
     }
 
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            manifestPlaceholders["appName"] = "IIITNR Inventory App (Debug)"
         }
         release {
             isMinifyEnabled = true

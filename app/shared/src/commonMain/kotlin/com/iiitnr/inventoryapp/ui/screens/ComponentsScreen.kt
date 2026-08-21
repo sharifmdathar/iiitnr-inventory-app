@@ -36,6 +36,7 @@ import com.iiitnr.inventoryapp.ui.components.components.CartFAB
 import com.iiitnr.inventoryapp.ui.components.components.ComponentDialog
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsContent
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsTopBar
+import com.iiitnr.inventoryapp.ui.platform.takePhoto
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -193,6 +194,22 @@ fun ComponentsScreen(
                 }
             }
         },
+        onTakePhoto = {
+            scope.launch {
+                val image =
+                    takePhoto()
+                if (image != null) {
+                    val extension = image.filename.substringAfterLast('.', "")
+                    val uploadFilename =
+                        if (extension.isNotEmpty()) {
+                            "${viewModel.editingComponent?.id}.$extension"
+                        } else {
+                            viewModel.editingComponent?.id ?: "unknown"
+                        }
+                    viewModel.uploadImage(image.bytes, uploadFilename)
+                }
+            }
+        },
         onRemoveImage = {
             viewModel.removeImage()
         },
@@ -202,6 +219,7 @@ fun ComponentsScreen(
             viewModel.deleteComponent(component)
         },
         showCartDialog = viewModel.showCartDialog,
+        isUploadingImage = viewModel.isUploadingImage,
         components = viewModel.components,
         cartQuantities = viewModel.cartQuantities,
         cartError = viewModel.cartError,
@@ -319,11 +337,13 @@ private fun ComponentsDialogs(
     onDismissEdit: () -> Unit,
     onSaveEdit: (ComponentRequest) -> Unit,
     onPickImage: () -> Unit,
+    onTakePhoto: () -> Unit,
     onRemoveImage: () -> Unit,
     showDeleteDialog: Component?,
     onDismissDelete: () -> Unit,
     onConfirmDelete: (Component) -> Unit,
     showCartDialog: Boolean,
+    isUploadingImage: Boolean,
     components: List<Component>,
     cartQuantities: Map<String, Int>,
     cartError: String?,
@@ -345,7 +365,9 @@ private fun ComponentsDialogs(
             onDismiss = onDismissEdit,
             onSave = { onSaveEdit(it) },
             onPickImage = onPickImage,
+            onTakePhoto = onTakePhoto,
             onRemoveImage = onRemoveImage,
+            isUploading = isUploadingImage,
         )
     }
 

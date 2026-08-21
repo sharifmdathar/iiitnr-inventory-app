@@ -47,6 +47,8 @@ class ComponentsViewModel(
     var cartError by mutableStateOf<String?>(null)
     var isSubmittingRequest by mutableStateOf(false)
         private set
+    var isUploadingImage by mutableStateOf(false)
+        private set
 
     var facultyOptions by mutableStateOf<List<User>>(emptyList())
         private set
@@ -319,6 +321,7 @@ class ComponentsViewModel(
     ) {
         val componentId = editingComponent?.id ?: return
         viewModelScope.launch {
+            isUploadingImage = true
             try {
                 val token = tokenManager.token.first()
                 if (token != null) {
@@ -335,6 +338,8 @@ class ComponentsViewModel(
                 }
             } catch (e: Throwable) {
                 _snackbarMessages.emit("Failed to upload image: ${e.toAppError().message}")
+            } finally {
+                isUploadingImage = false
             }
         }
     }

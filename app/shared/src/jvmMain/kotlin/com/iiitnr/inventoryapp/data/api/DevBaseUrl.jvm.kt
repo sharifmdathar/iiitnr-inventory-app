@@ -1,3 +1,3 @@
 package com.iiitnr.inventoryapp.data.api
 
-actual fun devBaseUrl(): String = "http://localhost:4000"
+actual fun devBaseUrl(): String = "https://iiitnr-inventory-backend.onrender.com"

@@ -38,4 +38,6 @@ actual suspend fun pickImage(): ImageResult? =
         input.click()
     }
 
+actual suspend fun takePhoto(): ImageResult? = null
+
 private fun ArrayBuffer.toByteArray(): ByteArray = Int8Array(this, 0, this.byteLength).toByteArray()

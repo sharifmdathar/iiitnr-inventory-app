@@ -24,3 +24,5 @@ data class ImageResult(
 }
 
 expect suspend fun pickImage(): ImageResult?
+
+expect suspend fun takePhoto(): ImageResult?

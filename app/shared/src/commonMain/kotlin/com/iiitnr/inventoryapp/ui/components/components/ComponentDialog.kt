@@ -2,14 +2,18 @@ package com.iiitnr.inventoryapp.ui.components.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -21,6 +25,8 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,7 +51,9 @@ fun ComponentDialog(
     onDismiss: () -> Unit,
     onSave: (ComponentRequest) -> Unit,
     onPickImage: () -> Unit,
+    onTakePhoto: () -> Unit,
     onRemoveImage: () -> Unit,
+    isUploading: Boolean = false,
 ) {
     var name by remember { mutableStateOf(component?.name.orEmpty()) }
     var description by remember { mutableStateOf(component?.description.orEmpty()) }
@@ -56,7 +64,7 @@ fun ComponentDialog(
     }
     var category by remember { mutableStateOf(component?.category.orEmpty()) }
     var location by remember { mutableStateOf(component?.location?.replace('_', ' ').orEmpty()) }
-    var isLoading by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
 
     LaunchedEffect(component?.imageUrl) {
         imageUrl = component?.imageUrl.orEmpty()
@@ -99,14 +107,20 @@ fun ComponentDialog(
                 },
                 onCategoryChange = { category = it },
                 onLocationChange = { location = it },
+                showImageActions = component != null,
                 onPickImage = onPickImage,
-                onRemoveImage = { imageUrl = "" },
+                onTakePhoto = onTakePhoto,
+                onRemoveImage = {
+                    imageUrl = ""
+                    onRemoveImage()
+                },
+                isUploading = isUploading,
             )
         },
         confirmButton = {
             Button(
                 onClick = {
-                    isLoading = true
+                    isSaving = true
                     onSave(
                         ComponentRequest(
                             name = name.trim(),
@@ -118,11 +132,11 @@ fun ComponentDialog(
                             location = location.trim().takeIf { it.isNotBlank() },
                         ),
                     )
-                    isLoading = false
+                    isSaving = false
                 },
-                enabled = !isLoading && name.isNotBlank(),
+                enabled = !isSaving && !isUploading && name.isNotBlank(),
             ) {
-                if (isLoading) {
+                if (isSaving || isUploading) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
                 } else {
                     Text("Save")
@@ -130,7 +144,7 @@ fun ComponentDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isLoading) {
+            TextButton(onClick = onDismiss, enabled = !isSaving && !isUploading) {
                 Text("Cancel")
             }
         },
@@ -153,8 +167,11 @@ private fun ComponentDialogFields(
     onAvailableQuantityChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
     onLocationChange: (String) -> Unit,
+    showImageActions: Boolean,
     onPickImage: () -> Unit,
+    onTakePhoto: () -> Unit,
     onRemoveImage: () -> Unit,
+    isUploading: Boolean = false,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -183,30 +200,58 @@ private fun ComponentDialogFields(
             maxLines = 3,
         )
 
-        Row(
+        OutlinedTextField(
+            value = imageUrl,
+            onValueChange = onImageUrlChange,
+            label = { Text("Image URL (optional)") },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = imageUrl,
-                onValueChange = onImageUrlChange,
-                label = { Text("Image URL (optional") },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-            )
-            Button(onClick = onPickImage) {
-                Icon(
-                    imageVector = Icons.Default.PhotoCamera,
-                    contentDescription = "Pick Image",
-                )
-            }
-            if (imageUrl.isNotBlank()) {
-                Button(onClick = onRemoveImage) {
+            singleLine = true,
+        )
+
+        if (showImageActions) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = onPickImage,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    enabled = !isUploading,
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Remove Image",
+                        imageVector = Icons.Default.PhotoLibrary,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
                     )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Gallery", maxLines = 1)
+                }
+                TextButton(
+                    onClick = onTakePhoto,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    enabled = !isUploading,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Camera", maxLines = 1)
+                }
+                if (imageUrl.isNotBlank()) {
+                    IconButton(
+                        onClick = onRemoveImage,
+                        enabled = !isUploading,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Remove Image",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
                 }
             }
         }
