@@ -69,6 +69,105 @@ fun setImagePickerActivity(activity: Activity) {
     ImagePickerState.activityRef = WeakReference(activity)
 }
 
+private fun consumePendingResult(): CompletableDeferred<ImageResult?>? {
+    val deferred = ImagePickerState.pendingResult
+    ImagePickerState.pendingResult = null
+    return deferred
+}
+
+private fun queryContentDisplayName(
+    context: Context,
+    uri: Uri,
+): String? {
+    if (uri.scheme != "content") return null
+    val cursor = context.contentResolver.query(uri, null, null, null, null) ?: return null
+    return cursor.use { c ->
+        if (!c.moveToFirst()) {
+            null
+        } else {
+            val nameIndex = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex == -1) null else c.getString(nameIndex)
+        }
+    }
+}
+
+private fun resolveGalleryFilename(
+    context: Context,
+    uri: Uri,
+): String {
+    var filename = queryContentDisplayName(context, uri)
+    if (filename == null) {
+        filename = uri.lastPathSegment ?: "image"
+    }
+    if (!filename.contains('.')) {
+        val mimeType = context.contentResolver.getType(uri)
+        val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+        if (extension != null) {
+            filename = "$filename.$extension"
+        }
+    }
+    return filename
+}
+
+private fun readImageBytes(
+    context: Context,
+    uri: Uri,
+): ByteArray? = context.contentResolver.openInputStream(uri)?.use { input -> input.readBytes() }
+
+private fun handleGalleryResult(uri: Uri?) {
+    Log.d(TAG, "Gallery result: $uri")
+    val deferred = consumePendingResult()
+    val ctx = ImagePickerState.activity
+    if (uri != null && ctx != null) {
+        try {
+            val bytes = readImageBytes(ctx, uri)
+            deferred?.complete(
+                if (bytes != null) {
+                    ImageResult(bytes, resolveGalleryFilename(ctx, uri))
+                } else {
+                    null
+                },
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing gallery image", e)
+            deferred?.complete(null)
+        }
+    } else {
+        deferred?.complete(null)
+    }
+}
+
+private fun handleCameraResult(success: Boolean) {
+    Log.d(TAG, "Camera result: success=$success")
+
+    ImagePickerState.oldVmPolicy?.let {
+        StrictMode.setVmPolicy(it)
+        ImagePickerState.oldVmPolicy = null
+    }
+
+    val deferred = consumePendingResult()
+    val uri = ImagePickerState.tempUri
+    ImagePickerState.tempUri = null
+
+    val ctx = ImagePickerState.activity
+    if (success && uri != null && ctx != null) {
+        try {
+            val bytes = readImageBytes(ctx, uri)
+            if (bytes == null) {
+                deferred?.complete(null)
+            } else {
+                val filename = "camera_capture_${System.currentTimeMillis()}.jpg"
+                deferred?.complete(ImageResult(bytes, filename))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing camera image", e)
+            deferred?.complete(null)
+        }
+    } else {
+        deferred?.complete(null)
+    }
+}
+
 @RequiresApi(Build.VERSION_CODES.JELLY_BEAN)
 @Composable
 fun ImagePickerLauncher() {
@@ -76,89 +175,14 @@ fun ImagePickerLauncher() {
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent(),
         ) { uri: Uri? ->
-            Log.d(TAG, "Gallery result: $uri")
-            val deferred = ImagePickerState.pendingResult
-            ImagePickerState.pendingResult = null
-            if (uri != null) {
-                val ctx = ImagePickerState.activity
-                if (ctx != null) {
-                    try {
-                        ctx.contentResolver.openInputStream(uri)?.use { input ->
-                            val bytes = input.readBytes()
-
-                            var filename: String? = null
-                            if (uri.scheme == "content") {
-                                val cursor = ctx.contentResolver.query(uri, null, null, null, null)
-                                cursor.use { cursor ->
-                                    if (cursor != null && cursor.moveToFirst()) {
-                                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                                        if (nameIndex != -1) {
-                                            filename = cursor.getString(nameIndex)
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (filename == null) {
-                                filename = uri.lastPathSegment ?: "image"
-                            }
-                            if (!filename.contains('.')) {
-                                val mimeType = ctx.contentResolver.getType(uri)
-                                val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
-                                if (extension != null) {
-                                    filename = "$filename.$extension"
-                                }
-                            }
-
-                            deferred?.complete(ImageResult(bytes, filename))
-                        } ?: deferred?.complete(null)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error processing gallery image", e)
-                        deferred?.complete(null)
-                    }
-                } else {
-                    deferred?.complete(null)
-                }
-            } else {
-                deferred?.complete(null)
-            }
+            handleGalleryResult(uri)
         }
 
     val cameraLauncher =
         rememberLauncherForActivityResult(
             contract = TakePictureWithChooser(),
         ) { success ->
-            Log.d(TAG, "Camera result: success=$success")
-
-            ImagePickerState.oldVmPolicy?.let {
-                StrictMode.setVmPolicy(it)
-                ImagePickerState.oldVmPolicy = null
-            }
-
-            val deferred = ImagePickerState.pendingResult
-            ImagePickerState.pendingResult = null
-            val uri = ImagePickerState.tempUri
-            ImagePickerState.tempUri = null
-
-            if (success && uri != null) {
-                val ctx = ImagePickerState.activity
-                if (ctx != null) {
-                    try {
-                        ctx.contentResolver.openInputStream(uri)?.use { input ->
-                            val bytes = input.readBytes()
-                            val filename = "camera_capture_${System.currentTimeMillis()}.jpg"
-                            deferred?.complete(ImageResult(bytes, filename))
-                        } ?: deferred?.complete(null)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error processing camera image", e)
-                        deferred?.complete(null)
-                    }
-                } else {
-                    deferred?.complete(null)
-                }
-            } else {
-                deferred?.complete(null)
-            }
+            handleCameraResult(success)
         }
 
     val permissionLauncher =

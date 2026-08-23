@@ -9,7 +9,6 @@ import { existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import sharp from 'sharp';
 
 const UPLOADS_DIR = join(process.cwd(), 'uploads', 'images');
 
@@ -130,13 +129,13 @@ async function handleUploadComponentImage(
 
     let processedBuffer: Buffer;
     try {
-      processedBuffer = await sharp(bytes)
+      processedBuffer = await new Bun.Image(bytes)
         .resize(1024, 1024, {
           fit: 'inside',
           withoutEnlargement: true,
         })
         .webp({ quality: 80 })
-        .toBuffer();
+        .buffer();
     } catch (err) {
       app.log.error(err);
       return reply.code(400).send({ error: 'invalid or corrupted image data' });

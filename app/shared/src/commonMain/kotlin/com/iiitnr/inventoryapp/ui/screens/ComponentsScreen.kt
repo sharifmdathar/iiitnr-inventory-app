@@ -37,6 +37,7 @@ import com.iiitnr.inventoryapp.ui.components.components.ComponentDialog
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsContent
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsTopBar
 import com.iiitnr.inventoryapp.ui.platform.takePhoto
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -64,42 +65,13 @@ fun ComponentsScreen(
         } ?: true
 
     fun exportComponentsCsv() {
-        if (!canExportCsv || onExportCsv == null || viewModel.components.isEmpty()) return
-
-        val csvHeader = "Name,Description,Category,Location,Total Quantity,Available Quantity"
-        val csvRows =
-            viewModel.components.map { c ->
-                fun escapeCsv(value: String?): String {
-                    if (value.isNullOrEmpty()) return ""
-                    val escaped = value.replace("\"", "\"\"")
-                    return if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
-                        "\"$escaped\""
-                    } else {
-                        escaped
-                    }
-                }
-                listOf(
-                    escapeCsv(c.name),
-                    escapeCsv(c.description),
-                    escapeCsv(c.category?.replace("_", " ")),
-                    escapeCsv(c.location?.replace("_", " ")),
-                    c.totalQuantity.toString(),
-                    c.availableQuantity.toString(),
-                ).joinToString(",")
-            }
-        val csvContent = (listOf(csvHeader) + csvRows).joinToString("\n")
-        val success = onExportCsv.invoke(csvContent)
-
-        scope.launch {
-            snackbarHostState.showSnackbar(
-                message =
-                    if (success) {
-                        "Exported components.csv successfully"
-                    } else {
-                        "Failed to export components.csv"
-                    },
-            )
-        }
+        exportComponentsToCsv(
+            components = viewModel.components,
+            canExportCsv = canExportCsv,
+            onExportCsv = onExportCsv,
+            scope = scope,
+            snackbarHostState = snackbarHostState,
+        )
     }
 
     LaunchedEffect(Unit) {
@@ -119,23 +91,16 @@ fun ComponentsScreen(
             )
         },
         floatingActionButton = {
-            when {
-                viewModel.cartQuantities.isNotEmpty() -> {
-                    CartFAB(
-                        itemCount = viewModel.cartQuantities.values.sum(),
-                        onClick = { viewModel.showCartDialog = true },
-                    )
-                }
-
-                !isReadOnly -> {
-                    AddComponentFAB(
-                        onClick = {
-                            viewModel.editingComponent = null
-                            showDialog = true
-                        },
-                    )
-                }
-            }
+            ComponentsFabSection(
+                hasCartItems = viewModel.cartQuantities.isNotEmpty(),
+                cartItemCount = viewModel.cartQuantities.values.sum(),
+                isReadOnly = isReadOnly,
+                onShowCartDialog = { viewModel.showCartDialog = true },
+                onAddComponent = {
+                    viewModel.editingComponent = null
+                    showDialog = true
+                },
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
@@ -184,13 +149,10 @@ fun ComponentsScreen(
                         .pickImage()
                 if (image != null) {
                     val extension = image.filename.substringAfterLast('.', "")
-                    val uploadFilename =
-                        if (extension.isNotEmpty()) {
-                            "${viewModel.editingComponent?.id}.$extension"
-                        } else {
-                            viewModel.editingComponent?.id ?: "unknown"
-                        }
-                    viewModel.uploadImage(image.bytes, uploadFilename)
+                    viewModel.uploadImage(
+                        image.bytes,
+                        resolveUploadFilename(extension, viewModel.editingComponent?.id),
+                    )
                 }
             }
         },
@@ -200,13 +162,10 @@ fun ComponentsScreen(
                     takePhoto()
                 if (image != null) {
                     val extension = image.filename.substringAfterLast('.', "")
-                    val uploadFilename =
-                        if (extension.isNotEmpty()) {
-                            "${viewModel.editingComponent?.id}.$extension"
-                        } else {
-                            viewModel.editingComponent?.id ?: "unknown"
-                        }
-                    viewModel.uploadImage(image.bytes, uploadFilename)
+                    viewModel.uploadImage(
+                        image.bytes,
+                        resolveUploadFilename(extension, viewModel.editingComponent?.id),
+                    )
                 }
             }
         },
@@ -242,6 +201,88 @@ fun ComponentsScreen(
         },
         onSubmitCart = { viewModel.submitRequest() },
     )
+}
+
+private fun exportComponentsToCsv(
+    components: List<Component>,
+    canExportCsv: Boolean,
+    onExportCsv: ((String) -> Boolean)?,
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+) {
+    if (!canExportCsv || onExportCsv == null || components.isEmpty()) return
+
+    val csvContent = buildComponentsCsv(components)
+    val success = onExportCsv.invoke(csvContent)
+
+    scope.launch {
+        snackbarHostState.showSnackbar(
+            message =
+                if (success) {
+                    "Exported components.csv successfully"
+                } else {
+                    "Failed to export components.csv"
+                },
+        )
+    }
+}
+
+private fun buildComponentsCsv(components: List<Component>): String {
+    val csvHeader = "Name,Description,Category,Location,Total Quantity,Available Quantity"
+    val csvRows =
+        components.map { c ->
+            listOf(
+                escapeCsvField(c.name),
+                escapeCsvField(c.description),
+                escapeCsvField(c.category?.replace("_", " ")),
+                escapeCsvField(c.location?.replace("_", " ")),
+                c.totalQuantity.toString(),
+                c.availableQuantity.toString(),
+            ).joinToString(",")
+        }
+    return (listOf(csvHeader) + csvRows).joinToString("\n")
+}
+
+private fun escapeCsvField(value: String?): String {
+    if (value.isNullOrEmpty()) return ""
+    val escaped = value.replace("\"", "\"\"")
+    return if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
+        "\"$escaped\""
+    } else {
+        escaped
+    }
+}
+
+private fun resolveUploadFilename(
+    extension: String,
+    componentId: String?,
+): String =
+    if (extension.isNotEmpty()) {
+        "$componentId.$extension"
+    } else {
+        componentId ?: "unknown"
+    }
+
+@Composable
+private fun ComponentsFabSection(
+    hasCartItems: Boolean,
+    cartItemCount: Int,
+    isReadOnly: Boolean,
+    onShowCartDialog: () -> Unit,
+    onAddComponent: () -> Unit,
+) {
+    when {
+        hasCartItems -> {
+            CartFAB(
+                itemCount = cartItemCount,
+                onClick = onShowCartDialog,
+            )
+        }
+
+        !isReadOnly -> {
+            AddComponentFAB(onClick = onAddComponent)
+        }
+    }
 }
 
 @Composable

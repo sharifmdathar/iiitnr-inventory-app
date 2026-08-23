@@ -8,7 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 actual fun isQrScanAvailable(): Boolean {
-    // TODO: Implement QR Scanner for iOS using AVCaptureSession
+    // AVCaptureSession interop not implemented; iOS reports the scanner as unavailable.
     return false
 }
 

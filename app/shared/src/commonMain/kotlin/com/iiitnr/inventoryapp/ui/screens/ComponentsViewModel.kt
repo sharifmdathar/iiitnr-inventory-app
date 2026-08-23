@@ -163,16 +163,7 @@ class ComponentsViewModel(
                     errorMessage = null
                 }
             } catch (e: Throwable) {
-                val appError = e.toAppError()
-                if (appError is AppError.Unauthorized) return@launch
-
-                if (!pollingMode) {
-                    if (components.isEmpty()) {
-                        errorMessage = appError.message
-                    } else {
-                        _snackbarMessages.emit("Network error: Using cached data")
-                    }
-                }
+                reportComponentLoadFailure(e, pollingMode)
             } finally {
                 if (pollingMode) {
                     isRefreshing = false
@@ -180,6 +171,22 @@ class ComponentsViewModel(
                     isLoading = false
                     isRefreshing = false
                 }
+            }
+        }
+    }
+
+    private suspend fun reportComponentLoadFailure(
+        e: Throwable,
+        pollingMode: Boolean,
+    ) {
+        val appError = e.toAppError()
+        if (appError is AppError.Unauthorized) return
+
+        if (!pollingMode) {
+            if (components.isEmpty()) {
+                errorMessage = appError.message
+            } else {
+                _snackbarMessages.emit("Network error: Using cached data")
             }
         }
     }

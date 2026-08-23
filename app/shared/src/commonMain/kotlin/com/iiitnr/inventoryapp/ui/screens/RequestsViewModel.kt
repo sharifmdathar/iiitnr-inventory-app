@@ -89,16 +89,7 @@ class RequestsViewModel(
         viewModelScope.launch {
             if (pollingMode && isRefreshing) return@launch
 
-            if (pollingMode) {
-                isRefreshing = true
-            } else {
-                if (requests.isEmpty()) {
-                    isLoading = true
-                } else {
-                    isRefreshing = true
-                }
-                errorMessage = null
-            }
+            beginRequestLoad(pollingMode)
 
             try {
                 val token = tokenManager.token.first()
@@ -112,19 +103,39 @@ class RequestsViewModel(
                     }
                 }
             } catch (e: Throwable) {
-                val appError = e.toAppError()
-                if (appError is AppError.Unauthorized) return@launch
-
-                if (!pollingMode) {
-                    if (requests.isEmpty()) {
-                        errorMessage = appError.message
-                    } else {
-                        _snackbarMessages.emit("Network error: Using latest data")
-                    }
-                }
+                handleRequestLoadError(e, pollingMode)
             } finally {
                 isLoading = false
                 isRefreshing = false
+            }
+        }
+    }
+
+    private fun beginRequestLoad(pollingMode: Boolean) {
+        if (pollingMode) {
+            isRefreshing = true
+        } else {
+            if (requests.isEmpty()) {
+                isLoading = true
+            } else {
+                isRefreshing = true
+            }
+            errorMessage = null
+        }
+    }
+
+    private suspend fun handleRequestLoadError(
+        e: Throwable,
+        pollingMode: Boolean,
+    ) {
+        val appError = e.toAppError()
+        if (appError is AppError.Unauthorized) return
+
+        if (!pollingMode) {
+            if (requests.isEmpty()) {
+                errorMessage = appError.message
+            } else {
+                _snackbarMessages.emit("Network error: Using latest data")
             }
         }
     }

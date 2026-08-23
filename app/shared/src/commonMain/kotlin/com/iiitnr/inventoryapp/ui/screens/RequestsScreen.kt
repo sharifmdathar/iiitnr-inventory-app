@@ -143,26 +143,19 @@ fun RequestsScreen(
         requestIdInput = request.id
         showRequestIdDialog = false
 
-        when (request.status) {
-            RequestStatus.APPROVED -> updateRequestStatusPartialIssue(request)
-            RequestStatus.PARTIALLY_ISSUED -> {
-                pendingActionSelectionRequest = request
-            }
-
-            RequestStatus.ISSUED,
-            RequestStatus.RENEWED,
-            RequestStatus.EXPIRED,
-            RequestStatus.PARTIALLY_RETURNED,
-            -> updateRequestStatusPartialReturn(request)
-
-            else -> {
+        routeScannedRequestAction(
+            request = request,
+            onStartPartialIssue = ::updateRequestStatusPartialIssue,
+            onShowActionSelection = { pendingActionSelectionRequest = it },
+            onStartPartialReturn = ::updateRequestStatusPartialReturn,
+            onNoActionAvailable = { noActionRequest ->
                 scope.launch {
                     snackbarHostState.showSnackbar(
-                        "No action available for status: ${requestStatusDisplayLabel(request.status)}",
+                        "No action available for status: ${requestStatusDisplayLabel(noActionRequest.status)}",
                     )
                 }
-            }
-        }
+            },
+        )
     }
 
     LaunchedEffect(Unit) {
@@ -183,11 +176,11 @@ fun RequestsScreen(
             onRenewReasonChange = { renewReasonInput = it },
             onConfirmRenew = {
                 val id = pendingRenewRequestId
-                val reason = renewReasonInput.trim()
+                val reasonInput = renewReasonInput
                 pendingRenewRequestId = null
                 renewReasonInput = ""
-                if (id != null && reason.isNotEmpty()) {
-                    viewModel.updateRequestStatus(id, RequestStatus.REQUESTED_RENEW, lastRenewReason = reason)
+                submitRenewalIfValid(id, reasonInput) { requestId, reason ->
+                    viewModel.updateRequestStatus(requestId, RequestStatus.REQUESTED_RENEW, lastRenewReason = reason)
                 }
             },
             onDismissRenew = {
@@ -262,115 +255,57 @@ fun RequestsScreen(
             )
         }
 
-        Scaffold(
-            topBar = {
-                RequestsTopBar(
-                    onNavigateBack = onNavigateBack,
-                    onScanRequestClick =
-                        if (isAdminOrLA) {
-                            {
-                                showRequestIdDialog = true
-                                requestIdInput = ""
-                            }
-                        } else {
-                            null
-                        },
-                )
+        RequestsScreenScaffold(
+            onNavigateBack = onNavigateBack,
+            searchQuery = viewModel.searchQuery,
+            onSearchQueryChange = { viewModel.searchQuery = it },
+            statusFilter = viewModel.statusFilter,
+            onStatusFilterChange = { viewModel.statusFilter = it },
+            isLoading = isLoading,
+            errorMessage = errorMessage,
+            requests = requests,
+            filteredRequests = filteredRequests,
+            onRetry = { viewModel.loadRequests() },
+            isFaculty = isFaculty,
+            isAdminOrLA = isAdminOrLA,
+            onScanRequestClick =
+                if (isAdminOrLA) {
+                    {
+                        showRequestIdDialog = true
+                        requestIdInput = ""
+                    }
+                } else {
+                    null
+                },
+            snackbarHostState = snackbarHostState,
+            onDeleteRequestClick = { requestId -> pendingDeleteRequestId = requestId },
+            onApproveRequest = { id -> viewModel.updateRequestStatus(id, RequestStatus.APPROVED) },
+            onRejectRequest = { id -> viewModel.updateRequestStatus(id, RequestStatus.REJECTED) },
+            onFulfillRequest = { requestId ->
+                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-        ) { paddingValues ->
-            RequestsScreenBody(
-                paddingValues = paddingValues,
-                searchQuery = viewModel.searchQuery,
-                onSearchQueryChange = { viewModel.searchQuery = it },
-                statusFilter = viewModel.statusFilter,
-                onStatusFilterChange = { viewModel.statusFilter = it },
-                isLoading = isLoading,
-                errorMessage = errorMessage,
-                requests = requests,
-                filteredRequests = filteredRequests,
-                onRetry = { viewModel.loadRequests() },
-                isFaculty = isFaculty,
-                onDeleteRequest =
-                    if (isFaculty) {
-                        null
-                    } else {
-                        { requestId -> pendingDeleteRequestId = requestId }
-                    },
-                onApproveRequest =
-                    if (isFaculty) {
-                        { requestId ->
-                            viewModel.updateRequestStatus(requestId, RequestStatus.APPROVED)
-                        }
-                    } else {
-                        null
-                    },
-                onRejectRequest =
-                    if (isFaculty) {
-                        { requestId ->
-                            viewModel.updateRequestStatus(requestId, RequestStatus.REJECTED)
-                        }
-                    } else {
-                        null
-                    },
-                onFulfillRequest =
-                    if (isAdminOrLA) {
-                        { requestId ->
-                            requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialIssue)
-                        }
-                    } else {
-                        null
-                    },
-                onReturnRequest =
-                    if (isAdminOrLA) {
-                        { requestId ->
-                            requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
-                        }
-                    } else {
-                        null
-                    },
-                onRequestRenew =
-                    if (!isFaculty && !isAdminOrLA) {
-                        { requestId ->
-                            pendingRenewRequestId = requestId
-                            renewReasonInput = ""
-                        }
-                    } else {
-                        null
-                    },
-                onApproveRenew =
-                    if (isFaculty) {
-                        { requestId ->
-                            viewModel.updateRequestStatus(requestId, RequestStatus.RENEWED)
-                        }
-                    } else {
-                        null
-                    },
-                onShowQr =
-                    if (!isFaculty) {
-                        { request ->
-                            requestToShowQr = request
-                        }
-                    } else {
-                        null
-                    },
-                onCardClick = { request -> selectedRequestForDetail = request },
-            )
-        }
+            onReturnRequest = { requestId ->
+                requests.firstOrNull { it.id == requestId }?.let(::updateRequestStatusPartialReturn)
+            },
+            onRequestRenewClick = { requestId ->
+                pendingRenewRequestId = requestId
+                renewReasonInput = ""
+            },
+            onApproveRenew = { id -> viewModel.updateRequestStatus(id, RequestStatus.RENEWED) },
+            onShowQr = { request -> requestToShowQr = request },
+            onCardClick = { request -> selectedRequestForDetail = request },
+        )
 
-        if (showQrScanner) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                QrScannerContent(
-                    onResult = { rawValue ->
-                        openScannedRequest(rawValue)
-                        showQrScanner = false
-                    },
-                    onCancel = {
-                        showQrScanner = false
-                    },
-                )
-            }
-        }
+        RequestsQrScannerOverlay(
+            visible = showQrScanner,
+            onResult = { rawValue ->
+                openScannedRequest(rawValue)
+                showQrScanner = false
+            },
+            onCancel = {
+                showQrScanner = false
+            },
+        )
     }
 }
 
@@ -594,6 +529,154 @@ private fun RequestStatusFilterRow(
 
 private val REQUEST_STATUS_OPTIONS: List<RequestStatus?> = listOf(null) + RequestStatus.entries
 
+private fun routeScannedRequestAction(
+    request: Request,
+    onStartPartialIssue: (Request) -> Unit,
+    onShowActionSelection: (Request) -> Unit,
+    onStartPartialReturn: (Request) -> Unit,
+    onNoActionAvailable: (Request) -> Unit,
+) {
+    when (request.status) {
+        RequestStatus.APPROVED -> onStartPartialIssue(request)
+        RequestStatus.PARTIALLY_ISSUED -> onShowActionSelection(request)
+
+        RequestStatus.ISSUED,
+        RequestStatus.RENEWED,
+        RequestStatus.EXPIRED,
+        RequestStatus.PARTIALLY_RETURNED,
+        -> onStartPartialReturn(request)
+
+        else -> onNoActionAvailable(request)
+    }
+}
+
+private fun submitRenewalIfValid(
+    requestId: String?,
+    reasonInput: String,
+    onSubmit: (String, String) -> Unit,
+) {
+    val reason = reasonInput.trim()
+    if (requestId != null && reason.isNotEmpty()) {
+        onSubmit(requestId, reason)
+    }
+}
+
+@Composable
+private fun RequestsScreenScaffold(
+    onNavigateBack: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    statusFilter: RequestStatus?,
+    onStatusFilterChange: (RequestStatus?) -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?,
+    requests: List<Request>,
+    filteredRequests: List<Request>,
+    onRetry: () -> Unit,
+    isFaculty: Boolean,
+    isAdminOrLA: Boolean,
+    onScanRequestClick: (() -> Unit)?,
+    snackbarHostState: SnackbarHostState,
+    onDeleteRequestClick: (String) -> Unit,
+    onApproveRequest: (String) -> Unit,
+    onRejectRequest: (String) -> Unit,
+    onFulfillRequest: (String) -> Unit,
+    onReturnRequest: (String) -> Unit,
+    onRequestRenewClick: (String) -> Unit,
+    onApproveRenew: (String) -> Unit,
+    onShowQr: (Request) -> Unit,
+    onCardClick: (Request) -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            RequestsTopBar(
+                onNavigateBack = onNavigateBack,
+                onScanRequestClick = onScanRequestClick,
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { paddingValues ->
+        RequestsScreenBody(
+            paddingValues = paddingValues,
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            statusFilter = statusFilter,
+            onStatusFilterChange = onStatusFilterChange,
+            isLoading = isLoading,
+            errorMessage = errorMessage,
+            requests = requests,
+            filteredRequests = filteredRequests,
+            onRetry = onRetry,
+            isFaculty = isFaculty,
+            onDeleteRequest =
+                if (isFaculty) {
+                    null
+                } else {
+                    onDeleteRequestClick
+                },
+            onApproveRequest =
+                if (isFaculty) {
+                    onApproveRequest
+                } else {
+                    null
+                },
+            onRejectRequest =
+                if (isFaculty) {
+                    onRejectRequest
+                } else {
+                    null
+                },
+            onFulfillRequest =
+                if (isAdminOrLA) {
+                    onFulfillRequest
+                } else {
+                    null
+                },
+            onReturnRequest =
+                if (isAdminOrLA) {
+                    onReturnRequest
+                } else {
+                    null
+                },
+            onRequestRenew =
+                if (!isFaculty && !isAdminOrLA) {
+                    onRequestRenewClick
+                } else {
+                    null
+                },
+            onApproveRenew =
+                if (isFaculty) {
+                    onApproveRenew
+                } else {
+                    null
+                },
+            onShowQr =
+                if (!isFaculty) {
+                    onShowQr
+                } else {
+                    null
+                },
+            onCardClick = onCardClick,
+        )
+    }
+}
+
+@Composable
+private fun RequestsQrScannerOverlay(
+    visible: Boolean,
+    onResult: (String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    if (visible) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            QrScannerContent(
+                onResult = onResult,
+                onCancel = onCancel,
+            )
+        }
+    }
+}
+
 @Composable
 fun PartialIssueDialog(
     request: Request,
@@ -798,7 +881,7 @@ fun PartialReturnDialogContent(
                             ) {
                                 IconButton(
                                     onClick = { onItemQtyChange(compId, (qty + 1).coerceAtMost(currentHeld)) },
-                                    enabled = (returned + qty) < issued,
+                                    enabled = returned + qty < issued,
                                     modifier = Modifier.size(24.dp),
                                 ) {
                                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase")
