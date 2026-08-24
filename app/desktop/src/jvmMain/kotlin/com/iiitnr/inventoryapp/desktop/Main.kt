@@ -12,6 +12,8 @@ import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import javax.swing.JFileChooser
+import javax.swing.filechooser.FileNameExtensionFilter
 
 fun main() {
     initKoin()
@@ -58,6 +60,24 @@ fun main() {
                             filename = "components.csv",
                             content = csvContent,
                         )
+                    },
+                    onImportComponentsCsv = { completion ->
+                        val chooser =
+                            JFileChooser().apply {
+                                dialogTitle = "Import Components CSV"
+                                fileFilter = FileNameExtensionFilter("CSV files (*.csv)", "csv")
+                            }
+                        val result = chooser.showOpenDialog(null)
+                        if (result == JFileChooser.APPROVE_OPTION) {
+                            val file = chooser.selectedFile
+                            try {
+                                completion(file.readText(Charsets.UTF_8))
+                            } catch (_: Exception) {
+                                completion(null)
+                            }
+                        } else {
+                            completion(null)
+                        }
                     },
                 )
             }

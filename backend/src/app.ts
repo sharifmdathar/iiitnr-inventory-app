@@ -269,6 +269,12 @@ function setupContentParsers(app: FastifyInstance) {
     { parseAs: 'string' },
     parseFormUrlEncoded,
   );
+
+  app.addContentTypeParser(
+    'text/csv',
+    { parseAs: 'string' },
+    (_req, body, done) => done(null, body),
+  );
 }
 
 function setupErrorHandling(app: FastifyInstance) {

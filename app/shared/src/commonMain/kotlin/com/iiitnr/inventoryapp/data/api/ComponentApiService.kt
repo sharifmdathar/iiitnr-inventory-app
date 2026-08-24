@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.data.api
 
+import com.iiitnr.inventoryapp.data.models.BulkImportResponse
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
 import com.iiitnr.inventoryapp.data.models.ComponentResponse
 import com.iiitnr.inventoryapp.data.models.ComponentsResponse
@@ -47,6 +48,19 @@ class ComponentApiService(
                 }
                 contentType(ContentType.Application.Json)
                 setBody(request)
+            }.body()
+
+    suspend fun importComponentsCsv(
+        token: String,
+        csv: String,
+    ): BulkImportResponse =
+        client
+            .post("$baseUrl/components/import/csv") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+                contentType(ContentType("text", "csv"))
+                setBody(csv)
             }.body()
 
     suspend fun updateComponent(

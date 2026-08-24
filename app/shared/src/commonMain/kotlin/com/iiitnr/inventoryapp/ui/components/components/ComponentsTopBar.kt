@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,12 +30,23 @@ fun ComponentsTopBar(
     pendingRequestsCount: Int? = null,
     showExportCsv: Boolean = false,
     onExportCsv: (() -> Unit)? = null,
+    showImportCsv: Boolean = false,
+    onImportCsv: (() -> Unit)? = null,
+    isImportingCsv: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     AppTopBar(
         title = "Components",
         modifier = modifier,
         actions = {
+            if (showImportCsv && onImportCsv != null) {
+                IconButton(onClick = onImportCsv, enabled = !isImportingCsv) {
+                    Icon(
+                        imageVector = Icons.Outlined.FileUpload,
+                        contentDescription = "Import CSV",
+                    )
+                }
+            }
             if (showExportCsv && onExportCsv != null) {
                 IconButton(onClick = onExportCsv) {
                     Icon(

@@ -46,6 +46,7 @@ fun ComponentsScreen(
     onNavigateToRequests: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onExportCsv: ((String) -> Boolean)? = null,
+    onImportCsv: (((String?) -> Unit) -> Unit)? = null,
     viewModel: ComponentsViewModel = koinViewModel(),
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -59,10 +60,10 @@ fun ComponentsScreen(
             role == UserRole.ADMIN || role == UserRole.LA || role == UserRole.FACULTY
         } ?: false
 
-    val isReadOnly =
+    val canImportCsv =
         viewModel.userRole?.let { role ->
-            role != UserRole.LA && role != UserRole.ADMIN
-        } ?: true
+            role == UserRole.ADMIN || role == UserRole.LA
+        } ?: false
 
     fun exportComponentsCsv() {
         exportComponentsToCsv(
@@ -73,6 +74,20 @@ fun ComponentsScreen(
             snackbarHostState = snackbarHostState,
         )
     }
+
+    fun importComponentsCsv() {
+        val pickCsvFile = onImportCsv ?: return
+        pickCsvFile { content ->
+            if (content != null && !viewModel.isImportingCsv) {
+                viewModel.importComponentsFromCsv(content)
+            }
+        }
+    }
+
+    val isReadOnly =
+        viewModel.userRole?.let { role ->
+            role != UserRole.LA && role != UserRole.ADMIN
+        } ?: true
 
     LaunchedEffect(Unit) {
         viewModel.snackbarMessages.collect { message ->
@@ -88,6 +103,9 @@ fun ComponentsScreen(
                 pendingRequestsCount = if (isFaculty) viewModel.pendingRequestsCount else null,
                 showExportCsv = canExportCsv && viewModel.components.isNotEmpty(),
                 onExportCsv = { exportComponentsCsv() },
+                showImportCsv = canImportCsv && onImportCsv != null,
+                onImportCsv = { importComponentsCsv() },
+                isImportingCsv = viewModel.isImportingCsv,
             )
         },
         floatingActionButton = {
@@ -228,14 +246,19 @@ private fun exportComponentsToCsv(
 }
 
 private fun buildComponentsCsv(components: List<Component>): String {
-    val csvHeader = "Name,Description,Category,Location,Total Quantity,Available Quantity"
+    val csvHeader =
+        "ID,Name,Description,Category,Location,Image URL,Created At,Updated At,Total Quantity,Available Quantity"
     val csvRows =
         components.map { c ->
             listOf(
+                escapeCsvField(c.id),
                 escapeCsvField(c.name),
                 escapeCsvField(c.description),
                 escapeCsvField(c.category?.replace("_", " ")),
                 escapeCsvField(c.location?.replace("_", " ")),
+                escapeCsvField(c.imageUrl),
+                escapeCsvField(c.createdAt),
+                escapeCsvField(c.updatedAt),
                 c.totalQuantity.toString(),
                 c.availableQuantity.toString(),
             ).joinToString(",")

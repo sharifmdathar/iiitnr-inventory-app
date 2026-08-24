@@ -14,6 +14,7 @@ import {
 import type { CategoryValue, LocationValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
 import { isValidHttpUrl, sanitizeString } from '../utils/validation.js';
+import { parseCsv } from '../utils/csv.js';
 
 interface ComponentBody {
   name?: string;
@@ -278,17 +279,22 @@ function escapeCsvValue(value: string | null | undefined): string {
 
 function componentToCsvRow(c: ComponentRecord): string {
   return [
+    escapeCsvValue(c.id),
     escapeCsvValue(c.name),
     escapeCsvValue(c.description),
     escapeCsvValue(c.category?.replace(/_/g, ' ') ?? null),
     escapeCsvValue(c.location?.replace(/_/g, ' ') ?? null),
+    escapeCsvValue(c.imageUrl),
+    escapeCsvValue(c.createdAt),
+    escapeCsvValue(c.updatedAt),
     c.totalQuantity,
     c.availableQuantity,
   ].join(',');
 }
 
 function generateComponentsCsv(components: ComponentRecord[]): string {
-  const header = 'Name,Description,Category,Location,Total Quantity,Available Quantity';
+  const header =
+    'ID,Name,Description,Category,Location,Image URL,Created At,Updated At,Total Quantity,Available Quantity';
   const rows = components.map(componentToCsvRow);
   return [header, ...rows].join('\n');
 }
@@ -328,6 +334,212 @@ function buildUpdateData(
 
 function canExportCsv(role: UserRoleValue | undefined): boolean {
   return role === UserRole.ADMIN || role === UserRole.LA || role === UserRole.FACULTY;
+}
+
+const MAX_IMPORT_ROWS = 1000;
+
+interface CsvRowError {
+  row: number;
+  message: string;
+}
+
+interface ValidCsvComponentInput {
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  totalQuantity: number;
+  availableQuantity: number;
+  category?: string;
+  location?: string;
+}
+
+type CsvCellMap = Partial<Record<'name' | 'description' | 'imageUrl' | 'totalQuantity' | 'availableQuantity' | 'category' | 'location', string>>;
+
+function mapCsvHeader(header: string): keyof CsvCellMap | null {
+  const normalized = header.trim().toLowerCase();
+  switch (normalized) {
+    case 'name':
+      return 'name';
+    case 'description':
+      return 'description';
+    case 'category':
+      return 'category';
+    case 'location':
+      return 'location';
+    case 'image url':
+    case 'imageurl':
+    case 'image_url':
+      return 'imageUrl';
+    case 'total quantity':
+    case 'totalquantity':
+      return 'totalQuantity';
+    case 'available quantity':
+    case 'availablequantity':
+      return 'availableQuantity';
+    default:
+      return null;
+  }
+}
+
+function parseQuantityCell(
+  value: string | undefined,
+  fieldName: string,
+): { value?: number; error?: string } {
+  const trimmed = value?.trim();
+  if (trimmed === undefined || trimmed === '') {
+    return {};
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+    return { error: `${fieldName} must be a non-negative integer` };
+  }
+  return { value: parsed };
+}
+
+async function handleImportComponentsCsv(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const csvContent =
+    typeof req.body === 'string'
+      ? req.body
+      : typeof (req.body as { csv?: unknown } | null)?.csv === 'string'
+        ? (req.body as { csv: string }).csv
+        : undefined;
+
+  if (!csvContent || csvContent.trim() === '') {
+    return reply.code(400).send({ error: 'CSV content is required' });
+  }
+
+  const parsedRows = parseCsv(csvContent);
+  const headerRow = parsedRows[0];
+
+  if (!headerRow) {
+    return reply.code(400).send({ error: 'CSV must contain a header row' });
+  }
+
+  const columnFields = headerRow.map(mapCsvHeader);
+
+  if (!columnFields.includes('name')) {
+    return reply.code(400).send({ error: "CSV must contain a 'Name' column" });
+  }
+
+  const dataRows = parsedRows.slice(1);
+
+  if (dataRows.length > MAX_IMPORT_ROWS) {
+    return reply
+      .code(400)
+      .send({ error: `CSV cannot contain more than ${MAX_IMPORT_ROWS} data rows` });
+  }
+
+  const validInputs: ValidCsvComponentInput[] = [];
+  const errors: CsvRowError[] = [];
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const cells = dataRows[i];
+    if (!cells) continue;
+    const rowNumber = i + 1;
+
+    if (cells.every((cell) => cell === undefined || cell.trim() === '')) continue;
+
+    const cellMap: CsvCellMap = {};
+    for (let c = 0; c < columnFields.length; c++) {
+      const field = columnFields[c];
+      if (field) {
+        cellMap[field] = cells[c] ?? '';
+      }
+    }
+
+    const input = normalizeComponentInput({
+      name: cellMap.name,
+      description: cellMap.description || undefined,
+      imageUrl: cellMap.imageUrl || undefined,
+      category: cellMap.category || undefined,
+      location: cellMap.location || undefined,
+    } as ComponentBody);
+
+    if (!input.name) {
+      errors.push({ row: rowNumber, message: 'name is required' });
+      continue;
+    }
+
+    const totalParsed = parseQuantityCell(cellMap.totalQuantity, 'totalQuantity');
+    if (totalParsed.error) {
+      errors.push({ row: rowNumber, message: totalParsed.error });
+      continue;
+    }
+    const availableParsed = parseQuantityCell(cellMap.availableQuantity, 'availableQuantity');
+    if (availableParsed.error) {
+      errors.push({ row: rowNumber, message: availableParsed.error });
+      continue;
+    }
+
+    input.totalQuantity = totalParsed.value;
+    input.availableQuantity = availableParsed.value ?? totalParsed.value;
+
+    const validationError =
+      validateCreateInput(input) ||
+      validateQuantityRelationship(input.availableQuantity ?? 0, input.totalQuantity ?? 0);
+
+    if (validationError) {
+      errors.push({ row: rowNumber, message: validationError.message });
+      continue;
+    }
+
+    validInputs.push(input as ValidCsvComponentInput);
+  }
+
+if (errors.length > 0) {
+    return reply.code(400).send({ error: 'import failed', details: errors });
+  }
+
+  try {
+    const created = await db.transaction(async (tx) => {
+      const inserted: ComponentRecord[] = [];
+      const now = new Date().toISOString();
+      for (const input of validInputs) {
+        const [record] = await tx
+          .insert(component)
+          .values({
+            id: crypto.randomUUID(),
+            name: input.name,
+            description: input.description || null,
+            imageUrl: input.imageUrl || null,
+            totalQuantity: input.totalQuantity ?? 0,
+            availableQuantity: input.availableQuantity ?? input.totalQuantity ?? 0,
+            category: input.category ? (input.category as CategoryValue) : null,
+            location: input.location ? toLocationEnum(input.location) : null,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+        if (!record) {
+          throw new Error('failed to import component row');
+        }
+        inserted.push(record);
+      }
+      return inserted;
+    });
+
+    for (const record of created) {
+      await logAudit(
+        {
+          userId: getUserIdFromRequest(req),
+          action: AuditActionType.CREATE,
+          entityType: 'Component',
+          entityId: record.id,
+          newValues: record as Record<string, unknown>,
+        },
+        req,
+      );
+    }
+
+    return reply.code(201).send({ imported: created.length, components: created });
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to import components' });
+  }
 }
 
 async function handleGetComponents(
@@ -562,6 +774,10 @@ const componentsRoutes: FastifyPluginCallback = (app, _opts, done) => {
 
   app.get('/export/csv', { preHandler: requireAuth }, (req, reply) =>
     handleExportCsv(app, req, reply),
+  );
+
+  app.post('/import/csv', { preHandler: requireAdminOrLA }, (req, reply) =>
+    handleImportComponentsCsv(app, req, reply),
   );
 
   app.get('/:id', { preHandler: requireAuth }, (req, reply) =>

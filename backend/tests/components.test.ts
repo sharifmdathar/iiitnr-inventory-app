@@ -258,6 +258,374 @@ describe('Component CRUD API', () => {
         assert.equal(response.headers['content-type'], 'text/csv');
       });
     });
+
+    describe('POST /components/import/csv', () => {
+      test('returns 401 without token', async () => {
+        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: { 'content-type': 'text/csv' },
+          body: csv,
+        });
+        assert.equal(response.statusCode, 401);
+      });
+
+      test('returns 403 for STUDENT role', async () => {
+        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${studentToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+        assert.equal(response.statusCode, 403);
+      });
+
+      test('returns 403 for FACULTY role', async () => {
+        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${facultyToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+        assert.equal(response.statusCode, 403);
+      });
+
+      test('returns 400 when CSV content is empty', async () => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: '',
+        });
+        assert.equal(response.statusCode, 400);
+        assert.equal(response.json().error, 'CSV content is required');
+      });
+
+      test('returns 400 when Name column is missing', async () => {
+        const csv = 'Description,Category,Location\n10k ohm,Sensors,IoT Lab';
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+        assert.equal(response.statusCode, 400);
+        assert.equal(response.json().error, 'CSV must contain a \'Name\' column');
+      });
+
+      test('returns 400 when data rows exceed 1000', async () => {
+        const header = 'Name,Description,Category,Location,Total Quantity,Available Quantity\n';
+        const rows = Array.from({ length: 1001 }, (_, i) => `Component ${i},Desc,Sensors,IoT Lab,10,10`).join('\n');
+        const csv = header + rows;
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+        assert.equal(response.statusCode, 400);
+        assert.ok(response.json().error.includes('cannot contain more than 1000 data rows'));
+      });
+
+      test('admin imports valid 2-row CSV', async () => {
+        const csv = [
+          'Name,Description,Category,Location,Total Quantity,Available Quantity',
+          'Resistor 10k,10k ohm resistor,Sensors,IoT Lab,50,50',
+          'Arduino Uno,Arduino microcontroller,Microcontrollers,Robo Lab,10,10',
+        ].join('\n');
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+
+        assert.equal(response.statusCode, 201);
+        const body = response.json();
+        assert.equal(body.imported, 2);
+        assert.equal(body.components.length, 2);
+        assert.equal(body.components[0].name, 'Resistor 10k');
+        assert.equal(body.components[1].name, 'Arduino Uno');
+        assert.equal(body.components[0].category, ComponentCategory.Sensors);
+        assert.equal(body.components[0].location, Location.IoT_Lab);
+        assert.equal(body.components[1].category, ComponentCategory.Microcontrollers);
+        assert.equal(body.components[1].location, Location.Robo_Lab);
+
+        // Verify components exist via GET
+        const getResponse = await app.inject({
+          method: 'GET',
+          url: '/components',
+          headers: { authorization: `Bearer ${adminToken}` },
+        });
+        assert.equal(getResponse.statusCode, 200);
+        const components = getResponse.json().components;
+        const imported = components.filter((c: { name: string }) =>
+          c.name === 'Resistor 10k' || c.name === 'Arduino Uno'
+        );
+        assert.equal(imported.length, 2);
+
+        await deleteComponents(body.components.map((c: { id: string }) => c.id));
+      });
+
+      test('LA can import CSV', async () => {
+        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nCapacitor 100uF,Electrolytic capacitor,Actuators,VLSI Lab,20,20';
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${taToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+        assert.equal(response.statusCode, 201);
+        const body = response.json();
+        assert.equal(body.imported, 1);
+        assert.equal(body.components[0].name, 'Capacitor 100uF');
+        await deleteComponents(body.components.map((c: { id: string }) => c.id));
+      });
+
+      test('returns 400 for invalid category with row number in details', async () => {
+        const csv = [
+          'Name,Description,Category,Location,Total Quantity,Available Quantity',
+          'Valid Component,Description,Sensors,IoT Lab,10,10',
+          'Invalid Component,Description,InvalidCategory,IoT Lab,10,10',
+        ].join('\n');
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+
+        assert.equal(response.statusCode, 400);
+        const body = response.json();
+        assert.equal(body.error, 'import failed');
+        assert.ok(Array.isArray(body.details));
+        assert.equal(body.details.length, 1);
+        assert.equal(body.details[0].row, 2); // Second data row (1-based)
+        assert.ok(body.details[0].message.includes('invalid category'));
+
+        // Verify no components were created (atomic)
+        const getResponse = await app.inject({
+          method: 'GET',
+          url: '/components',
+          headers: { authorization: `Bearer ${adminToken}` },
+        });
+        const components = getResponse.json().components;
+        const imported = components.filter((c: { name: string }) =>
+          c.name === 'Valid Component' || c.name === 'Invalid Component'
+        );
+        assert.equal(imported.length, 0);
+      });
+
+      test('quoted field with embedded comma parses correctly', async () => {
+        const csv = [
+          'Name,Description,Category,Location,Total Quantity,Available Quantity',
+          '"Resistor, 10k","A resistor, with comma",Sensors,IoT Lab,5,5',
+        ].join('\n');
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+
+        assert.equal(response.statusCode, 201);
+        const body = response.json();
+        assert.equal(body.imported, 1);
+        assert.equal(body.components[0].name, 'Resistor, 10k');
+        assert.equal(body.components[0].description, 'A resistor, with comma');
+        await deleteComponents(body.components.map((c: { id: string }) => c.id));
+      });
+
+      test('round-trip: export CSV and re-import', async () => {
+        // Create a component first
+        const original = await createComponent({
+          name: 'Round Trip Component',
+          description: 'Test round trip',
+          totalQuantity: 25,
+          availableQuantity: 20,
+          category: ComponentCategory.Microprocessors,
+          location: Location.Robo_Lab,
+          imageUrl: 'https://example.com/image.png',
+        });
+
+        try {
+          // Export CSV
+          const exportResponse = await app.inject({
+            method: 'GET',
+            url: '/components/export/csv',
+            headers: { authorization: `Bearer ${adminToken}` },
+          });
+          assert.equal(exportResponse.statusCode, 200);
+          const csvContent = exportResponse.payload;
+
+          // Verify the new 10-column format
+          assert.ok(csvContent.includes('ID,Name,Description,Category,Location,Image URL,Created At,Updated At,Total Quantity,Available Quantity'));
+          assert.ok(csvContent.includes('Round Trip Component'));
+          assert.ok(csvContent.includes('Microprocessors'));
+          assert.ok(csvContent.includes('Robo Lab'));
+          assert.ok(csvContent.includes('https://example.com/image.png'));
+
+          // Re-import the exported CSV
+          const importResponse = await app.inject({
+            method: 'POST',
+            url: '/components/import/csv',
+            headers: {
+              authorization: `Bearer ${adminToken}`,
+              'content-type': 'text/csv',
+            },
+            body: csvContent,
+          });
+
+          assert.equal(importResponse.statusCode, 201);
+          const body = importResponse.json();
+          assert.equal(body.imported, 1);
+          assert.equal(body.components[0].name, 'Round Trip Component');
+          assert.equal(body.components[0].description, 'Test round trip');
+          assert.equal(body.components[0].category, ComponentCategory.Microprocessors);
+          assert.equal(body.components[0].location, Location.Robo_Lab);
+          assert.equal(body.components[0].imageUrl, 'https://example.com/image.png');
+          assert.equal(body.components[0].totalQuantity, 25);
+          assert.equal(body.components[0].availableQuantity, 20);
+
+          // Clean up both original and imported
+          await deleteComponents([original.id, body.components[0].id]);
+        } finally {
+          // Ensure original is cleaned up even if test fails
+          await deleteComponents([original.id]).catch(() => {});
+        }
+      });
+
+      test('ignores unknown columns (ID, Created At, Updated At) from export', async () => {
+        const csv = [
+          'ID,Name,Description,Category,Location,Image URL,Created At,Updated At,Total Quantity,Available Quantity',
+          'ignored-id,Imported Component,Description,Sensors,IoT Lab,https://example.com/img.png,2024-01-01T00:00:00.000Z,2024-01-01T00:00:00.000Z,15,10',
+        ].join('\n');
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+
+        assert.equal(response.statusCode, 201);
+        const body = response.json();
+        assert.equal(body.imported, 1);
+        assert.equal(body.components[0].name, 'Imported Component');
+        assert.equal(body.components[0].description, 'Description');
+        assert.equal(body.components[0].category, ComponentCategory.Sensors);
+        assert.equal(body.components[0].location, Location.IoT_Lab);
+        assert.equal(body.components[0].imageUrl, 'https://example.com/img.png');
+        assert.equal(body.components[0].totalQuantity, 15);
+        assert.equal(body.components[0].availableQuantity, 10);
+        // ID should be auto-generated, not from CSV
+        assert.ok(body.components[0].id);
+        assert.notEqual(body.components[0].id, 'ignored-id');
+
+        await deleteComponents(body.components.map((c: { id: string }) => c.id));
+      });
+
+      test('skips fully empty rows', async () => {
+        const csv = [
+          'Name,Description,Category,Location,Total Quantity,Available Quantity',
+          'Component 1,Desc,Sensors,IoT Lab,10,10',
+          ',,,,,',
+          'Component 2,Desc,Actuators,Robo Lab,20,20',
+        ].join('\n');
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+
+        assert.equal(response.statusCode, 201);
+        const body = response.json();
+        assert.equal(body.imported, 2);
+        assert.equal(body.components[0].name, 'Component 1');
+        assert.equal(body.components[1].name, 'Component 2');
+        await deleteComponents(body.components.map((c: { id: string }) => c.id));
+      });
+
+      test('defaults totalQuantity to 0 and availableQuantity to total when absent', async () => {
+        const csv = 'Name,Description,Category,Location\nMinimal Component,Minimal desc,Sensors,IoT Lab';
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+
+        assert.equal(response.statusCode, 201);
+        const body = response.json();
+        assert.equal(body.imported, 1);
+        assert.equal(body.components[0].totalQuantity, 0);
+        assert.equal(body.components[0].availableQuantity, 0);
+        await deleteComponents(body.components.map((c: { id: string }) => c.id));
+      });
+
+      test('returns 400 when availableQuantity > totalQuantity', async () => {
+        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nBad Component,Desc,Sensors,IoT Lab,10,15';
+        const response = await app.inject({
+          method: 'POST',
+          url: '/components/import/csv',
+          headers: {
+            authorization: `Bearer ${adminToken}`,
+            'content-type': 'text/csv',
+          },
+          body: csv,
+        });
+
+assert.equal(response.statusCode, 400);
+        const body = response.json();
+        assert.equal(body.error, 'import failed');
+        assert.ok(Array.isArray(body.details));
+        assert.ok(body.details[0].message.includes('cannot be greater than'));
+      });
+    });
   });
 
   describe('GET /components/:id - Get single component', () => {

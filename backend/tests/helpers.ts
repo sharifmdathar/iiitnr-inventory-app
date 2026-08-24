@@ -33,6 +33,7 @@ export async function createUser(data: {
 export async function createComponent(data: {
   name: string;
   description?: string | null;
+  imageUrl?: string | null;
   totalQuantity?: number;
   availableQuantity?: number;
   category?: (typeof ComponentCategory)[keyof typeof ComponentCategory] | null;
@@ -45,6 +46,7 @@ export async function createComponent(data: {
       id: crypto.randomUUID(),
       name: data.name,
       description: data.description ?? null,
+      imageUrl: data.imageUrl ?? null,
       totalQuantity: data.totalQuantity ?? 0,
       availableQuantity: data.availableQuantity ?? data.totalQuantity ?? 0,
       category: data.category ?? null,

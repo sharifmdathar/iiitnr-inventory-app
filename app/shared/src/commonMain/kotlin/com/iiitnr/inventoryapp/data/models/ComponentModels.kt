@@ -65,3 +65,8 @@ data class ComponentsResponse(
 data class ComponentResponse(
     val component: Component,
 )
+
+@Serializable
+data class BulkImportResponse(
+    val imported: Int,
+)

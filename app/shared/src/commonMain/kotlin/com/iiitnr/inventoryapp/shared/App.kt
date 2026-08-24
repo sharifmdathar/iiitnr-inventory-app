@@ -40,6 +40,7 @@ import org.koin.compose.koinInject
 fun App(
     onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
     onExportComponentsCsv: ((String) -> Boolean)? = null,
+    onImportComponentsCsv: (((String?) -> Unit) -> Unit)? = null,
     componentsCache: ComponentsCache? = null,
     tokenManager: TokenManager = koinInject(),
 ) {
@@ -135,6 +136,7 @@ fun App(
                                     navController.navigate("profile")
                                 },
                                 onExportCsv = onExportComponentsCsv,
+                                onImportCsv = onImportComponentsCsv,
                             )
                         }
                         composable("profile") {

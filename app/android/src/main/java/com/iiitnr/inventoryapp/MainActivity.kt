@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import com.iiitnr.inventoryapp.data.auth.GoogleSignInHelper
 import com.iiitnr.inventoryapp.di.initKoin
 import com.iiitnr.inventoryapp.shared.App
@@ -21,6 +22,31 @@ class MainActivity : ComponentActivity() {
     private lateinit var googleSignInHelper: GoogleSignInHelper
     private var onGoogleSignInResult: ((String?) -> Unit)? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
+
+    private var pendingCsvImportCallback: ((String?) -> Unit)? = null
+
+    private val csvImportLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            val callback = pendingCsvImportCallback
+            pendingCsvImportCallback = null
+            if (callback == null) return@registerForActivityResult
+
+            if (uri == null) {
+                callback(null)
+                return@registerForActivityResult
+            }
+
+            val content =
+                try {
+                    contentResolver
+                        .openInputStream(uri)
+                        ?.bufferedReader()
+                        ?.use { it.readText() }
+                } catch (_: Exception) {
+                    null
+                }
+            callback(content)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +80,10 @@ class MainActivity : ComponentActivity() {
                             filename = "components.csv",
                             content = csvContent,
                         )
+                    },
+                    onImportComponentsCsv = { completion ->
+                        pendingCsvImportCallback = completion
+                        csvImportLauncher.launch("text/*")
                     },
                 )
             }

@@ -49,6 +49,8 @@ class ComponentsViewModel(
         private set
     var isUploadingImage by mutableStateOf(false)
         private set
+    var isImportingCsv by mutableStateOf(false)
+        private set
 
     var facultyOptions by mutableStateOf<List<User>>(emptyList())
         private set
@@ -318,6 +320,32 @@ class ComponentsViewModel(
                 }
             } catch (e: Throwable) {
                 _snackbarMessages.emit("Failed to save component: ${e.toAppError().message}")
+            }
+        }
+    }
+
+    fun importComponentsFromCsv(csvContent: String) {
+        if (csvContent.isBlank()) {
+            _snackbarMessages.tryEmit("Import cancelled: file is empty")
+            return
+        }
+        viewModelScope.launch {
+            isImportingCsv = true
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val response =
+                        ApiClient.componentApiService.importComponentsCsv(
+                            "Bearer $token",
+                            csvContent,
+                        )
+                    loadComponents(pollingMode = true)
+                    _snackbarMessages.emit("Imported ${response.imported} component(s) successfully")
+                }
+            } catch (e: Throwable) {
+                _snackbarMessages.emit("Failed to import components: ${e.toAppError().message}")
+            } finally {
+                isImportingCsv = false
             }
         }
     }
