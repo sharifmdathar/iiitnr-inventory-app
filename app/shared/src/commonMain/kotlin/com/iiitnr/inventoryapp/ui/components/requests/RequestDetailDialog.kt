@@ -180,92 +180,103 @@ fun RequestDetailDialogContent(
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
+            val showReqColumn = request.items.any { it.quantity != it.fulfilledQuantity }
             InventoryTable(
                 items = request.items,
                 columns =
-                    listOf(
-                        TableColumn(
-                            header = "Component",
-                            weight = 0.52f,
-                            content = { item ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    ComponentImage(
-                                        imageUrl = item.component?.imageUrl,
-                                        modifier = Modifier.size(36.dp).clip(RoundedCornerShape(4.dp)),
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Column {
-                                        Text(
-                                            text = item.component?.name ?: item.componentId ?: "Unknown",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            maxLines = 1,
-                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    buildList {
+                        add(
+                            TableColumn(
+                                header = "Component",
+                                weight = if (showReqColumn) 0.52f else 0.68f,
+                                content = { item ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        ComponentImage(
+                                            imageUrl = item.component?.imageUrl,
+                                            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(4.dp)),
                                         )
-                                        item.component?.description?.let { desc ->
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
                                             Text(
-                                                text = desc,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                text = item.component?.name ?: item.componentId ?: "Unknown",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary,
                                                 maxLines = 1,
                                                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                                             )
+                                            item.component?.description?.let { desc ->
+                                                Text(
+                                                    text = desc,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                            },
-                        ),
-                        TableColumn(
-                            header = "RET",
-                            weight = 0.16f,
-                            alignment = Alignment.Center,
-                            content = { item ->
-                                Text(
-                                    text = item.returnedQuantity.toString(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color =
-                                        if (item.returnedQuantity > 0) {
-                                            MaterialTheme.inventoryColors.neutral
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                )
-                            },
-                        ),
-                        TableColumn(
-                            header = "ISS",
-                            weight = 0.16f,
-                            alignment = Alignment.Center,
-                            content = { item ->
-                                Text(
-                                    text = item.fulfilledQuantity.toString(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color =
-                                        if (item.fulfilledQuantity > 0) {
-                                            MaterialTheme.inventoryColors.info
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                )
-                            },
-                        ),
-                        TableColumn(
-                            header = "REQ",
-                            weight = 0.16f,
-                            alignment = Alignment.Center,
-                            content = { item ->
-                                Text(
-                                    text = item.quantity.toString(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            },
-                        ),
-                    ),
+                                },
+                            ),
+                        )
+                        if (showReqColumn) {
+                            add(
+                                TableColumn(
+                                    header = "REQ",
+                                    weight = 0.16f,
+                                    alignment = Alignment.Center,
+                                    content = { item ->
+                                        Text(
+                                            text = item.quantity.toString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    },
+                                ),
+                            )
+                        }
+                        add(
+                            TableColumn(
+                                header = if (showReqColumn) "ISS" else "QTY",
+                                weight = 0.16f,
+                                alignment = Alignment.Center,
+                                content = { item ->
+                                    Text(
+                                        text = item.fulfilledQuantity.toString(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color =
+                                            if (item.fulfilledQuantity > 0) {
+                                                MaterialTheme.inventoryColors.info
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                    )
+                                },
+                            ),
+                        )
+                        add(
+                            TableColumn(
+                                header = "RET",
+                                weight = 0.16f,
+                                alignment = Alignment.Center,
+                                content = { item ->
+                                    Text(
+                                        text = item.returnedQuantity.toString(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color =
+                                            if (item.returnedQuantity > 0) {
+                                                MaterialTheme.inventoryColors.neutral
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                    )
+                                },
+                            ),
+                        )
+                    },
             )
         }
     }
@@ -432,7 +443,7 @@ fun RequestDetailDialogContentPreview() {
                         requestId = "r1",
                         componentId = "c1",
                         quantity = 5,
-                        fulfilledQuantity = 3,
+                        fulfilledQuantity = 5,
                         returnedQuantity = 1,
                         component = sampleComponent,
                     ),
@@ -454,7 +465,7 @@ fun RequestDetailDialogContentPreview() {
                         requestId = "r1",
                         componentId = "c1",
                         quantity = 1,
-                        fulfilledQuantity = 0,
+                        fulfilledQuantity = 1,
                         returnedQuantity = 0,
                         component = sampleComponent.copy(name = "ESP8266", description = "WiFi Module"),
                     ),

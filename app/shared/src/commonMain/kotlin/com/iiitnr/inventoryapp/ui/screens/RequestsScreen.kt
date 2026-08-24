@@ -102,7 +102,7 @@ fun RequestsScreen(
         issueItemsInput =
             request.items.associate { item ->
                 val componentId = item.componentId ?: ""
-                componentId to 0
+                componentId to (item.quantity - item.fulfilledQuantity).coerceAtLeast(0)
             }
     }
 
@@ -476,6 +476,7 @@ private fun RequestsScreenBody(
         )
 
         RequestsContent(
+            modifier = Modifier.padding(),
             isLoading = isLoading,
             errorMessage = errorMessage,
             requests = filteredRequests,
@@ -493,7 +494,6 @@ private fun RequestsScreenBody(
             onShowQr = onShowQr,
             onCardClick = onCardClick,
             isFaculty = isFaculty,
-            modifier = Modifier.padding(),
         )
     }
 }
@@ -743,7 +743,7 @@ fun PartialIssueDialogContent(
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        text = "Issued: $fulfilled / $total",
+                        text = "$total / $fulfilled / ${item.returnedQuantity}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -856,7 +856,7 @@ fun PartialReturnDialogContent(
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
-                        text = "Returned: $returned / $issued / $total",
+                        text = "$total / $issued / $returned",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

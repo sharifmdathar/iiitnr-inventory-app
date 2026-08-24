@@ -35,6 +35,7 @@ private fun filteredEmptyMessage(
 
 @Composable
 fun RequestsContent(
+    modifier: Modifier = Modifier,
     isLoading: Boolean,
     errorMessage: String?,
     requests: List<Request>,
@@ -52,7 +53,6 @@ fun RequestsContent(
     onShowQr: ((Request) -> Unit)? = null,
     onCardClick: (Request) -> Unit,
     isFaculty: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when {

@@ -44,7 +44,7 @@ fun RequestItemRow(
 
     val displayQuantity =
         if (issuedQty > 0 || returnedQty > 0) {
-            "$returnedQty / $issuedQty / $requestedQty"
+            "$requestedQty / $issuedQty / $returnedQty"
         } else {
             "$requestedQty"
         }
