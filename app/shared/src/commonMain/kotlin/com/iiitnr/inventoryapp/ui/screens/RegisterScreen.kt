@@ -42,7 +42,7 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "Register",
+            text = "Register (Debug)",
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 32.dp),
         )
@@ -120,7 +120,7 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(onClick = onNavigateToLogin) {
-            Text("Already have an account? Login")
+            Text("Back to Role Selection")
         }
     }
 }

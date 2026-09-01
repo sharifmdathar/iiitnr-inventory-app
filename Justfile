@@ -1,4 +1,6 @@
 set windows-shell := ["cmd.exe", "/c"]
+set dotenv-load := true
+set dotenv-filename := "backend/.env"
 
 default: dev
 
@@ -106,7 +108,7 @@ web:
 
 [unix]
 deploy-web:
-    export GOOGLE_WEB_CLIENT_ID="$(grep GOOGLE_WEB_CLIENT_ID backend/.env | cut -d= -f2)"
+    @if [ -z "$GOOGLE_WEB_CLIENT_ID" ]; then echo "ERROR: GOOGLE_WEB_CLIENT_ID not loaded from backend/.env"; exit 1; fi
     cd app && ./gradlew :web:wasmJsBrowserDistribution -Pkotlin.native.ignoreDisabledTargets=true
     mkdir -p /srv/web
     cp -r app/web/build/dist/wasmJs/productionExecutable/. /srv/web/

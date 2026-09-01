@@ -43,10 +43,10 @@ fun RequestItemRow(
         }
 
     val displayQuantity =
-        if (issuedQty > 0 || returnedQty > 0) {
-            "$requestedQty / $issuedQty / $returnedQty"
-        } else {
-            "$requestedQty"
+        when {
+            issuedQty == 0 && returnedQty == 0 -> "$requestedQty"
+            requestedQty == issuedQty -> "$requestedQty / $returnedQty"
+            else -> "$requestedQty / $issuedQty / $returnedQty"
         }
 
     Row(
@@ -116,6 +116,17 @@ fun RequestItemRowPreview() {
             component = sampleComponent,
         )
 
+    val fullyIssuedItem =
+        RequestItem(
+            id = "item3",
+            requestId = "req1",
+            componentId = "comp1",
+            quantity = 7,
+            fulfilledQuantity = 7,
+            returnedQuantity = 3,
+            component = sampleComponent.copy(name = "Flame Sensor"),
+        )
+
     AppTheme {
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -127,6 +138,7 @@ fun RequestItemRowPreview() {
             ) {
                 Text("Example Request", style = MaterialTheme.typography.titleSmall)
                 RequestItemRow(item = pendingItem)
+                RequestItemRow(item = fullyIssuedItem)
                 RequestItemRow(item = partialItem)
             }
         }

@@ -9,6 +9,7 @@ import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.models.GoogleSignInRequest
 import com.iiitnr.inventoryapp.data.models.LoginRequest
 import com.iiitnr.inventoryapp.data.models.RegisterRequest
+import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.utils.toAppError
 import kotlinx.coroutines.launch
@@ -60,13 +61,14 @@ class AuthViewModel(
 
     fun googleSignIn(
         idToken: String,
+        role: UserRole? = null,
         onSuccess: () -> Unit,
     ) {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
             try {
-                val response = ApiClient.authApiService.signInWithGoogle(GoogleSignInRequest(idToken))
+                val response = ApiClient.authApiService.signInWithGoogle(GoogleSignInRequest(idToken, role))
                 tokenManager.saveToken(response.token)
                 onSuccess()
             } catch (e: Throwable) {

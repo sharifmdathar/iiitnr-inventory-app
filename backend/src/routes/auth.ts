@@ -23,6 +23,7 @@ interface LoginBody {
 
 interface GoogleAuthBody {
   idToken?: string;
+  role?: string;
 }
 
 interface UserResponse {
@@ -95,6 +96,7 @@ const googleSchema = {
     required: ['idToken'],
     properties: {
       idToken: { type: 'string', maxLength: 4096 },
+      role: { type: 'string', enum: ['STUDENT', 'FACULTY', 'LA', 'ADMIN', 'PENDING'] },
     },
     additionalProperties: false,
   },
@@ -276,6 +278,7 @@ function buildGoogleUserCreatePayload(
   name: string | null,
   googleId: string,
   imageUrl: string | null,
+  requestedRole?: UserRoleValue,
 ) {
   const derived = deriveIiitnrProfileFromEmail(email);
   return {
@@ -283,7 +286,7 @@ function buildGoogleUserCreatePayload(
     name: name ?? undefined,
     googleId,
     imageUrl,
-    role: derived?.role ?? UserRole.PENDING,
+    role: requestedRole ?? derived?.role ?? UserRole.PENDING,
     batch: derived?.batch ?? null,
     branch: derived?.branch ?? null,
   };
@@ -294,6 +297,7 @@ async function findOrCreateGoogleUser(
   email: string,
   name: string | null,
   imageUrl: string | null,
+  requestedRole?: UserRoleValue,
 ): Promise<UserResponse> {
   const normalizedEmail = email.trim().toLowerCase();
   const existingUser = await db.query.user.findFirst({
@@ -303,7 +307,7 @@ async function findOrCreateGoogleUser(
 
   if (!existingUser) {
     const created = await createUser(
-      buildGoogleUserCreatePayload(normalizedEmail, name, googleId, imageUrl),
+      buildGoogleUserCreatePayload(normalizedEmail, name, googleId, imageUrl, requestedRole),
     );
 
     if (!created) throw new Error('User creation failed');
@@ -467,7 +471,7 @@ async function handleGoogleAuth(
   req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const { idToken } = req.body as GoogleAuthBody;
+  const { idToken, role } = req.body as GoogleAuthBody;
 
   if (!idToken) {
     return reply.code(400).send({ error: 'idToken is required' });
@@ -502,6 +506,7 @@ async function handleGoogleAuth(
       payload.email,
       payload.name ?? null,
       payload.imageUrl ?? null,
+      role as UserRoleValue,
     );
 
     const token = app.jwt.sign({ sub: googleUser.id, role: googleUser.role });

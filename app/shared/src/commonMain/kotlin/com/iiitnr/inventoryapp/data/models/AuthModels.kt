@@ -18,6 +18,7 @@ data class LoginRequest(
 @Serializable
 data class GoogleSignInRequest(
     val idToken: String,
+    val role: UserRole? = null,
 )
 
 @Serializable
