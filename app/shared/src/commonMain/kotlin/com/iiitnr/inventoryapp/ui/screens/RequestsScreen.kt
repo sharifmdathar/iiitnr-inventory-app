@@ -742,11 +742,12 @@ fun PartialIssueDialogContent(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
-                    val displayQty = when {
-                        fulfilled == 0 && item.returnedQuantity == 0 -> "$total"
-                        total == fulfilled -> "$total / ${item.returnedQuantity}"
-                        else -> "$total / $fulfilled / ${item.returnedQuantity}"
-                    }
+                    val displayQty =
+                        when {
+                            fulfilled == 0 && item.returnedQuantity == 0 -> "$total"
+                            total == fulfilled -> "$total / ${item.returnedQuantity}"
+                            else -> "$total / $fulfilled / ${item.returnedQuantity}"
+                        }
                     Text(
                         text = displayQty,
                         style = MaterialTheme.typography.bodySmall,
@@ -860,11 +861,12 @@ fun PartialReturnDialogContent(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
-                    val displayQty = when {
-                        issued == 0 && returned == 0 -> "$total"
-                        total == issued -> "$total / $returned"
-                        else -> "$total / $issued / $returned"
-                    }
+                    val displayQty =
+                        when {
+                            issued == 0 && returned == 0 -> "$total"
+                            total == issued -> "$total / $returned"
+                            else -> "$total / $issued / $returned"
+                        }
                     Text(
                         text = displayQty,
                         style = MaterialTheme.typography.bodySmall,

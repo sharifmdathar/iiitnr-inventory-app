@@ -32,7 +32,8 @@ export function parseCsv(text: string): string[][] {
           field += '"';
           i += 2;
           continue;
-        }        inQuotes = false;
+        }
+        inQuotes = false;
         i += 1;
         continue;
       }

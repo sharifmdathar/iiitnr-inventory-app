@@ -270,10 +270,8 @@ function setupContentParsers(app: FastifyInstance) {
     parseFormUrlEncoded,
   );
 
-  app.addContentTypeParser(
-    'text/csv',
-    { parseAs: 'string' },
-    (_req, body, done) => done(null, body),
+  app.addContentTypeParser('text/csv', { parseAs: 'string' }, (_req, body, done) =>
+    done(null, body),
   );
 }
 

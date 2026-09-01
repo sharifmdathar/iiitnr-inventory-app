@@ -353,7 +353,18 @@ interface ValidCsvComponentInput {
   location?: string;
 }
 
-type CsvCellMap = Partial<Record<'name' | 'description' | 'imageUrl' | 'totalQuantity' | 'availableQuantity' | 'category' | 'location', string>>;
+type CsvCellMap = Partial<
+  Record<
+    | 'name'
+    | 'description'
+    | 'imageUrl'
+    | 'totalQuantity'
+    | 'availableQuantity'
+    | 'category'
+    | 'location',
+    string
+  >
+>;
 
 function mapCsvHeader(header: string): keyof CsvCellMap | null {
   const normalized = header.trim().toLowerCase();
@@ -490,7 +501,7 @@ async function handleImportComponentsCsv(
     validInputs.push(input as ValidCsvComponentInput);
   }
 
-if (errors.length > 0) {
+  if (errors.length > 0) {
     return reply.code(400).send({ error: 'import failed', details: errors });
   }
 

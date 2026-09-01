@@ -261,7 +261,8 @@ describe('Component CRUD API', () => {
 
     describe('POST /components/import/csv', () => {
       test('returns 401 without token', async () => {
-        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
+        const csv =
+          'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
         const response = await app.inject({
           method: 'POST',
           url: '/components/import/csv',
@@ -272,7 +273,8 @@ describe('Component CRUD API', () => {
       });
 
       test('returns 403 for STUDENT role', async () => {
-        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
+        const csv =
+          'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
         const response = await app.inject({
           method: 'POST',
           url: '/components/import/csv',
@@ -286,7 +288,8 @@ describe('Component CRUD API', () => {
       });
 
       test('returns 403 for FACULTY role', async () => {
-        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
+        const csv =
+          'Name,Description,Category,Location,Total Quantity,Available Quantity\nResistor,10k ohm,Sensors,IoT Lab,50,50';
         const response = await app.inject({
           method: 'POST',
           url: '/components/import/csv',
@@ -325,12 +328,15 @@ describe('Component CRUD API', () => {
           body: csv,
         });
         assert.equal(response.statusCode, 400);
-        assert.equal(response.json().error, 'CSV must contain a \'Name\' column');
+        assert.equal(response.json().error, "CSV must contain a 'Name' column");
       });
 
       test('returns 400 when data rows exceed 1000', async () => {
         const header = 'Name,Description,Category,Location,Total Quantity,Available Quantity\n';
-        const rows = Array.from({ length: 1001 }, (_, i) => `Component ${i},Desc,Sensors,IoT Lab,10,10`).join('\n');
+        const rows = Array.from(
+          { length: 1001 },
+          (_, i) => `Component ${i},Desc,Sensors,IoT Lab,10,10`,
+        ).join('\n');
         const csv = header + rows;
         const response = await app.inject({
           method: 'POST',
@@ -381,8 +387,8 @@ describe('Component CRUD API', () => {
         });
         assert.equal(getResponse.statusCode, 200);
         const components = getResponse.json().components;
-        const imported = components.filter((c: { name: string }) =>
-          c.name === 'Resistor 10k' || c.name === 'Arduino Uno'
+        const imported = components.filter(
+          (c: { name: string }) => c.name === 'Resistor 10k' || c.name === 'Arduino Uno',
         );
         assert.equal(imported.length, 2);
 
@@ -390,7 +396,8 @@ describe('Component CRUD API', () => {
       });
 
       test('LA can import CSV', async () => {
-        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nCapacitor 100uF,Electrolytic capacitor,Actuators,VLSI Lab,20,20';
+        const csv =
+          'Name,Description,Category,Location,Total Quantity,Available Quantity\nCapacitor 100uF,Electrolytic capacitor,Actuators,VLSI Lab,20,20';
         const response = await app.inject({
           method: 'POST',
           url: '/components/import/csv',
@@ -439,8 +446,8 @@ describe('Component CRUD API', () => {
           headers: { authorization: `Bearer ${adminToken}` },
         });
         const components = getResponse.json().components;
-        const imported = components.filter((c: { name: string }) =>
-          c.name === 'Valid Component' || c.name === 'Invalid Component'
+        const imported = components.filter(
+          (c: { name: string }) => c.name === 'Valid Component' || c.name === 'Invalid Component',
         );
         assert.equal(imported.length, 0);
       });
@@ -492,7 +499,11 @@ describe('Component CRUD API', () => {
           const csvContent = exportResponse.payload;
 
           // Verify the new 10-column format
-          assert.ok(csvContent.includes('ID,Name,Description,Category,Location,Image URL,Created At,Updated At,Total Quantity,Available Quantity'));
+          assert.ok(
+            csvContent.includes(
+              'ID,Name,Description,Category,Location,Image URL,Created At,Updated At,Total Quantity,Available Quantity',
+            ),
+          );
           assert.ok(csvContent.includes('Round Trip Component'));
           assert.ok(csvContent.includes('Microprocessors'));
           assert.ok(csvContent.includes('Robo Lab'));
@@ -588,7 +599,8 @@ describe('Component CRUD API', () => {
       });
 
       test('defaults totalQuantity to 0 and availableQuantity to total when absent', async () => {
-        const csv = 'Name,Description,Category,Location\nMinimal Component,Minimal desc,Sensors,IoT Lab';
+        const csv =
+          'Name,Description,Category,Location\nMinimal Component,Minimal desc,Sensors,IoT Lab';
         const response = await app.inject({
           method: 'POST',
           url: '/components/import/csv',
@@ -608,7 +620,8 @@ describe('Component CRUD API', () => {
       });
 
       test('returns 400 when availableQuantity > totalQuantity', async () => {
-        const csv = 'Name,Description,Category,Location,Total Quantity,Available Quantity\nBad Component,Desc,Sensors,IoT Lab,10,15';
+        const csv =
+          'Name,Description,Category,Location,Total Quantity,Available Quantity\nBad Component,Desc,Sensors,IoT Lab,10,15';
         const response = await app.inject({
           method: 'POST',
           url: '/components/import/csv',
@@ -619,7 +632,7 @@ describe('Component CRUD API', () => {
           body: csv,
         });
 
-assert.equal(response.statusCode, 400);
+        assert.equal(response.statusCode, 400);
         const body = response.json();
         assert.equal(body.error, 'import failed');
         assert.ok(Array.isArray(body.details));
