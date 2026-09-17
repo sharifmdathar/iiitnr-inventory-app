@@ -37,5 +37,3 @@ actual suspend fun pickImage(): ImageResult? =
             null
         }
     }
-
-actual suspend fun takePhoto(): ImageResult? = null

@@ -304,12 +304,43 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
   });
 }
 
+const GITHUB_DOWNLOAD_BASE =
+  'https://github.com/sharifmdathar/iiitnr-inventory-app/releases/latest/download';
+
 function setupRoutes(app: FastifyInstance) {
   app.get('/', handleRootRoute);
   app.get('/health', (_, reply) => handleHealthCheck(reply));
   app.get('/ready', (_, reply) => handleReadyCheck(app, reply));
   app.get('/version', (_, reply) => {
     reply.send({ version: APP_VERSION });
+  });
+
+  app.get('/download', async (request, reply) => {
+    const userAgent = request.headers['user-agent'] || '';
+
+    if (userAgent.includes('Android')) {
+      return reply.redirect(`${GITHUB_DOWNLOAD_BASE}/android-release.apk`);
+    }
+    if (userAgent.includes('Windows')) {
+      return reply.redirect(`${GITHUB_DOWNLOAD_BASE}/IIITNR-Inventory-App.exe`);
+    }
+    if (userAgent.includes('Linux')) {
+      return reply.redirect(`${GITHUB_DOWNLOAD_BASE}/IIITNR-Inventory-App.AppImage`);
+    }
+
+    await reply.redirect('https://github.com/sharifmdathar/iiitnr-inventory-app/releases/latest');
+  });
+
+  app.get('/download/android', async (_, reply) => {
+    await reply.redirect(`${GITHUB_DOWNLOAD_BASE}/android-release.apk`);
+  });
+
+  app.get('/download/windows', async (_, reply) => {
+    await reply.redirect(`${GITHUB_DOWNLOAD_BASE}/IIITNR-Inventory-App.exe`);
+  });
+
+  app.get('/download/linux', async (_, reply) => {
+    await reply.redirect(`${GITHUB_DOWNLOAD_BASE}/IIITNR-Inventory-App.AppImage`);
   });
 }
 

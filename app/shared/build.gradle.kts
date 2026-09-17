@@ -176,11 +176,9 @@ kotlin {
                     implementation(libs.androidx.credentials)
                     implementation(libs.androidx.credentials.play.services.auth)
                     implementation(libs.googleid)
-                    implementation(libs.androidx.camera.core)
-                    implementation(libs.androidx.camera.camera2)
-                    implementation(libs.androidx.camera.lifecycle)
-                    implementation(libs.androidx.camera.view)
-                    implementation(libs.zxing.core)
+                    implementation(libs.camerak.core)
+                    implementation(libs.camerak.qr)
+                    implementation(libs.moko.permissions)
                 }
             }
 
@@ -191,6 +189,9 @@ kotlin {
                 target.dependencies {
                     implementation(libs.ktor.client.darwin)
                     implementation(libs.sqldelight.driver.native)
+                    implementation(libs.camerak.core)
+                    implementation(libs.camerak.qr)
+                    implementation(libs.moko.permissions)
                 }
             }
         }
@@ -201,6 +202,8 @@ kotlin {
                     implementation(libs.ktor.client.cio)
                     implementation(libs.sqldelight.driver.sqlite)
                     implementation(libs.kotlinx.coroutines.swing)
+                    implementation(libs.camerak.core)
+                    implementation(libs.camerak.qr)
                 }
             }
 

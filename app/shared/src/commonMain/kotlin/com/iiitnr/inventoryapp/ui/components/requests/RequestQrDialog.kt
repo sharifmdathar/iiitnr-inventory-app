@@ -81,18 +81,24 @@ fun RequestQrDialog(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Image(
-                        painter = qrPainter,
-                        contentDescription =
-                            when (request.status) {
-                                RequestStatus.ISSUED ->
-                                    "QR for LA to scan and record return to inventory"
-
-                                else -> "Request QR code for LA to scan"
-                            },
+                    Surface(
+                        color = androidx.compose.ui.graphics.Color.White,
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
-                        contentScale = ContentScale.FillWidth,
-                    )
+                    ) {
+                        Image(
+                            painter = qrPainter,
+                            contentDescription =
+                                when (request.status) {
+                                    RequestStatus.ISSUED ->
+                                        "QR for LA to scan and record return to inventory"
+
+                                    else -> "Request QR code for LA to scan"
+                                },
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            contentScale = ContentScale.FillWidth,
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
 

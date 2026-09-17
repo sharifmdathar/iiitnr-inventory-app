@@ -140,7 +140,6 @@ async function handleUploadComponentImage(
       app.log.error(err);
       return reply.code(400).send({ error: 'invalid or corrupted image data' });
     }
-
     const filename = `${randomUUID()}.webp`;
     const filePath = join(UPLOADS_DIR, filename);
 

@@ -67,7 +67,7 @@ fun App(
                                 duration = androidx.compose.material3.SnackbarDuration.Short,
                             )
                         if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                            uriHandler.openUri("https://github.com/sharifmdathar/iiitnr-inventory-app/releases")
+                            uriHandler.openUri("https://inventory.iiitnr.ac.in/download")
                         }
                     }
                 } catch (e: Throwable) {

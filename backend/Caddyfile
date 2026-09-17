@@ -5,6 +5,10 @@ inventory.iiitnr.ac.in {
         reverse_proxy backend:4000
     }
 
+    handle /download* {
+        reverse_proxy backend:4000
+    }
+
     handle {
         root * /srv/web
         try_files {path} /index.html

@@ -36,7 +36,8 @@ import com.iiitnr.inventoryapp.ui.components.components.CartFAB
 import com.iiitnr.inventoryapp.ui.components.components.ComponentDialog
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsContent
 import com.iiitnr.inventoryapp.ui.components.components.ComponentsTopBar
-import com.iiitnr.inventoryapp.ui.platform.takePhoto
+import com.iiitnr.inventoryapp.ui.platform.CameraCaptureContent
+import com.iiitnr.inventoryapp.ui.platform.pickImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -50,6 +51,7 @@ fun ComponentsScreen(
     viewModel: ComponentsViewModel = koinViewModel(),
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    var showCameraCapture by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -162,9 +164,7 @@ fun ComponentsScreen(
         },
         onPickImage = {
             scope.launch {
-                val image =
-                    com.iiitnr.inventoryapp.ui.platform
-                        .pickImage()
+                val image = pickImage()
                 if (image != null) {
                     val extension = image.filename.substringAfterLast('.', "")
                     viewModel.uploadImage(
@@ -175,17 +175,7 @@ fun ComponentsScreen(
             }
         },
         onTakePhoto = {
-            scope.launch {
-                val image =
-                    takePhoto()
-                if (image != null) {
-                    val extension = image.filename.substringAfterLast('.', "")
-                    viewModel.uploadImage(
-                        image.bytes,
-                        resolveUploadFilename(extension, viewModel.editingComponent?.id),
-                    )
-                }
-            }
+            showCameraCapture = true
         },
         onRemoveImage = {
             viewModel.removeImage()
@@ -219,6 +209,28 @@ fun ComponentsScreen(
         },
         onSubmitCart = { viewModel.submitRequest() },
     )
+
+    if (showCameraCapture) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showCameraCapture = false },
+            properties =
+                androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false,
+                ),
+        ) {
+            CameraCaptureContent(
+                onResult = { image ->
+                    showCameraCapture = false
+                    val extension = image.filename.substringAfterLast('.', "")
+                    viewModel.uploadImage(
+                        image.bytes,
+                        resolveUploadFilename(extension, viewModel.editingComponent?.id),
+                    )
+                },
+                onCancel = { showCameraCapture = false },
+            )
+        }
+    }
 }
 
 private fun exportComponentsToCsv(

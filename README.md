@@ -17,6 +17,19 @@ A state-of-the-art, secure, and robust **Inventory & Item Issue-Return Managemen
 
 ---
 
+## 📥 Download App
+
+Get the latest version of the IIIT-NR Inventory App for your device:
+
+- **🚀 Smart Link:** [Download for your OS](https://inventory.iiitnr.ac.in/download) (Auto-detects Platform)
+- **Android:** [Download APK](https://inventory.iiitnr.ac.in/download/android)
+- **Windows:** [Download EXE](https://inventory.iiitnr.ac.in/download/windows)
+- **Linux:** [Download AppImage](https://inventory.iiitnr.ac.in/download/linux)
+
+For all other versions and full release history, visit the [GitHub Releases](https://inventory.iiitnr.ac.in/download).
+
+---
+
 ## 📺 Demo Video
 
 [![IIIT-NR Inventory App Demo](https://img.youtube.com/vi/MgsA0b5uwyU/maxresdefault.jpg)](https://youtu.be/MgsA0b5uwyU)

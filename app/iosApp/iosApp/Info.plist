@@ -22,6 +22,8 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow access to the photo library so component images can be selected and uploaded.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Allow access to the camera so QR codes can be scanned and component photos can be taken.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

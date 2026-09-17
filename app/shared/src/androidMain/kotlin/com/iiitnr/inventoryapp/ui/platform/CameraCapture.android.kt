@@ -4,44 +4,53 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kashif.cameraK.compose.CameraPreviewView
 import com.kashif.cameraK.compose.rememberCameraKState
 import com.kashif.cameraK.enums.CameraLens
+import com.kashif.cameraK.result.ImageCaptureResult
 import com.kashif.cameraK.state.CameraConfiguration
 import com.kashif.cameraK.state.CameraKState
-import com.kashif.qrscannerplugin.rememberQRScannerPlugin
-import kotlinx.coroutines.flow.collectLatest
-
-@Suppress("SameReturnValue")
-actual fun isQrScanAvailable(): Boolean = true
+import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
-actual fun QrScannerContent(
-    onResult: (String) -> Unit,
+actual fun CameraCaptureContent(
+    onResult: (ImageResult) -> Unit,
     onCancel: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED,
@@ -65,7 +74,7 @@ actual fun QrScannerContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "Camera permission is needed to scan QR codes.",
+                    text = "Camera permission is needed to take photos.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -83,30 +92,20 @@ actual fun QrScannerContent(
         return
     }
 
-    val qrScannerPlugin = rememberQRScannerPlugin()
     val cameraState by rememberCameraKState(
         config =
             CameraConfiguration(
                 cameraLens = CameraLens.BACK,
             ),
-        setupPlugins = { stateHolder ->
-            qrScannerPlugin.attachToStateHolder(stateHolder)
-        },
     )
 
-    LaunchedEffect(qrScannerPlugin) {
-        qrScannerPlugin.getQrCodeFlow().collectLatest { qrCodeString ->
-            if (qrCodeString.isNotBlank()) {
-                onResult(qrCodeString)
-            }
-        }
-    }
+    var isCapturing by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         when (val state = cameraState) {
             is CameraKState.Initializing -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Initializing Camera...")
+                    CircularProgressIndicator(color = Color.White)
                 }
             }
             is CameraKState.Ready -> {
@@ -114,19 +113,66 @@ actual fun QrScannerContent(
                     controller = state.controller,
                     modifier = Modifier.fillMaxSize(),
                 )
+
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    IconButton(
+                        onClick = {
+                            if (!isCapturing) {
+                                isCapturing = true
+                                scope.launch {
+                                    when (val result = state.controller.takePictureToFile()) {
+                                        is ImageCaptureResult.SuccessWithFile -> {
+                                            val file = File(result.filePath)
+                                            if (file.exists()) {
+                                                onResult(ImageResult(file.readBytes(), file.name))
+                                            } else {
+                                                isCapturing = false
+                                            }
+                                        }
+                                        else -> {
+                                            isCapturing = false
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        modifier =
+                            Modifier
+                                .size(72.dp)
+                                .background(Color.White, CircleShape),
+                    ) {
+                        if (isCapturing) {
+                            CircularProgressIndicator(modifier = Modifier.size(40.dp))
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Camera,
+                                contentDescription = "Capture",
+                                tint = Color.Black,
+                                modifier = Modifier.size(40.dp),
+                            )
+                        }
+                    }
+                }
             }
             is CameraKState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Error: ${state.message}")
+                    Text("Error: ${state.message}", color = Color.White)
                 }
             }
         }
 
         TextButton(
             onClick = onCancel,
-            modifier = Modifier.padding(16.dp).align(Alignment.TopEnd),
+            modifier = Modifier.padding(16.dp).align(Alignment.TopStart),
         ) {
-            Text("Cancel", color = MaterialTheme.colorScheme.onPrimary)
+            Text("Cancel", color = Color.White)
         }
     }
 }
