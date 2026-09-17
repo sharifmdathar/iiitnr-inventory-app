@@ -235,6 +235,7 @@ jobs:
             artifacts/desktop-release-exe/IIITNR-Inventory-App.exe
             artifacts/desktop-release-msi/IIITNR-Inventory-App.msi
             artifacts/linux-appimage-release/IIITNR-Inventory-App.AppImage
+          preserve_order: true
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
