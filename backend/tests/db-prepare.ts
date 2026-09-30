@@ -34,7 +34,7 @@ console.log('Migrations complete');
 const truncatePool = new Pool({ connectionString: url });
 try {
   await truncatePool.query(
-    'TRUNCATE TABLE "User", "Request", "Component", "RequestItem", "AuditLog" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "User", "Request", "Component", "RequestItem", "AuditLog", "Notification" RESTART IDENTITY CASCADE',
   );
 } finally {
   await truncatePool.end();

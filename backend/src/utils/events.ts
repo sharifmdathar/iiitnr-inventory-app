@@ -4,8 +4,25 @@ export const events = new EventEmitter();
 
 export enum EventType {
   REQUESTS_UPDATED = 'requests_updated',
+  NOTIFICATION_CREATED = 'notification_created',
 }
 
 export function notifyRequestsUpdated() {
   events.emit(EventType.REQUESTS_UPDATED);
+}
+
+export interface NotificationCreatedEvent {
+  recipientId: string;
+  notification: {
+    id: string;
+    type: string;
+    title: string;
+    body: string | null;
+    requestId: string | null;
+    createdAt: string;
+  };
+}
+
+export function notifyNotificationCreated(event: NotificationCreatedEvent) {
+  events.emit(EventType.NOTIFICATION_CREATED, event);
 }

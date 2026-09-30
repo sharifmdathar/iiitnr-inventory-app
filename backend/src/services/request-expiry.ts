@@ -20,9 +20,14 @@ interface ExpireOverdueRequestsOptions {
   now?: Date;
 }
 
+export interface ExpiredRequest {
+  id: string;
+  userId: string;
+}
+
 export async function expireOverdueRequests(
   options: ExpireOverdueRequestsOptions = {},
-): Promise<number> {
+): Promise<ExpiredRequest[]> {
   const nowIso = (options.now ?? new Date()).toISOString();
   const conditions = [
     inArray(request.status, expirableStatuses),
@@ -38,17 +43,24 @@ export async function expireOverdueRequests(
     .update(request)
     .set({ status: RequestStatus.EXPIRED, updatedAt: nowIso })
     .where(and(...conditions))
-    .returning({ id: request.id });
+    .returning({ id: request.id, userId: request.userId });
 
-  return expiredRows.length;
+  return expiredRows;
 }
 
 export function startRequestExpirySweep(
   onError: (err: unknown) => void,
+  onExpired?: (expired: ExpiredRequest[]) => void,
   intervalMs = REQUEST_EXPIRY_SWEEP_INTERVAL_MS,
 ) {
   const runSweep = () => {
-    expireOverdueRequests().catch(onError);
+    expireOverdueRequests()
+      .then((expired) => {
+        if (expired.length > 0) {
+          onExpired?.(expired);
+        }
+      })
+      .catch(onError);
   };
 
   runSweep();

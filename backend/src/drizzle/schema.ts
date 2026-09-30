@@ -4,6 +4,7 @@ import {
   timestamp,
   text,
   integer,
+  boolean,
   uniqueIndex,
   index,
   foreignKey,
@@ -165,6 +166,48 @@ export const requestItem = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('restrict'),
+  ],
+);
+
+export const notification = pgTable(
+  'Notification',
+  {
+    id: text().primaryKey().notNull(),
+    recipientId: text('recipientId').notNull(),
+    type: text().notNull(),
+    title: text().notNull(),
+    body: text(),
+    requestId: text(),
+    read: boolean().default(false).notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    index('Notification_recipientId_createdAt_idx').using(
+      'btree',
+      table.recipientId.asc().nullsLast(),
+      table.createdAt.asc().nullsLast(),
+    ),
+    index('Notification_recipientId_read_idx').using(
+      'btree',
+      table.recipientId.asc().nullsLast(),
+      table.read.asc().nullsLast(),
+    ),
+    foreignKey({
+      columns: [table.recipientId],
+      foreignColumns: [user.id],
+      name: 'Notification_recipientId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.requestId],
+      foreignColumns: [request.id],
+      name: 'Notification_requestId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
   ],
 );
 

@@ -48,7 +48,9 @@ fun ComponentsScreen(
     onNavigateToProfile: () -> Unit,
     onExportCsv: ((String) -> Boolean)? = null,
     onImportCsv: (((String?) -> Unit) -> Unit)? = null,
+    onNavigateToNotifications: () -> Unit = {},
     viewModel: ComponentsViewModel = koinViewModel(),
+    notificationsViewModel: NotificationsViewModel = koinViewModel(),
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var showCameraCapture by remember { mutableStateOf(false) }
@@ -108,6 +110,8 @@ fun ComponentsScreen(
                 showImportCsv = canImportCsv && onImportCsv != null,
                 onImportCsv = { importComponentsCsv() },
                 isImportingCsv = viewModel.isImportingCsv,
+                unreadNotificationCount = notificationsViewModel.unreadCount,
+                onNavigateToNotifications = onNavigateToNotifications,
             )
         },
         floatingActionButton = {

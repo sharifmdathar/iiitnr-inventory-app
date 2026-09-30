@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
+import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
 
 @Composable
 fun ComponentsTopBar(
@@ -33,6 +34,8 @@ fun ComponentsTopBar(
     showImportCsv: Boolean = false,
     onImportCsv: (() -> Unit)? = null,
     isImportingCsv: Boolean = false,
+    unreadNotificationCount: Int = 0,
+    onNavigateToNotifications: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     AppTopBar(
@@ -85,6 +88,12 @@ fun ComponentsTopBar(
                         }
                     }
                 }
+            }
+            if (onNavigateToNotifications != null) {
+                NotificationBell(
+                    unreadCount = unreadNotificationCount,
+                    onClick = onNavigateToNotifications,
+                )
             }
             IconButton(
                 onClick = onNavigateToHome,

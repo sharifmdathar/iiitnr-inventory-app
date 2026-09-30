@@ -28,6 +28,7 @@ import com.iiitnr.inventoryapp.data.storage.TokenManager
 import com.iiitnr.inventoryapp.ui.screens.AuditLogScreen
 import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
 import com.iiitnr.inventoryapp.ui.screens.LoginScreen
+import com.iiitnr.inventoryapp.ui.screens.NotificationsScreen
 import com.iiitnr.inventoryapp.ui.screens.ProfileScreen
 import com.iiitnr.inventoryapp.ui.screens.RegisterScreen
 import com.iiitnr.inventoryapp.ui.screens.RequestsScreen
@@ -135,6 +136,9 @@ fun App(
                                 onNavigateToProfile = {
                                     navController.navigate("profile")
                                 },
+                                onNavigateToNotifications = {
+                                    navController.navigate("notifications")
+                                },
                                 onExportCsv = onExportComponentsCsv,
                                 onImportCsv = onImportComponentsCsv,
                             )
@@ -152,7 +156,17 @@ fun App(
                                 navController.navigate("audit_log")
                             }, onNavigateToUserManagement = {
                                 navController.navigate("user_management")
+                            }, onNavigateToNotifications = {
+                                navController.navigate("notifications")
                             })
+                        }
+                        composable("notifications") {
+                            NotificationsScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                onOpenRequest = {
+                                    navController.navigate("requests")
+                                },
+                            )
                         }
                         composable("requests") {
                             RequestsScreen(onNavigateBack = {

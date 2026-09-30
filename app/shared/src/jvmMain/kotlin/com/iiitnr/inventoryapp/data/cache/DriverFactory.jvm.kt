@@ -20,28 +20,29 @@ actual class DriverFactory {
         val userHome = System.getProperty("user.home")
         val appName = "IIITNRInventoryApp"
 
-        val dir = when {
-            osName.contains("win") -> {
-                val appData = System.getenv("APPDATA")
-                if (appData != null) {
-                    java.io.File(appData, appName)
-                } else {
-                    java.io.File(userHome, "AppData/Roaming/$appName")
+        val dir =
+            when {
+                osName.contains("win") -> {
+                    val appData = System.getenv("APPDATA")
+                    if (appData != null) {
+                        java.io.File(appData, appName)
+                    } else {
+                        java.io.File(userHome, "AppData/Roaming/$appName")
+                    }
+                }
+                osName.contains("mac") -> {
+                    java.io.File(userHome, "Library/Application Support/$appName")
+                }
+                else -> {
+                    // Linux and others
+                    val xdgDataHome = System.getenv("XDG_DATA_HOME")
+                    if (xdgDataHome != null) {
+                        java.io.File(xdgDataHome, appName)
+                    } else {
+                        java.io.File(userHome, ".local/share/$appName")
+                    }
                 }
             }
-            osName.contains("mac") -> {
-                java.io.File(userHome, "Library/Application Support/$appName")
-            }
-            else -> {
-                // Linux and others
-                val xdgDataHome = System.getenv("XDG_DATA_HOME")
-                if (xdgDataHome != null) {
-                    java.io.File(xdgDataHome, appName)
-                } else {
-                    java.io.File(userHome, ".local/share/$appName")
-                }
-            }
-        }
 
         if (!dir.exists()) {
             dir.mkdirs()

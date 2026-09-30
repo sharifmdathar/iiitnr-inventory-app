@@ -13,6 +13,7 @@ import { FastifySSEPlugin } from 'fastify-sse-v2';
 import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
 import { startRequestExpirySweep } from './services/request-expiry.js';
+import { notifyRequestsExpired } from './services/NotificationService.js';
 import { notifyRequestsUpdated } from './utils/events.js';
 import { DomainError } from './utils/errors.js';
 
@@ -288,10 +289,17 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
   let stopRequestExpirySweep: (() => void) | undefined;
   if (!env.isTest) {
     app.addHook('onReady', (done) => {
-      stopRequestExpirySweep = startRequestExpirySweep((err) => {
-        app.log.error({ err }, 'Request expiry sweep failed');
-        notifyRequestsUpdated();
-      });
+      stopRequestExpirySweep = startRequestExpirySweep(
+        (err) => {
+          app.log.error({ err }, 'Request expiry sweep failed');
+          notifyRequestsUpdated();
+        },
+        (expired) => {
+          notifyRequestsExpired(expired)
+            .catch((err) => app.log.error({ err }, 'Failed to notify expired requests'))
+            .finally(() => notifyRequestsUpdated());
+        },
+      );
       done();
     });
   }

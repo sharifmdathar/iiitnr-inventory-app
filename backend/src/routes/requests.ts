@@ -5,8 +5,10 @@ import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
 import { logAudit, getUserIdFromRequest } from '../utils/audit.js';
 import { sanitizeString } from '../utils/validation.js';
 import { expireOverdueRequests } from '../services/request-expiry.js';
+import { notifyRequestTransition } from '../services/NotificationService.js';
 import { events, EventType, notifyRequestsUpdated } from '../utils/events.js';
 import type { EventMessage } from 'fastify-sse-v2';
+import type { NotificationCreatedEvent } from '../utils/events.js';
 import { pushable } from 'it-pushable';
 import * as RequestService from '../services/RequestService.js';
 import type {
@@ -171,6 +173,24 @@ function isValidationError(value: unknown): value is ValidationError {
   return typeof value === 'object' && value !== null && 'code' in value && 'message' in value;
 }
 
+function toNotificationShapedRequest(
+  request: NonNullable<Awaited<ReturnType<typeof RequestService.fetchAndShapeRequest>>>,
+) {
+  return { ...request, items: request.items ?? [] };
+}
+
+async function notifyTransitionSafely(
+  app: { log: { error: (err: unknown) => void } },
+  updatedRequest: NonNullable<Awaited<ReturnType<typeof RequestService.fetchAndShapeRequest>>>,
+  actorUserId?: string,
+) {
+  try {
+    await notifyRequestTransition(toNotificationShapedRequest(updatedRequest), actorUserId);
+  } catch (err) {
+    app.log.error(err);
+  }
+}
+
 function canRenewApproveOrRejectRequest(
   currentUser: CurrentUser,
   existingRequest: { targetFacultyId: string | null },
@@ -299,6 +319,8 @@ async function handleCreateRequest(
     req,
   );
 
+  await notifyTransitionSafely(app, createdRequest, userId);
+
   reply.code(201).send({ request: createdRequest });
   notifyRequestsUpdated();
 }
@@ -333,7 +355,13 @@ async function handleGetRequests(
   }
 
   if (status === RequestStatus.EXPIRED) {
-    await expireOverdueRequests();
+    const expired = await expireOverdueRequests();
+    for (const { id } of expired) {
+      const shaped = await RequestService.fetchAndShapeRequest(id);
+      if (shaped) {
+        await notifyTransitionSafely(app, shaped);
+      }
+    }
   }
 
   const isAdmin = isAdminOrLA(currentUser.role);
@@ -387,6 +415,14 @@ async function handlePendingStatusUpdate(
     req,
   );
 
+  if (updatedRequest) {
+    await notifyTransitionSafely(
+      { log: { error: (err: unknown) => req.log.error(err) } },
+      updatedRequest,
+      currentUser.sub,
+    );
+  }
+
   reply.send({ request: updatedRequest });
 }
 
@@ -413,7 +449,6 @@ async function handleApprovedStatusUpdate(
 
   await RequestService.issueRequestTransaction(existingRequest, issueItems);
   const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
-
   await logAudit(
     {
       userId: getUserIdFromRequest(req),
@@ -428,6 +463,14 @@ async function handleApprovedStatusUpdate(
     },
     req,
   );
+
+  if (updatedRequest) {
+    await notifyTransitionSafely(
+      { log: { error: (err: unknown) => req.log.error(err) } },
+      updatedRequest,
+      currentUser.sub,
+    );
+  }
 
   reply.send({ request: updatedRequest });
 }
@@ -482,6 +525,16 @@ async function handleRequestedRenewalStatusUpdate(
     },
     req,
   );
+
+  if (updatedRequest) {
+    const renewalDecision = isApproval ? RequestStatus.RENEWED : revertStatus;
+    await notifyTransitionSafely(
+      { log: { error: (err: unknown) => req.log.error(err) } },
+      { ...updatedRequest, status: renewalDecision },
+      currentUser.sub,
+    );
+  }
+
   reply.send({ request: updatedRequest });
 }
 
@@ -535,6 +588,14 @@ async function handleIssuedStatusUpdate(
     req,
   );
 
+  if (updatedRequest) {
+    await notifyTransitionSafely(
+      { log: { error: (err: unknown) => req.log.error(err) } },
+      updatedRequest,
+      currentUser.sub,
+    );
+  }
+
   reply.send({ request: updatedRequest });
 }
 
@@ -572,6 +633,14 @@ async function handleExpiredStatusUpdate(
     },
     req,
   );
+
+  if (updatedRequest) {
+    await notifyTransitionSafely(
+      { log: { error: (err: unknown) => req.log.error(err) } },
+      { ...updatedRequest, status: RequestStatus.RETURNED },
+      currentUser.sub,
+    );
+  }
 
   reply.send({ request: updatedRequest });
 }
@@ -770,6 +839,30 @@ const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {
 
     req.raw.on('close', () => {
       events.off(EventType.REQUESTS_UPDATED, onUpdate);
+      p.end();
+    });
+
+    reply.sse(p);
+  });
+
+  app.get('/notifications/events', { preHandler: requireAuth }, (req, reply) => {
+    const currentUserId = getCurrentUser(req)?.sub;
+    if (!currentUserId) {
+      reply.code(401).send({ error: 'unauthorized' });
+      return;
+    }
+
+    const p = pushable<EventMessage>({ objectMode: true });
+    const onNotification = (event: NotificationCreatedEvent) => {
+      if (event.recipientId === currentUserId) {
+        p.push({ data: JSON.stringify(event.notification) });
+      }
+    };
+
+    events.on(EventType.NOTIFICATION_CREATED, onNotification);
+
+    req.raw.on('close', () => {
+      events.off(EventType.NOTIFICATION_CREATED, onNotification);
       p.end();
     });
 

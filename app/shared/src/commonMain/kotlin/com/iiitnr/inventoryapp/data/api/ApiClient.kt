@@ -80,6 +80,7 @@ object ApiClient {
     val authApiService: AuthApiService = AuthApiService(client, BASE_URL)
     val componentApiService: ComponentApiService = ComponentApiService(client, BASE_URL)
     val requestApiService: RequestApiService = RequestApiService(client, BASE_URL)
+    val notificationApiService: NotificationApiService = NotificationApiService(client, BASE_URL)
     val auditLogApiService: AuditLogApiService = AuditLogApiService(client, BASE_URL)
     val userApiService: UserApiService = UserApiService(client, BASE_URL)
     val versionApiService: VersionApiService = VersionApiService(client, BASE_URL)

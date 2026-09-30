@@ -71,6 +71,13 @@
       "when": 1786789652941,
       "tag": "0009_lively_lifeguard",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790021919137,
+      "tag": "0010_puzzling_hitman",
+      "breakpoints": true
     }
   ]
 }

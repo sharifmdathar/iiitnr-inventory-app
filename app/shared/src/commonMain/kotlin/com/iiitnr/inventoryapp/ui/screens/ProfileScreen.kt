@@ -43,6 +43,7 @@ fun ProfileScreen(
     onNavigateToRequests: () -> Unit = {},
     onNavigateToAuditLog: () -> Unit = {},
     onNavigateToUserManagement: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
     val userData = viewModel.user
@@ -115,6 +116,14 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Requests")
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onNavigateToNotifications,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Notifications")
                     }
 
                     if (userData.role == UserRole.ADMIN) {

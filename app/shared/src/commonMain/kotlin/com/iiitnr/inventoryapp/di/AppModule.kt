@@ -4,6 +4,7 @@ import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.ui.screens.AuditLogViewModel
 import com.iiitnr.inventoryapp.ui.screens.AuthViewModel
 import com.iiitnr.inventoryapp.ui.screens.ComponentsViewModel
+import com.iiitnr.inventoryapp.ui.screens.NotificationsViewModel
 import com.iiitnr.inventoryapp.ui.screens.ProfileViewModel
 import com.iiitnr.inventoryapp.ui.screens.RequestsViewModel
 import com.iiitnr.inventoryapp.ui.screens.UserManagementViewModel
@@ -17,6 +18,7 @@ val apiModule =
         single { ApiClient.authApiService }
         single { ApiClient.componentApiService }
         single { ApiClient.requestApiService }
+        single { ApiClient.notificationApiService }
         single { ApiClient.auditLogApiService }
         single { ApiClient.userApiService }
         single { ApiClient.versionApiService }
@@ -34,6 +36,7 @@ val viewModelModule =
         viewModel { AuthViewModel(get()) }
         viewModel { ProfileViewModel(get()) }
         viewModel { AuditLogViewModel(get()) }
+        viewModel { NotificationsViewModel(get(), get()) }
         viewModel { UserManagementViewModel(get()) }
     }
 
