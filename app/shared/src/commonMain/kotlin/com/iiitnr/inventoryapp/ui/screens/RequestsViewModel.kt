@@ -217,11 +217,63 @@ class RequestsViewModel(
         }
     }
 
+    fun generateRequestOtp(
+        requestId: String,
+        onResult: (String?) -> Unit,
+    ) {
+        viewModelScope.launch {
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val res = ApiClient.requestApiService.generateRequestOtp("Bearer $token", requestId)
+                    onResult(res.otp)
+                } else {
+                    onResult(null)
+                }
+            } catch (_: Exception) {
+                onResult(null)
+            }
+        }
+    }
+
+    fun lookupRequest(
+        query: String,
+        onResult: (Request?) -> Unit,
+    ) {
+        val trimmed = query.trim().removePrefix(REQUEST_QR_PREFIX).trim()
+        if (trimmed.isBlank()) {
+            onResult(null)
+            return
+        }
+
+        val localMatch = requests.firstOrNull { it.id == trimmed || it.otp == trimmed }
+        if (localMatch != null) {
+            onResult(localMatch)
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val token = tokenManager.token.first()
+                if (token != null) {
+                    val response = ApiClient.requestApiService.getRequestByIdOrOtp("Bearer $token", trimmed)
+                    onResult(response.request)
+                } else {
+                    _snackbarMessages.emit("Authentication error")
+                    onResult(null)
+                }
+            } catch (e: Exception) {
+                _snackbarMessages.emit("Request not found for: $trimmed")
+                onResult(null)
+            }
+        }
+    }
+
     fun handleQrResult(rawValue: String): Request? {
         val requestId = rawValue.trim().removePrefix(REQUEST_QR_PREFIX).trim()
         if (requestId.isBlank()) return null
 
-        val request = requests.firstOrNull { it.id == requestId }
+        val request = requests.firstOrNull { it.id == requestId || it.otp == requestId }
         if (request == null) {
             viewModelScope.launch {
                 _snackbarMessages.emit("Request not found. Refresh and try again.")

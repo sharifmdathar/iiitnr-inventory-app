@@ -16,10 +16,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestStatus
@@ -29,12 +36,23 @@ const val REQUEST_QR_PREFIX = "inventoryapp://fulfill/"
 
 @Composable
 fun RequestQrDialog(
+    modifier: Modifier = Modifier,
     request: Request,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
+    onFetchOtp: (suspend () -> String?)? = null,
 ) {
     val qrPayload = REQUEST_QR_PREFIX + request.id
     val qrPainter = rememberQrCodePainter(data = qrPayload)
+    var displayOtp by remember { mutableStateOf(request.otp) }
+
+    LaunchedEffect(request.id) {
+        if (onFetchOtp != null) {
+            val fetched = onFetchOtp()
+            if (!fetched.isNullOrBlank()) {
+                displayOtp = fetched
+            }
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -72,6 +90,7 @@ fun RequestQrDialog(
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         text = request.projectTitle,
@@ -98,6 +117,34 @@ fun RequestQrDialog(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
                             contentScale = ContentScale.FillWidth,
                         )
+                    }
+
+                    if (!displayOtp.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Text(
+                                    text = "OTP for LA",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                                Text(
+                                    text = displayOtp!!,
+                                    style =
+                                        MaterialTheme.typography.headlineMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 4.sp,
+                                        ),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))

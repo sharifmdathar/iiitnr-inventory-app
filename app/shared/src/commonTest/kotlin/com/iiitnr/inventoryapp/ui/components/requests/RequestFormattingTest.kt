@@ -1,9 +1,12 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
-import com.iiitnr.inventoryapp.data.models.RequestItem
 import com.iiitnr.inventoryapp.data.models.RequestStatus
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.models.UserRole
+import com.iiitnr.inventoryapp.utils.buildUserDetailsLabel
+import com.iiitnr.inventoryapp.utils.compactUserLabel
+import com.iiitnr.inventoryapp.utils.requestStatusDisplayLabel
+import com.iiitnr.inventoryapp.utils.toDisplayLabel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -77,31 +80,5 @@ class RequestFormattingTest {
             )
 
         assertEquals("Requested from: Name: Dr. Shailesh Khapre", buildUserDetailsLabel("Requested from", user))
-    }
-
-    @Test
-    fun requestItemQuantitySummaryShowsOnlyRequestedQuantityWhenNoProgress() {
-        val item =
-            RequestItem(
-                id = "item-1",
-                quantity = 5,
-                fulfilledQuantity = 0,
-                returnedQuantity = 0,
-            )
-
-        assertEquals("Requested 5", requestItemQuantitySummary(item))
-    }
-
-    @Test
-    fun requestItemQuantitySummaryLabelsEveryLifecycleQuantityWhenProgressed() {
-        val item =
-            RequestItem(
-                id = "item-1",
-                quantity = 5,
-                fulfilledQuantity = 3,
-                returnedQuantity = 1,
-            )
-
-        assertEquals("Requested 5 • Issued 3 • Returned 1", requestItemQuantitySummary(item))
     }
 }

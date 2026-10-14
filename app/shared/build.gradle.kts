@@ -1,4 +1,5 @@
 import groovy.json.JsonSlurper
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -94,11 +95,13 @@ kotlin {
             .current()
             .isMacOsX
     if (isMac) {
+        val xcf = XCFramework("shared")
         val iosTargets = listOf(iosX64(), iosArm64(), iosSimulatorArm64())
         iosTargets.forEach {
             it.binaries.framework {
                 baseName = "shared"
                 isStatic = true
+                xcf.add(this)
             }
         }
     }
@@ -202,8 +205,6 @@ kotlin {
                     implementation(libs.ktor.client.cio)
                     implementation(libs.sqldelight.driver.sqlite)
                     implementation(libs.kotlinx.coroutines.swing)
-                    implementation(libs.camerak.core)
-                    implementation(libs.camerak.qr)
                 }
             }
 

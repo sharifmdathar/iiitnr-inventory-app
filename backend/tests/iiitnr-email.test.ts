@@ -6,7 +6,7 @@ import {
 import { UserRole } from '../src/utils/enums.js';
 
 describe('deriveIiitnrProfileFromEmail', () => {
-  test('parses student email with batch and branch', () => {
+  test('parses B.Tech student email with 4-year batch and branch', () => {
     const profile = deriveIiitnrProfileFromEmail('cseStudent24100@iiitnr.edu.in');
     expect(profile).toEqual({
       role: UserRole.STUDENT,
@@ -15,9 +15,27 @@ describe('deriveIiitnrProfileFromEmail', () => {
     });
   });
 
-  test('parses ECE and DSAI branch codes', () => {
+  test('parses ECE and DSAI B.Tech branch codes', () => {
     expect(deriveIiitnrProfileFromEmail('eceStudent24101@iiitnr.edu.in')?.branch).toBe('ECE');
     expect(deriveIiitnrProfileFromEmail('dsaiStudent24102@iiitnr.edu.in')?.branch).toBe('DSAI');
+  });
+
+  test('parses M.Tech course codes with 2-year batch and M.Tech branch label', () => {
+    expect(deriveIiitnrProfileFromEmail('mtechCse24300@iiitnr.edu.in')).toEqual({
+      role: UserRole.STUDENT,
+      batch: '2024-2026',
+      branch: 'M.Tech CSE',
+    });
+    expect(deriveIiitnrProfileFromEmail('mtechEce24301@iiitnr.edu.in')).toEqual({
+      role: UserRole.STUDENT,
+      batch: '2024-2026',
+      branch: 'M.Tech ECE',
+    });
+    expect(deriveIiitnrProfileFromEmail('mtechDsai24302@iiitnr.edu.in')).toEqual({
+      role: UserRole.STUDENT,
+      batch: '2024-2026',
+      branch: 'M.Tech DSAI',
+    });
   });
 
   test('parses non-student email as LA', () => {

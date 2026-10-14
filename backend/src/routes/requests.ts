@@ -1,4 +1,4 @@
-import type { FastifyPluginCallback, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyPluginCallback, FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireAuth, isAdminOrLA } from '../middleware/auth.js';
 import { RequestStatus, requestStatusValues, UserRole, AuditActionType } from '../utils/enums.js';
 import type { RequestStatusValue, UserRoleValue } from '../utils/enums.js';
@@ -808,6 +808,35 @@ async function handleDeleteRequest(
   reply.code(204).send();
 }
 
+async function handleGetRequestById(
+  _app: FastifyInstance,
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  const queryOrId = req.params.id;
+  const shaped = await RequestService.fetchAndShapeRequest(queryOrId);
+  if (!shaped) {
+    reply.code(404).send({ error: 'Request not found' });
+    return;
+  }
+  reply.send({ request: shaped });
+}
+
+async function handleGenerateOtp(
+  _app: FastifyInstance,
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  const requestId = req.params.id;
+  const existing = await RequestService.fetchFullRequest(requestId);
+  if (!existing) {
+    reply.code(404).send({ error: 'Request not found' });
+    return;
+  }
+  const result = RequestService.generateRequestOtp(requestId);
+  reply.send(result);
+}
+
 const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {
   app.post('/requests', { preHandler: requireAuth, schema: createRequestSchema }, (req, reply) =>
     handleCreateRequest(app, req, reply),
@@ -817,6 +846,14 @@ const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {
 
   app.get('/requests', { preHandler: requireAuth }, (req, reply) =>
     handleGetRequests(app, req, reply),
+  );
+
+  app.get('/requests/:id', { preHandler: requireAuth }, (req, reply) =>
+    handleGetRequestById(app, req as FastifyRequest<{ Params: { id: string } }>, reply),
+  );
+
+  app.post('/requests/:id/otp', { preHandler: requireAuth }, (req, reply) =>
+    handleGenerateOtp(app, req as FastifyRequest<{ Params: { id: string } }>, reply),
   );
 
   app.put(

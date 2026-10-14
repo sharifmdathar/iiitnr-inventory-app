@@ -64,7 +64,6 @@ import com.iiitnr.inventoryapp.ui.platform.QrScannerContent
 import com.iiitnr.inventoryapp.ui.platform.isQrScanAvailable
 import com.iiitnr.inventoryapp.ui.theme.AppTheme
 import com.iiitnr.inventoryapp.utils.requestStatusDisplayLabel
-import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -138,24 +137,17 @@ fun RequestsScreen(
     }
 
     fun openScannedRequest(rawValue: String) {
-        val request = viewModel.handleQrResult(rawValue) ?: return
+        val input = rawValue.trim()
+        if (input.isBlank()) return
 
-        requestIdInput = request.id
         showRequestIdDialog = false
+        showQrScanner = false
 
-        routeScannedRequestAction(
-            request = request,
-            onStartPartialIssue = ::updateRequestStatusPartialIssue,
-            onShowActionSelection = { pendingActionSelectionRequest = it },
-            onStartPartialReturn = ::updateRequestStatusPartialReturn,
-            onNoActionAvailable = { noActionRequest ->
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        "No action available for status: ${requestStatusDisplayLabel(noActionRequest.status)}",
-                    )
-                }
-            },
-        )
+        viewModel.lookupRequest(input) { request ->
+            if (request != null) {
+                selectedRequestForDetail = request
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -236,6 +228,15 @@ fun RequestsScreen(
             },
             onApproveRenew = { id -> viewModel.updateRequestStatus(id, RequestStatus.RENEWED) },
             onShowQr = { request -> requestToShowQr = request },
+            onFetchOtp = { requestId ->
+                kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+                    viewModel.generateRequestOtp(requestId) { otp ->
+                        if (continuation.isActive) {
+                            continuation.resume(otp) { _, _, _ -> }
+                        }
+                    }
+                }
+            },
         )
 
         pendingActionSelectionRequest?.let { request ->
@@ -350,6 +351,7 @@ private fun RequestsDialogs(
     onRequestRenew: ((String) -> Unit)?,
     onApproveRenew: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
+    onFetchOtp: (suspend (String) -> String?)? = null,
 ) {
     if (selectedRequestForDetail != null) {
         RequestDetailDialog(
@@ -394,6 +396,12 @@ private fun RequestsDialogs(
         RequestQrDialog(
             request = request,
             onDismiss = onDismissQr,
+            onFetchOtp =
+                if (onFetchOtp != null) {
+                    { onFetchOtp(request.id) }
+                } else {
+                    null
+                },
         )
     }
 

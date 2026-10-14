@@ -180,7 +180,18 @@ fun RequestDetailDialogContent(
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
-            val showReqColumn = request.items.any { it.quantity != it.fulfilledQuantity }
+            val hasIssued = request.items.any { it.fulfilledQuantity > 0 }
+            val hasReturned = request.items.any { it.returnedQuantity > 0 }
+            val showReqColumn =
+                (!hasIssued && !hasReturned) || request.items.any { it.quantity != it.fulfilledQuantity }
+
+            val componentWeight =
+                when {
+                    !hasIssued && !hasReturned -> 0.75f
+                    hasIssued && !hasReturned -> if (showReqColumn) 0.58f else 0.79f
+                    else -> if (showReqColumn) 0.52f else 0.68f
+                }
+
             InventoryTable(
                 items = request.items,
                 columns =
@@ -188,7 +199,7 @@ fun RequestDetailDialogContent(
                         add(
                             TableColumn(
                                 header = "Component",
-                                weight = if (showReqColumn) 0.52f else 0.68f,
+                                weight = componentWeight,
                                 content = { item ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         ComponentImage(
@@ -223,7 +234,7 @@ fun RequestDetailDialogContent(
                             add(
                                 TableColumn(
                                     header = "REQ",
-                                    weight = 0.16f,
+                                    weight = if (!hasIssued && !hasReturned) 0.25f else 0.21f,
                                     alignment = Alignment.Center,
                                     content = { item ->
                                         Text(
@@ -236,46 +247,50 @@ fun RequestDetailDialogContent(
                                 ),
                             )
                         }
-                        add(
-                            TableColumn(
-                                header = if (showReqColumn) "ISS" else "QTY",
-                                weight = 0.16f,
-                                alignment = Alignment.Center,
-                                content = { item ->
-                                    Text(
-                                        text = item.fulfilledQuantity.toString(),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color =
-                                            if (item.fulfilledQuantity > 0) {
-                                                MaterialTheme.inventoryColors.info
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                    )
-                                },
-                            ),
-                        )
-                        add(
-                            TableColumn(
-                                header = "RET",
-                                weight = 0.16f,
-                                alignment = Alignment.Center,
-                                content = { item ->
-                                    Text(
-                                        text = item.returnedQuantity.toString(),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color =
-                                            if (item.returnedQuantity > 0) {
-                                                MaterialTheme.inventoryColors.neutral
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            },
-                                    )
-                                },
-                            ),
-                        )
+                        if (hasIssued) {
+                            add(
+                                TableColumn(
+                                    header = "ISS",
+                                    weight = 0.21f,
+                                    alignment = Alignment.Center,
+                                    content = { item ->
+                                        Text(
+                                            text = item.fulfilledQuantity.toString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color =
+                                                if (item.fulfilledQuantity > 0) {
+                                                    MaterialTheme.inventoryColors.info
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                        )
+                                    },
+                                ),
+                            )
+                        }
+                        if (hasReturned) {
+                            add(
+                                TableColumn(
+                                    header = "RET",
+                                    weight = 0.16f,
+                                    alignment = Alignment.Center,
+                                    content = { item ->
+                                        Text(
+                                            text = item.returnedQuantity.toString(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color =
+                                                if (item.returnedQuantity > 0) {
+                                                    MaterialTheme.inventoryColors.neutral
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                },
+                                        )
+                                    },
+                                ),
+                            )
+                        }
                     },
             )
         }

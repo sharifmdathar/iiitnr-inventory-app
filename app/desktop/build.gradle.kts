@@ -1,5 +1,6 @@
 import groovy.json.JsonSlurper
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.io.File
 import java.util.Properties
 
 plugins {
@@ -97,6 +98,13 @@ tasks.named("jvmProcessResources") {
 compose.desktop {
     application {
         mainClass = "com.iiitnr.inventoryapp.desktop.MainKt"
+
+        System.getenv("JAVA_HOME")?.takeIf { File(it, "bin/jlink").exists() }?.let {
+            javaHome = it
+        } ?: run {
+            val fallback = File("/usr/lib/jvm/java-26-openjdk")
+            if (fallback.exists()) javaHome = fallback.absolutePath
+        }
 
         nativeDistributions {
             val buildInstallers =

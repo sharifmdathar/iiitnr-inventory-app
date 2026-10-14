@@ -2,6 +2,7 @@ package com.iiitnr.inventoryapp.data.api
 
 import com.iiitnr.inventoryapp.data.models.CreateRequestPayload
 import com.iiitnr.inventoryapp.data.models.FacultyResponse
+import com.iiitnr.inventoryapp.data.models.RequestOtpResponse
 import com.iiitnr.inventoryapp.data.models.RequestResponse
 import com.iiitnr.inventoryapp.data.models.RequestsResponse
 import com.iiitnr.inventoryapp.data.models.UpdateRequestStatusPayload
@@ -57,6 +58,28 @@ class RequestApiService(
         }
         return response.body()
     }
+
+    suspend fun getRequestByIdOrOtp(
+        token: String,
+        query: String,
+    ): RequestResponse =
+        client
+            .get("$baseUrl/requests/${query.trim()}") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+            }.body()
+
+    suspend fun generateRequestOtp(
+        token: String,
+        requestId: String,
+    ): RequestOtpResponse =
+        client
+            .post("$baseUrl/requests/$requestId/otp") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+            }.body()
 
     suspend fun updateRequestStatus(
         token: String,

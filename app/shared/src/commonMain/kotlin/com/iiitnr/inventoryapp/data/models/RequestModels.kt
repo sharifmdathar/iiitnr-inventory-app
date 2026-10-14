@@ -30,6 +30,7 @@ data class Request(
     val returnDueAt: String? = null,
     val lastRenewDate: String? = null,
     val lastRenewReason: String? = null,
+    val otp: String? = null,
 )
 
 @Serializable
@@ -56,6 +57,12 @@ data class FacultyResponse(
 @Serializable
 data class RequestResponse(
     val request: Request,
+)
+
+@Serializable
+data class RequestOtpResponse(
+    val otp: String,
+    val expiresAt: String? = null,
 )
 
 @Serializable

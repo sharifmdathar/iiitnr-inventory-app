@@ -1981,4 +1981,70 @@ describe('Request API', () => {
       assert.equal(exists, null);
     });
   });
+
+  describe('OTP Generation & Lookup', () => {
+    test('generateRequestOtp creates a 4-digit numeric OTP and returns expiration', () => {
+      const requestId = randomUUID();
+      const res = RequestService.generateRequestOtp(requestId);
+
+      assert.ok(res.otp);
+      assert.equal(/^\d{4}$/.test(res.otp), true);
+      assert.ok(res.expiresAt);
+
+      const secondRes = RequestService.generateRequestOtp(requestId);
+      assert.equal(secondRes.otp, res.otp);
+    });
+
+    test('POST /requests/:id/otp generates OTP for valid request', async () => {
+      const item = await createComponent({
+        name: 'OTP Component',
+        totalQuantity: 5,
+        availableQuantity: 5,
+      });
+      createdComponentIds.push(item.id);
+
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'OTP Test Request',
+        status: 'APPROVED',
+        items: [{ componentId: item.id, quantity: 1 }],
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/requests/${req.id}/otp`,
+        headers: { authorization: `Bearer ${studentToken}` },
+      });
+
+      assert.equal(response.statusCode, 200);
+      const json = response.json();
+      assert.ok(json.otp);
+      assert.equal(/^\d{4}$/.test(json.otp), true);
+
+      const lookupResponse = await app.inject({
+        method: 'GET',
+        url: `/requests/${json.otp}`,
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+
+      assert.equal(lookupResponse.statusCode, 200);
+      const lookupJson = lookupResponse.json();
+      assert.equal(lookupJson.request.id, req.id);
+      assert.equal(lookupJson.request.projectTitle, 'OTP Test Request');
+    });
+
+    test('consumeOtp and invalidateOtpForRequest clear the mapping', () => {
+      const reqId = randomUUID();
+      const res = RequestService.generateRequestOtp(reqId);
+
+      assert.equal(RequestService.consumeOtp(res.otp), reqId);
+      assert.equal(RequestService.consumeOtp(res.otp), null);
+
+      const reqId2 = randomUUID();
+      const res2 = RequestService.generateRequestOtp(reqId2);
+      RequestService.invalidateOtpForRequest(reqId2);
+      assert.equal(RequestService.consumeOtp(res2.otp), null);
+    });
+  });
 });

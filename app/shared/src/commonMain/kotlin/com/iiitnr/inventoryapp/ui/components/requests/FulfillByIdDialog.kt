@@ -3,6 +3,7 @@ package com.iiitnr.inventoryapp.ui.components.requests
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -15,19 +16,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun FulfillByIdDialog(
+    modifier: Modifier = Modifier,
     requestIdInput: String,
     onRequestIdChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     onScanClick: (() -> Unit)? = null,
-    dialogTitle: String = "Fulfill by QR / ID",
-    confirmButtonLabel: String = "Fulfill",
-    modifier: Modifier = Modifier,
+    dialogTitle: String = "Fulfill Request",
+    confirmButtonLabel: String = "Find Request",
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -48,19 +55,47 @@ fun FulfillByIdDialog(
                     }
                 } else {
                     Text(
-                        text = "Enter the request ID (from student's QR or screen):",
+                        text = "Enter 4-digit OTP or Request ID:",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-//                Spacer(modifier = Modifier.height(12.dp))
+
                 OutlinedTextField(
                     value = requestIdInput,
-                    onValueChange = onRequestIdChange,
-                    label = { Text("Request ID") },
+                    onValueChange = { newValue ->
+                        onRequestIdChange(newValue)
+                        if (newValue.trim().length == 4) {
+                            onConfirm()
+                        }
+                    },
+                    label = { Text("OTP or Request ID") },
+                    placeholder = { Text("e.g. 3821 or Request ID") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .onKeyEvent { keyEvent ->
+                                if (keyEvent.type == KeyEventType.KeyUp &&
+                                    (keyEvent.key == Key.Enter || keyEvent.key == Key.NumPadEnter)
+                                ) {
+                                    onConfirm()
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                    keyboardOptions =
+                        KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Done,
+                        ),
+                    keyboardActions =
+                        KeyboardActions(
+                            onDone = { onConfirm() },
+                            onSearch = { onConfirm() },
+                            onGo = { onConfirm() },
+                        ),
                 )
             }
         },

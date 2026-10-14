@@ -51,10 +51,13 @@ desk:
 [unix]
 andro:
     cd app && ./gradlew assembleDebug -PappDebug=true
+    adb install app/android/build/outputs/apk/debug/android-debug.apk
 
 [windows]
 andro:
     cd app && .\gradlew.bat assembleDebug -PappDebug=true
+    adb install app/android/build/outputs/apk/debug/android-debug.apk
+
 
 [unix]
 lint:

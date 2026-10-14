@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import fs from 'node:fs';
 import { join } from 'node:path';
-import Fastify from 'fastify';
+import Fastify, { LogController } from 'fastify';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -80,6 +80,12 @@ function buildLoggerConfig(env: AppEnvironment) {
       },
     },
   };
+}
+const SLOW_REQUEST_THRESHOLD_MS = 500;
+
+function isHealthCheck(url: string): boolean {
+  const path = url.split('?')[0] ?? url;
+  return path === '/version' || path === '/health' || path.startsWith('/health/');
 }
 
 function buildCorsOrigin(env: AppEnvironment, allowedOrigins: string[] | undefined) {
@@ -310,6 +316,26 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
       await pool.end();
     }
   });
+
+  app.addHook('onResponse', async (request, reply) => {
+    const { url, method } = request;
+    const statusCode = reply.statusCode;
+    const responseTime = reply.elapsedTime;
+
+    if (statusCode < 400 && responseTime < SLOW_REQUEST_THRESHOLD_MS) return;
+    if (statusCode < 400 && isHealthCheck(url)) return;
+
+    const detail = { method, url, statusCode, responseTime: Math.round(responseTime) };
+    const message = `${method} ${url} ${statusCode} (${Math.round(responseTime)}ms)`;
+
+    if (statusCode >= 500) {
+      request.log.error(detail, message);
+    } else if (statusCode >= 400) {
+      request.log.warn(detail, message);
+    } else {
+      request.log.warn(detail, `Slow request: ${message}`);
+    }
+  });
 }
 
 const GITHUB_DOWNLOAD_BASE =
@@ -318,7 +344,7 @@ const GITHUB_DOWNLOAD_BASE =
 function setupRoutes(app: FastifyInstance) {
   app.get('/', handleRootRoute);
   app.get('/health', (_, reply) => handleHealthCheck(reply));
-  app.get('/ready', (_, reply) => handleReadyCheck(app, reply));
+  app.get('/ready', { logLevel: 'silent' }, (_, reply) => handleReadyCheck(app, reply));
   app.get('/version', (_, reply) => {
     reply.send({ version: APP_VERSION });
   });
@@ -357,6 +383,7 @@ export async function buildApp() {
 
   const app = Fastify({
     bodyLimit: 11 * 1024 * 1024,
+    logController: new LogController({ disableRequestLogging: true }),
     logger: buildLoggerConfig(env),
   });
 

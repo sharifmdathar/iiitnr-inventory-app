@@ -54,6 +54,67 @@ export async function fetchFullRequest(id: string) {
 
 export type FullRequest = Awaited<ReturnType<typeof fetchFullRequest>>;
 
+interface OtpEntry {
+  requestId: string;
+  expiresAt: number;
+}
+
+const otpStore = new Map<string, OtpEntry>();
+
+export function generateRequestOtp(requestId: string): { otp: string; expiresAt: string } {
+  const now = Date.now();
+  for (const [code, entry] of otpStore.entries()) {
+    if (entry.expiresAt < now) {
+      otpStore.delete(code);
+    }
+  }
+
+  for (const [code, entry] of otpStore.entries()) {
+    if (entry.requestId === requestId && entry.expiresAt > now) {
+      return {
+        otp: code,
+        expiresAt: new Date(entry.expiresAt).toISOString(),
+      };
+    }
+  }
+
+  let code: string;
+  do {
+    code = Math.floor(1000 + Math.random() * 9000).toString();
+  } while (otpStore.has(code));
+
+  const expiresAtMs = now + 10 * 60 * 1000;
+  otpStore.set(code, {
+    requestId,
+    expiresAt: expiresAtMs,
+  });
+
+  return {
+    otp: code,
+    expiresAt: new Date(expiresAtMs).toISOString(),
+  };
+}
+
+export function consumeOtp(otp: string): string | null {
+  const entry = otpStore.get(otp.trim());
+  if (!entry) return null;
+  if (entry.expiresAt < Date.now()) {
+    otpStore.delete(otp.trim());
+    return null;
+  }
+  const requestId = entry.requestId;
+  otpStore.delete(otp.trim());
+  return requestId;
+}
+
+export function invalidateOtpForRequest(requestId: string) {
+  for (const [code, entry] of otpStore.entries()) {
+    if (entry.requestId === requestId) {
+      otpStore.delete(code);
+    }
+  }
+}
+
 export function shapeRequest(row: NonNullable<FullRequest>) {
   return {
     ...row,
@@ -64,8 +125,40 @@ export function shapeRequest(row: NonNullable<FullRequest>) {
 }
 
 export async function fetchAndShapeRequest(id: string) {
-  const row = await fetchFullRequest(id);
+  const row = await fetchFullRequestByOtpOrId(id);
   return row ? shapeRequest(row) : null;
+}
+
+export async function fetchFullRequestByOtpOrId(query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+
+  let row = await fetchFullRequest(trimmed);
+  if (row) return row;
+
+  if (/^\d{4}$/.test(trimmed)) {
+    const entry = otpStore.get(trimmed);
+    if (entry && entry.expiresAt > Date.now()) {
+      row = await fetchFullRequest(entry.requestId);
+      if (row) return row;
+    }
+  }
+
+  const [prefixRow] = await db.query.request.findMany({
+    where: (r, { ilike }) => ilike(r.id, `${trimmed}%`),
+    orderBy: desc(request.createdAt),
+    with: {
+      requestItems: { with: { component: true } },
+      user_userId: {
+        columns: { id: true, email: true, name: true, role: true, batch: true, branch: true },
+      },
+      user_targetFacultyId: {
+        columns: { id: true, email: true, name: true, role: true, batch: true, branch: true },
+      },
+    },
+  });
+
+  return prefixRow || null;
 }
 
 export async function updateRequestStatus(id: string, status: RequestStatusValue) {

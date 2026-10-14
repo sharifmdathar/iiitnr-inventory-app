@@ -1,13 +1,21 @@
 import { UserRole, type UserRoleValue } from './enums.js';
 
 const IIITNR_DOMAIN = '@iiitnr.edu.in';
-const STUDENT_LOCAL_RE = /^([a-z]+)(\d{2})(100|101|102)$/i;
+const STUDENT_LOCAL_RE = /^([a-z]+)(\d{2})(100|101|102|300|301|302)$/i;
 const NON_STUDENT_LOCAL_RE = /^[a-z]+$/i;
 
-const BRANCH_BY_CODE: Record<string, string> = {
-  '100': 'CSE',
-  '101': 'ECE',
-  '102': 'DSAI',
+interface CourseInfo {
+  branch: string;
+  durationYears: number;
+}
+
+const COURSE_INFO_BY_CODE: Record<string, CourseInfo> = {
+  '100': { branch: 'CSE', durationYears: 4 },
+  '101': { branch: 'ECE', durationYears: 4 },
+  '102': { branch: 'DSAI', durationYears: 4 },
+  '300': { branch: 'M.Tech CSE', durationYears: 2 },
+  '301': { branch: 'M.Tech ECE', durationYears: 2 },
+  '302': { branch: 'M.Tech DSAI', durationYears: 2 },
 };
 
 export interface IiitnrDerivedProfile {
@@ -27,11 +35,16 @@ export function deriveIiitnrProfileFromEmail(email: string): IiitnrDerivedProfil
   if (studentMatch?.[2] != null && studentMatch[3] != null) {
     const yy = Number.parseInt(studentMatch[2], 10);
     const admissionYear = 2000 + yy;
-    const branchCode = studentMatch[3];
+    const courseCode = studentMatch[3];
+    const info = COURSE_INFO_BY_CODE[courseCode];
+
+    const branch = info?.branch ?? courseCode;
+    const duration = info?.durationYears ?? 4;
+
     return {
       role: UserRole.STUDENT,
-      batch: `${admissionYear}-${admissionYear + 4}`,
-      branch: BRANCH_BY_CODE[branchCode] ?? branchCode,
+      batch: `${admissionYear}-${admissionYear + duration}`,
+      branch,
     };
   }
 
