@@ -240,7 +240,7 @@ jobs:
         working-directory: app
         run: |
           chmod +x ./gradlew
-          ./gradlew :shared:assembleSharedXCFramework --parallel --build-cache
+          ./gradlew :shared:assembleSharedReleaseXCFramework --parallel --build-cache
 
       - name: Zip iOS XCFramework
         run: |
@@ -257,6 +257,7 @@ jobs:
 
   upload-release:
     needs: [build-android, build-windows-installers, build-linux-appimage, build-ios]
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -288,6 +289,7 @@ jobs:
             artifacts/desktop-release-msi/IIITNR-Inventory-App.msi
             artifacts/linux-appimage-release/IIITNR-Inventory-App.AppImage
             artifacts/ios-release-xcframework/IIITNR-Inventory-App-iOS-shared.xcframework.zip
+          fail_on_unmatched_files: false
           preserve_order: true
           generate_release_notes: true
         env:
