@@ -50,13 +50,15 @@ desk:
 
 [unix]
 andro:
+    rm -f app/android/build/outputs/apk/debug/com.iiitnr.inventoryapp-*.apk
     cd app && ./gradlew assembleDebug -PappDebug=true
-    adb install app/android/build/outputs/apk/debug/android-debug.apk
+    adb install app/android/build/outputs/apk/debug/com.iiitnr.inventoryapp-*.apk
 
 [windows]
 andro:
+    del /q app\android\build\outputs\apk\debug\com.iiitnr.inventoryapp-*.apk 2>nul
     cd app && .\gradlew.bat assembleDebug -PappDebug=true
-    adb install app/android/build/outputs/apk/debug/android-debug.apk
+    for %f in (app\android\build\outputs\apk\debug\com.iiitnr.inventoryapp-*.apk) do adb install %f
 
 
 [unix]

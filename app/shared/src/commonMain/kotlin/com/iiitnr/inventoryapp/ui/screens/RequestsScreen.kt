@@ -69,7 +69,9 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun RequestsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToNotifications: () -> Unit = {},
     viewModel: RequestsViewModel = koinViewModel(),
+    notificationsViewModel: NotificationsViewModel = koinViewModel(),
 ) {
     var pendingDeleteRequestId by remember { mutableStateOf<String?>(null) }
     var pendingRenewRequestId by remember { mutableStateOf<String?>(null) }
@@ -295,6 +297,8 @@ fun RequestsScreen(
             onApproveRenew = { id -> viewModel.updateRequestStatus(id, RequestStatus.RENEWED) },
             onShowQr = { request -> requestToShowQr = request },
             onCardClick = { request -> selectedRequestForDetail = request },
+            onNavigateToNotifications = onNavigateToNotifications,
+            unreadNotificationCount = notificationsViewModel.unreadCount,
         )
 
         RequestsQrScannerOverlay(
@@ -594,12 +598,16 @@ private fun RequestsScreenScaffold(
     onApproveRenew: (String) -> Unit,
     onShowQr: (Request) -> Unit,
     onCardClick: (Request) -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    unreadNotificationCount: Int,
 ) {
     Scaffold(
         topBar = {
             RequestsTopBar(
                 onNavigateBack = onNavigateBack,
                 onScanRequestClick = onScanRequestClick,
+                onNavigateToNotifications = onNavigateToNotifications,
+                unreadNotificationCount = unreadNotificationCount,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

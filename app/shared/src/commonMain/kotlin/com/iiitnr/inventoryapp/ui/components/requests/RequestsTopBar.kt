@@ -7,11 +7,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
+import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
 
 @Composable
 fun RequestsTopBar(
     onNavigateBack: () -> Unit,
     onScanRequestClick: (() -> Unit)? = null,
+    onNavigateToNotifications: (() -> Unit)? = null,
+    unreadNotificationCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     AppTopBar(
@@ -19,6 +22,12 @@ fun RequestsTopBar(
         modifier = modifier,
         onNavigateBack = onNavigateBack,
         actions = {
+            if (onNavigateToNotifications != null) {
+                NotificationBell(
+                    unreadCount = unreadNotificationCount,
+                    onClick = onNavigateToNotifications,
+                )
+            }
             if (onScanRequestClick != null) {
                 IconButton(onClick = onScanRequestClick) {
                     Icon(

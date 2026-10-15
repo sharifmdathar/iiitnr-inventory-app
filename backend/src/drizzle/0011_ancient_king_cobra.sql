@@ -1,0 +1,1 @@
+ALTER TABLE "Request" ADD COLUMN "renewalReminderSentAt" timestamp(3);

@@ -13,6 +13,7 @@ import { FastifySSEPlugin } from 'fastify-sse-v2';
 import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
 import { startRequestExpirySweep } from './services/request-expiry.js';
+import { startRenewalReminderSweep } from './services/renewal-reminder.js';
 import { notifyRequestsExpired } from './services/NotificationService.js';
 import { notifyRequestsUpdated } from './utils/events.js';
 import { DomainError } from './utils/errors.js';
@@ -293,6 +294,7 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
   }
 
   let stopRequestExpirySweep: (() => void) | undefined;
+  let stopRenewalReminderSweep: (() => void) | undefined;
   if (!env.isTest) {
     app.addHook('onReady', (done) => {
       stopRequestExpirySweep = startRequestExpirySweep(
@@ -306,18 +308,22 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
             .finally(() => notifyRequestsUpdated());
         },
       );
+      stopRenewalReminderSweep = startRenewalReminderSweep((err) =>
+        app.log.error({ err }, 'Renewal reminder sweep failed'),
+      );
       done();
     });
   }
 
   app.addHook('onClose', async () => {
     stopRequestExpirySweep?.();
+    stopRenewalReminderSweep?.();
     if (!env.isTest) {
       await pool.end();
     }
   });
 
-  app.addHook('onResponse', async (request, reply) => {
+  app.addHook('onResponse', (request, reply) => {
     const { url, method } = request;
     const statusCode = reply.statusCode;
     const responseTime = reply.elapsedTime;
@@ -353,7 +359,7 @@ function setupRoutes(app: FastifyInstance) {
     const userAgent = request.headers['user-agent'] || '';
 
     if (userAgent.includes('Android')) {
-      return reply.redirect(`${GITHUB_DOWNLOAD_BASE}/android-release.apk`);
+      return reply.redirect(`${GITHUB_DOWNLOAD_BASE}/com.iiitnr.inventoryapp-${APP_VERSION}.apk`);
     }
     if (userAgent.includes('Windows')) {
       return reply.redirect(`${GITHUB_DOWNLOAD_BASE}/IIITNR-Inventory-App.exe`);
@@ -366,7 +372,7 @@ function setupRoutes(app: FastifyInstance) {
   });
 
   app.get('/download/android', async (_, reply) => {
-    await reply.redirect(`${GITHUB_DOWNLOAD_BASE}/android-release.apk`);
+    await reply.redirect(`${GITHUB_DOWNLOAD_BASE}/com.iiitnr.inventoryapp-${APP_VERSION}.apk`);
   });
 
   app.get('/download/windows', async (_, reply) => {

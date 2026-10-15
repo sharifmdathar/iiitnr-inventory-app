@@ -9,6 +9,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+private fun reloadAndClearCache() {
+    js("caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => location.reload(true))")
+}
+
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     initKoin {}
@@ -19,6 +23,8 @@ fun main() {
     ComposeViewport(document.body!!) {
         AppTheme {
             App(
+                isWeb = true,
+                onUpdateAction = { reloadAndClearCache() },
                 onGoogleSignInClick = { callback ->
                     scope.launch {
                         val idToken = googleSignInHelper.signIn()

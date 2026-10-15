@@ -23,7 +23,7 @@ val appVersion =
 kotlin {
     jvm {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
         }
     }
 
@@ -132,16 +132,12 @@ compose.desktop {
             includeAllModules = true
 
             val appIconPng = project(":android").file("src/main/ic_launcher-playstore.png")
+            val appIconIco = project.file("icon.ico")
 
             windows {
                 when {
+                    appIconIco.exists() -> iconFile.set(appIconIco)
                     appIconPng.exists() -> iconFile.set(appIconPng)
-                    else -> {
-                        val ico = project.file("icon.ico")
-                        if (ico.exists()) {
-                            iconFile.set(ico)
-                        }
-                    }
                 }
                 menu = true
                 shortcut = true

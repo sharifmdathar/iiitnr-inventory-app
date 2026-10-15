@@ -39,6 +39,8 @@ import org.koin.compose.koinInject
 
 @Composable
 fun App(
+    isWeb: Boolean = false,
+    onUpdateAction: (() -> Unit)? = null,
     onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
     onExportComponentsCsv: ((String) -> Boolean)? = null,
     onImportComponentsCsv: (((String?) -> Unit) -> Unit)? = null,
@@ -64,11 +66,11 @@ fun App(
                         val result =
                             snackbarHostState.showSnackbar(
                                 message = "Update available: $serverVersion",
-                                actionLabel = "Download",
+                                actionLabel = if (isWeb) "Reload" else "Download",
                                 duration = androidx.compose.material3.SnackbarDuration.Short,
                             )
                         if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
-                            uriHandler.openUri("https://inventory.iiitnr.ac.in/download")
+                            onUpdateAction?.invoke() ?: uriHandler.openUri("https://inventory.iiitnr.ac.in/download")
                         }
                     }
                 } catch (e: Throwable) {
@@ -171,6 +173,8 @@ fun App(
                         composable("requests") {
                             RequestsScreen(onNavigateBack = {
                                 navController.popBackStack()
+                            }, onNavigateToNotifications = {
+                                navController.navigate("notifications")
                             })
                         }
                         composable("audit_log") {

@@ -89,6 +89,7 @@ export const request = pgTable(
     receivedByUserId: text(),
     lastRenewDate: timestamp({ precision: 3, mode: 'string' }),
     lastRenewReason: text(),
+    renewalReminderSentAt: timestamp({ precision: 3, mode: 'string' }),
   },
   (table) => [
     index('Request_targetFacultyId_idx').using(

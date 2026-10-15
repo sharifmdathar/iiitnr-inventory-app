@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
+import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
+import com.iiitnr.inventoryapp.ui.screens.NotificationsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -45,11 +47,14 @@ fun ProfileScreen(
     onNavigateToUserManagement: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
+    notificationsViewModel: NotificationsViewModel = koinViewModel(),
 ) {
     val userData = viewModel.user
     val isLoading = viewModel.isLoading
     val errorMessage = viewModel.errorMessage
     val scope = rememberCoroutineScope()
+
+    val notificationsViewModel: NotificationsViewModel = koinViewModel()
 
     Scaffold(
         topBar = {
@@ -57,6 +62,10 @@ fun ProfileScreen(
                 title = "Profile",
                 onNavigateBack = onNavigateBack,
                 actions = {
+                    NotificationBell(
+                        unreadCount = notificationsViewModel.unreadCount,
+                        onClick = onNavigateToNotifications,
+                    )
                     TextButton(
                         onClick = {
                             viewModel.logout(onLogout)

@@ -781,6 +781,62 @@ describe('Request API', () => {
       assert.equal(body.request.id, req.id);
     });
 
+    describe('GET /requests/export/csv', () => {
+      test('returns 401 without token', async () => {
+        const response = await app.inject({
+          method: 'GET',
+          url: '/requests/export/csv',
+        });
+        assert.equal(response.statusCode, 401);
+      });
+
+      test('returns 403 for STUDENT role', async () => {
+        const response = await app.inject({
+          method: 'GET',
+          url: '/requests/export/csv',
+          headers: { authorization: `Bearer ${studentToken}` },
+        });
+        assert.equal(response.statusCode, 403);
+      });
+
+      test('returns 200 and CSV content for ADMIN', async () => {
+        const item = await createComponent({
+          name: 'Export Request Item',
+          totalQuantity: 10,
+          availableQuantity: 10,
+        });
+        createdComponentIds.push(item.id);
+
+        await createRequest({
+          userId: studentId,
+          targetFacultyId: facultyId,
+          projectTitle: 'CSV Export Project',
+          status: 'PENDING',
+          items: [{ componentId: item.id, quantity: 2 }],
+        });
+
+        try {
+          const response = await app.inject({
+            method: 'GET',
+            url: '/requests/export/csv',
+            headers: { authorization: `Bearer ${adminToken}` },
+          });
+
+          assert.equal(response.statusCode, 200);
+          assert.equal(response.headers['content-type'], 'text/csv');
+          assert.ok(response.payload.includes('CSV Export Project'));
+          assert.ok(response.payload.includes('Export Request Item (Req:2, Ful:0, Ret:0)'));
+          assert.ok(
+            response.payload.includes(
+              'Request ID,User Email,User Name,Target Faculty,Project Title,Status,Created At,Items Summary',
+            ),
+          );
+        } finally {
+          // cleanup handled by beforeEach / afterEach deleteAllRequests
+        }
+      });
+    });
+
     test('faculty cannot approve/reject request not targeting them', async () => {
       const item = await createComponent({
         name: 'Sensor',

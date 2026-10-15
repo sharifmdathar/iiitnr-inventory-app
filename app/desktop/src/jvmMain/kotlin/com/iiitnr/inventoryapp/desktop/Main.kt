@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.desktop
 
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.iiitnr.inventoryapp.data.auth.GoogleDesktopSignInHelper
@@ -43,9 +44,13 @@ fun main() {
         )
         val scope = CoroutineScope(Dispatchers.IO)
 
+        @Suppress("DEPRECATION")
+        val windowIcon = painterResource("icon.png")
+
         Window(
             onCloseRequest = ::exitApplication,
             title = "IIITNR Inventory App",
+            icon = windowIcon,
         ) {
             AppTheme {
                 App(

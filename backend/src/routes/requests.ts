@@ -377,6 +377,45 @@ async function handleGetRequests(
   reply.send({ requests });
 }
 
+async function handleGetRequestById(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  const currentUser = getCurrentUser(req);
+  const currentUserId = currentUser?.sub;
+  if (!currentUserId) {
+    reply.code(401).send({ error: 'unauthorized' });
+    return;
+  }
+
+  const params = req.params as { id?: string };
+  const id = params?.id;
+  if (!id) {
+    reply.code(400).send({ error: 'request id is required' });
+    return;
+  }
+
+  const shaped = await RequestService.fetchAndShapeRequest(id);
+  if (!shaped) {
+    reply.code(404).send({ error: 'request not found' });
+    return;
+  }
+
+  const isAdminOrLAUser = isAdminOrLA(currentUser.role);
+
+  if (
+    !isAdminOrLAUser &&
+    shaped.userId !== currentUserId &&
+    shaped.targetFacultyId !== currentUserId
+  ) {
+    reply.code(403).send({ error: 'forbidden' });
+    return;
+  }
+
+  reply.send({ request: shaped });
+}
+
 async function handlePendingStatusUpdate(
   req: FastifyRequest,
   reply: FastifyReply,
@@ -808,18 +847,92 @@ async function handleDeleteRequest(
   reply.code(204).send();
 }
 
-async function handleGetRequestById(
-  _app: FastifyInstance,
-  req: FastifyRequest<{ Params: { id: string } }>,
+function canExportCsv(role: UserRoleValue | undefined): boolean {
+  return role === UserRole.ADMIN || role === UserRole.LA || role === UserRole.FACULTY;
+}
+
+function escapeCsvField(field: unknown): string {
+  if (field === null || field === undefined) return '';
+  const str = String(field);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function generateRequestsCsv(
+  requests: Awaited<ReturnType<typeof RequestService.getRequests>>,
+): string {
+  const header = [
+    'Request ID',
+    'User Email',
+    'User Name',
+    'Target Faculty',
+    'Project Title',
+    'Status',
+    'Created At',
+    'Items Summary',
+  ].join(',');
+
+  const rows = requests.map((req) => {
+    const itemsSummary = req.items
+      .map(
+        (item) =>
+          `${item.component?.name} (Req:${item.quantity}, Ful:${item.fulfilledQuantity}, Ret:${item.returnedQuantity})`,
+      )
+      .join('; ');
+
+    return [
+      escapeCsvField(req.id),
+      escapeCsvField(req.user?.email),
+      escapeCsvField(req.user?.name),
+      escapeCsvField(req.targetFaculty?.name || req.targetFaculty?.email),
+      escapeCsvField(req.projectTitle),
+      escapeCsvField(req.status),
+      escapeCsvField(req.createdAt),
+      escapeCsvField(itemsSummary),
+    ].join(',');
+  });
+
+  return [header, ...rows].join('\n');
+}
+
+async function handleExportRequestsCsv(
+  app: { log: { error: (err: unknown) => void } },
+  req: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const queryOrId = req.params.id;
-  const shaped = await RequestService.fetchAndShapeRequest(queryOrId);
-  if (!shaped) {
-    reply.code(404).send({ error: 'Request not found' });
-    return;
+  const currentUser = getCurrentUser(req);
+  const currentUserId = currentUser?.sub;
+  if (!currentUserId) {
+    return reply.code(401).send({ error: 'unauthorized' });
   }
-  reply.send({ request: shaped });
+
+  const userRole = currentUser.role;
+  if (!canExportCsv(userRole)) {
+    return reply.code(403).send({ error: 'forbidden: admin, LA, or faculty role required' });
+  }
+
+  try {
+    const isAdmin = isAdminOrLA(userRole);
+    const isFaculty = userRole === UserRole.FACULTY;
+
+    const requests = await RequestService.getRequests({
+      userId: isAdmin ? undefined : currentUserId,
+      targetFacultyId: isFaculty ? currentUserId : undefined,
+      isAdmin,
+    });
+
+    const csv = generateRequestsCsv(requests);
+
+    return reply
+      .header('Content-Type', 'text/csv')
+      .header('Content-Disposition', 'attachment; filename="requests.csv"')
+      .send(csv);
+  } catch (err) {
+    app.log.error(err);
+    return reply.code(500).send({ error: 'failed to export requests' });
+  }
 }
 
 async function handleGenerateOtp(
@@ -854,6 +967,10 @@ const requestsRoutes: FastifyPluginCallback = (app, _opts, done) => {
 
   app.post('/requests/:id/otp', { preHandler: requireAuth }, (req, reply) =>
     handleGenerateOtp(app, req as FastifyRequest<{ Params: { id: string } }>, reply),
+  );
+
+  app.get('/requests/export/csv', { preHandler: requireAuth }, (req, reply) =>
+    handleExportRequestsCsv(app, req, reply),
   );
 
   app.put(

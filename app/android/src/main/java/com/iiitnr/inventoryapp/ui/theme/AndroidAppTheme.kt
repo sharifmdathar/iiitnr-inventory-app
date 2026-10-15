@@ -7,7 +7,10 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.iiitnr.inventoryapp.utils.LocalToday
+import com.iiitnr.inventoryapp.utils.currentSystemDate
 
 @Composable
 fun IIITNRInventoryAppTheme(
@@ -28,8 +31,11 @@ fun IIITNRInventoryAppTheme(
 
     val inventoryColors = if (darkTheme) DarkInventoryColors else LightInventoryColors
 
+    val today = remember { currentSystemDate() }
+
     CompositionLocalProvider(
         LocalInventoryColors provides inventoryColors,
+        LocalToday provides today,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

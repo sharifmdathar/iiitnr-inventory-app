@@ -7,11 +7,20 @@ import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestStatus
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
+import kotlin.time.Clock
+
+fun currentSystemDate(): LocalDate =
+    Clock.System
+        .now()
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+        .date
 
 val LocalToday =
     staticCompositionLocalOf<LocalDate> {
-        LocalDateTime.parse("2026-08-12T00:00:00").date
+        currentSystemDate()
     }
 
 val currentToday: LocalDate
