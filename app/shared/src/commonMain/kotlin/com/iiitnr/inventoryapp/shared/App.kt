@@ -43,6 +43,7 @@ fun App(
     onUpdateAction: (() -> Unit)? = null,
     onGoogleSignInClick: ((String?) -> Unit) -> Unit = {},
     onExportComponentsCsv: ((String) -> Boolean)? = null,
+    onExportRequestsCsv: ((String) -> Boolean)? = null,
     onImportComponentsCsv: (((String?) -> Unit) -> Unit)? = null,
     componentsCache: ComponentsCache? = null,
     tokenManager: TokenManager = koinInject(),
@@ -175,7 +176,7 @@ fun App(
                                 navController.popBackStack()
                             }, onNavigateToNotifications = {
                                 navController.navigate("notifications")
-                            })
+                            }, onExportCsv = onExportRequestsCsv)
                         }
                         composable("audit_log") {
                             AuditLogScreen(

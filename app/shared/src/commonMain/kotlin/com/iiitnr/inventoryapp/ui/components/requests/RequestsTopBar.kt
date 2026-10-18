@@ -1,6 +1,7 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -13,6 +14,8 @@ import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
 fun RequestsTopBar(
     onNavigateBack: () -> Unit,
     onScanRequestClick: (() -> Unit)? = null,
+    showExportCsv: Boolean = false,
+    onExportCsv: (() -> Unit)? = null,
     onNavigateToNotifications: (() -> Unit)? = null,
     unreadNotificationCount: Int = 0,
     modifier: Modifier = Modifier,
@@ -22,6 +25,14 @@ fun RequestsTopBar(
         modifier = modifier,
         onNavigateBack = onNavigateBack,
         actions = {
+            if (showExportCsv && onExportCsv != null) {
+                IconButton(onClick = onExportCsv) {
+                    Icon(
+                        imageVector = Icons.Outlined.FileDownload,
+                        contentDescription = "Export requests to CSV",
+                    )
+                }
+            }
             if (onNavigateToNotifications != null) {
                 NotificationBell(
                     unreadCount = unreadNotificationCount,

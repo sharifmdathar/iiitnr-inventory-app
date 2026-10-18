@@ -44,8 +44,47 @@ class RequestsViewModel(
     private val _snackbarMessages = MutableSharedFlow<String>()
     val snackbarMessages = _snackbarMessages.asSharedFlow()
 
-    val isFaculty get() = currentUser?.role == UserRole.FACULTY
-    val isAdminOrLA get() = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.LA
+    val canExportCsv get() = currentUser?.role == UserRole.ADMIN || currentUser?.role == UserRole.LA || currentUser?.role == UserRole.FACULTY
+
+    fun exportRequestsCsv(): String? {
+        val user = currentUser ?: return null
+        if (user.role != UserRole.ADMIN && user.role != UserRole.LA && user.role != UserRole.FACULTY) return null
+        if (requests.isEmpty()) return null
+
+        val csvHeader = "Request ID,User Email,User Name,Target Faculty,Project Title,Status,Created At,Items Summary"
+        val csvRows = requests.map { r ->
+            val itemsSummary = r.items.joinToString("; ") { item ->
+                val name = item.component?.name ?: item.componentId
+                val parts = mutableListOf("Req:${item.quantity}")
+                if (item.fulfilledQuantity > 0) {
+                    parts.add("Ful:${item.fulfilledQuantity}")
+                }
+                if (item.returnedQuantity > 0) {
+                    parts.add("Ret:${item.returnedQuantity}")
+                }
+                "$name (${parts.joinToString(", ")})"
+            }
+            listOf(
+                escapeCsvField(r.id),
+                escapeCsvField(r.user?.email),
+                escapeCsvField(r.user?.name),
+                escapeCsvField(r.targetFaculty?.name ?: r.targetFaculty?.email),
+                escapeCsvField(r.projectTitle),
+                escapeCsvField(r.status.name),
+                escapeCsvField(r.createdAt),
+                escapeCsvField(itemsSummary),
+            ).joinToString(",")
+        }
+        return listOf(csvHeader, *csvRows.toTypedArray()).joinToString("\n")
+    }
+
+    private fun escapeCsvField(field: String?): String {
+        if (field.isNullOrEmpty()) return ""
+        if (field.contains(",") || field.contains("\"") || field.contains("\n") || field.contains("\r")) {
+            return "\"${field.replace("\"", "\"\"")}\""
+        }
+        return field
+    }
 
     val filteredRequests: List<Request>
         get() {

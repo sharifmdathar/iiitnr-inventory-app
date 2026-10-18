@@ -1,1 +1,1 @@
-ALTER TABLE "Request" ADD COLUMN "renewalReminderSentAt" timestamp(3);
+ALTER TABLE "Request" ADD COLUMN IF NOT EXISTS "renewalReminderSentAt" timestamp(3);

@@ -127,3 +127,9 @@ deploy:
 release version:
     git push origin main
     gh release create v{{version}} --target main --generate-notes
+
+push:
+    cd backend && bun run typecheck
+    # cd backend && bun run lint
+    just test
+    git push

@@ -81,6 +81,13 @@ class MainActivity : ComponentActivity() {
                             content = csvContent,
                         )
                     },
+                    onExportRequestsCsv = { csvContent ->
+                        exportComponentsCsvAndroid(
+                            context = this@MainActivity,
+                            filename = "requests.csv",
+                            content = csvContent,
+                        )
+                    },
                     onImportComponentsCsv = { completion ->
                         pendingCsvImportCallback = completion
                         csvImportLauncher.launch("text/*")

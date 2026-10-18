@@ -49,6 +49,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.IssueItemPayload
+import com.iiitnr.inventoryapp.data.models.UserRole
+import kotlinx.coroutines.launch
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.data.models.RequestItem
 import com.iiitnr.inventoryapp.data.models.RequestStatus
@@ -70,6 +72,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun RequestsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToNotifications: () -> Unit = {},
+    onExportCsv: ((String) -> Boolean)? = null,
     viewModel: RequestsViewModel = koinViewModel(),
     notificationsViewModel: NotificationsViewModel = koinViewModel(),
 ) {
@@ -95,8 +98,25 @@ fun RequestsScreen(
     val isRefreshing = viewModel.isRefreshing
     val currentUser = viewModel.currentUser
     val filteredRequests = viewModel.filteredRequests
-    val isFaculty = viewModel.isFaculty
-    val isAdminOrLA = viewModel.isAdminOrLA
+    val isFaculty = viewModel.currentUser?.role == UserRole.FACULTY
+    val isAdminOrLA = viewModel.currentUser?.role == UserRole.ADMIN || viewModel.currentUser?.role == UserRole.LA
+    val canExportCsv = viewModel.canExportCsv
+
+    fun exportRequestsCsv() {
+        if (!canExportCsv || onExportCsv == null || requests.isEmpty()) return
+        val csvContent = viewModel.exportRequestsCsv() ?: return
+        val success = onExportCsv.invoke(csvContent)
+        scope.launch {
+            snackbarHostState.showSnackbar(
+                message =
+                    if (success) {
+                        "Exported requests.csv successfully"
+                    } else {
+                        "Failed to export requests.csv"
+                    },
+            )
+        }
+    }
 
     fun updateRequestStatusPartialIssue(request: Request) {
         pendingPartialIssueRequest = request
@@ -271,6 +291,8 @@ fun RequestsScreen(
             onRetry = { viewModel.loadRequests() },
             isFaculty = isFaculty,
             isAdminOrLA = isAdminOrLA,
+            canExportCsv = canExportCsv && requests.isNotEmpty(),
+            onExportCsv = { exportRequestsCsv() },
             onScanRequestClick =
                 if (isAdminOrLA) {
                     {
@@ -587,6 +609,8 @@ private fun RequestsScreenScaffold(
     onRetry: () -> Unit,
     isFaculty: Boolean,
     isAdminOrLA: Boolean,
+    canExportCsv: Boolean,
+    onExportCsv: () -> Unit,
     onScanRequestClick: (() -> Unit)?,
     snackbarHostState: SnackbarHostState,
     onDeleteRequestClick: (String) -> Unit,
@@ -606,6 +630,8 @@ private fun RequestsScreenScaffold(
             RequestsTopBar(
                 onNavigateBack = onNavigateBack,
                 onScanRequestClick = onScanRequestClick,
+                showExportCsv = canExportCsv,
+                onExportCsv = onExportCsv,
                 onNavigateToNotifications = onNavigateToNotifications,
                 unreadNotificationCount = unreadNotificationCount,
             )

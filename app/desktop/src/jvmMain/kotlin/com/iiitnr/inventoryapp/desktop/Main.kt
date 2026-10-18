@@ -66,6 +66,12 @@ fun main() {
                             content = csvContent,
                         )
                     },
+                    onExportRequestsCsv = { csvContent ->
+                        exportComponentsCsvDesktop(
+                            filename = "requests.csv",
+                            content = csvContent,
+                        )
+                    },
                     onImportComponentsCsv = { completion ->
                         val chooser =
                             JFileChooser().apply {

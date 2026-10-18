@@ -876,10 +876,16 @@ function generateRequestsCsv(
 
   const rows = requests.map((req) => {
     const itemsSummary = req.items
-      .map(
-        (item) =>
-          `${item.component?.name} (Req:${item.quantity}, Ful:${item.fulfilledQuantity}, Ret:${item.returnedQuantity})`,
-      )
+      .map((item) => {
+        const parts = [`Req:${item.quantity}`];
+        if ((item.fulfilledQuantity ?? 0) > 0) {
+          parts.push(`Ful:${item.fulfilledQuantity}`);
+        }
+        if ((item.returnedQuantity ?? 0) > 0) {
+          parts.push(`Ret:${item.returnedQuantity}`);
+        }
+        return `${item.component?.name} (${parts.join(', ')})`;
+      })
       .join('; ');
 
     return [

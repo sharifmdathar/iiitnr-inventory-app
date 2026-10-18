@@ -95,6 +95,16 @@ class RequestApiService(
                 setBody(payload)
             }.body()
 
+    suspend fun exportRequestsCsv(token: String): String {
+        val response =
+            client.get("$baseUrl/requests/export/csv") {
+                headers {
+                    append(HttpHeaders.Authorization, token)
+                }
+            }
+        return response.body()
+    }
+
     suspend fun deleteRequest(
         token: String,
         id: String,

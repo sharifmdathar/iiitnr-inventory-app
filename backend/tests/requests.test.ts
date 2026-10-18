@@ -825,7 +825,7 @@ describe('Request API', () => {
           assert.equal(response.statusCode, 200);
           assert.equal(response.headers['content-type'], 'text/csv');
           assert.ok(response.payload.includes('CSV Export Project'));
-          assert.ok(response.payload.includes('Export Request Item (Req:2, Ful:0, Ret:0)'));
+          assert.ok(response.payload.includes('Export Request Item (Req:2)'));
           assert.ok(
             response.payload.includes(
               'Request ID,User Email,User Name,Target Faculty,Project Title,Status,Created At,Items Summary',
