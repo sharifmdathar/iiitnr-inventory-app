@@ -96,7 +96,7 @@ kotlin {
             .isMacOsX
     if (isMac) {
         val xcf = XCFramework("shared")
-        val iosTargets = listOf(iosX64(), iosArm64(), iosSimulatorArm64())
+        val iosTargets = listOf(iosArm64(), iosSimulatorArm64())
         iosTargets.forEach {
             it.binaries.framework {
                 baseName = "shared"
@@ -186,16 +186,16 @@ kotlin {
             }
 
         if (isMac) {
-            val iosTargets =
-                listOf(getByName("iosX64Main"), getByName("iosArm64Main"), getByName("iosSimulatorArm64Main"))
-            iosTargets.forEach { target ->
-                target.dependencies {
-                    implementation(libs.ktor.client.darwin)
-                    implementation(libs.sqldelight.driver.native)
-                    implementation(libs.camerak.core)
-                    implementation(libs.camerak.qr)
-                    implementation(libs.moko.permissions)
-                }
+            val iosMain = findByName("iosMain") ?: create("iosMain")
+            iosMain.dependsOn(commonMain)
+            getByName("iosArm64Main").dependsOn(iosMain)
+            getByName("iosSimulatorArm64Main").dependsOn(iosMain)
+            iosMain.dependencies {
+                implementation(libs.ktor.client.darwin)
+                implementation(libs.sqldelight.driver.native)
+                implementation(libs.camerak.core)
+                implementation(libs.camerak.qr)
+                implementation(libs.moko.permissions)
             }
         }
 
