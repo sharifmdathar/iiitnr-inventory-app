@@ -32,8 +32,8 @@ import com.kashif.cameraK.state.CameraConfiguration
 import com.kashif.cameraK.state.CameraKState
 import kotlinx.coroutines.launch
 import platform.Foundation.NSData
-import platform.Foundation.NSFileManager
-import platform.Foundation.NSURL
+import platform.UIKit.UIImage
+import platform.UIKit.UIImageJPEGRepresentation
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
@@ -91,7 +91,8 @@ actual fun CameraCaptureContent(
                                 scope.launch {
                                     when (val result = state.controller.takePictureToFile()) {
                                         is ImageCaptureResult.SuccessWithFile -> {
-                                            val nsData = NSData.dataWithContentsOfFile(result.filePath)
+                                            val image = UIImage.imageWithContentsOfFile(result.filePath)
+                                            val nsData = image?.let { UIImageJPEGRepresentation(it, 0.9) }
                                             if (nsData != null) {
                                                 onResult(ImageResult(nsData.toByteArray(), "capture.jpg"))
                                             } else {

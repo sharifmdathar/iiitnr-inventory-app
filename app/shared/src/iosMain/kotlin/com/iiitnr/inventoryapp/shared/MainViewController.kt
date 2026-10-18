@@ -1,8 +1,10 @@
 package com.iiitnr.inventoryapp.shared
 
 import androidx.compose.ui.window.ComposeUIViewController
-import com.iiitnr.inventoryapp.data.storage.createTokenManager
+import com.iiitnr.inventoryapp.di.initKoin
 import com.iiitnr.inventoryapp.ui.theme.AppTheme
+
+private var koinInitialized = false
 
 fun mainViewController() =
     ComposeUIViewController(
@@ -10,8 +12,11 @@ fun mainViewController() =
             enforceStrictPlistSanityCheck = false
         },
     ) {
-        val tokenManager = createTokenManager()
+        if (!koinInitialized) {
+            initKoin()
+            koinInitialized = true
+        }
         AppTheme {
-            App(tokenManager = tokenManager)
+            App()
         }
     }

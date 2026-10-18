@@ -132,4 +132,5 @@ push:
     cd backend && bun run typecheck
     # cd backend && bun run lint
     just test
+    just detekt
     git push
