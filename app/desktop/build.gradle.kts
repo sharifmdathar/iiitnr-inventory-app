@@ -129,7 +129,7 @@ compose.desktop {
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"
-            includeAllModules = true
+            includeAllModules = false
 
             val appIconPng = project(":android").file("src/main/ic_launcher-playstore.png")
             val appIconIco = project.file("icon.ico")

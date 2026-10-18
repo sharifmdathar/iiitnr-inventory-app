@@ -16,15 +16,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5.2.0
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          verify-signature: true
           java-version: 25
 
       - name: Decode release keystore
@@ -68,7 +67,7 @@ jobs:
         working-directory: app
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: android-release-apk
           path: app/apk-artifacts/*.apk
@@ -79,15 +78,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5.2.0
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          verify-signature: true
           java-version: 25
 
       - name: Setup Gradle
@@ -121,14 +119,14 @@ jobs:
           Copy-Item $msi.FullName -Destination "$env:GITHUB_WORKSPACE\IIITNR-Inventory-App.msi"
 
       - name: Upload EXE artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-release-exe
           path: IIITNR-Inventory-App.exe
           retention-days: 1
 
       - name: Upload MSI artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-release-msi
           path: IIITNR-Inventory-App.msi
@@ -139,15 +137,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5.2.0
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          verify-signature: true
           java-version: 25
 
       - name: Setup Gradle
@@ -209,7 +206,7 @@ jobs:
           ./appimagetool.AppImage "$APPDIR" IIITNR-Inventory-App.AppImage
 
       - name: Upload AppImage artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: linux-appimage-release
           path: IIITNR-Inventory-App.AppImage
@@ -220,15 +217,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5.2.0
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          verify-signature: true
           java-version: 25
 
       - name: Setup Gradle
@@ -249,7 +245,7 @@ jobs:
           zip -r ../../../../../ios-artifacts/IIITNR-Inventory-App-iOS-shared.xcframework.zip shared.xcframework
 
       - name: Upload iOS XCFramework artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7
         with:
           name: ios-release-xcframework
           path: ios-artifacts/IIITNR-Inventory-App-iOS-shared.xcframework.zip
@@ -264,7 +260,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 

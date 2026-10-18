@@ -13,7 +13,7 @@ import platform.UIKit.UIImagePickerController
 import platform.UIKit.UIImagePickerControllerDelegateProtocol
 import platform.UIKit.UIImagePickerControllerEditedImage
 import platform.UIKit.UIImagePickerControllerOriginalImage
-import platform.UIKit.UIImagePickerControllerSourceTypePhotoLibrary
+import platform.UIKit.UIImagePickerControllerSourceType
 import platform.UIKit.UINavigationControllerDelegateProtocol
 import platform.UIKit.UIWindow
 import platform.darwin.NSObject
@@ -77,13 +77,14 @@ private class ImagePickerDelegate(
 }
 
 private fun topViewController(): platform.UIKit.UIViewController? {
-	val window =
-		UIApplication.sharedApplication.windows.firstOrNull { (it as? UIWindow)?.isKeyWindow == true }
+	val windows = UIApplication.sharedApplication.windows
+	val keyWindow =
+		windows.mapNotNull { it as? UIWindow }.firstOrNull { it.isKeyWindow() }
 			?: UIApplication.sharedApplication.keyWindow
-	var controller = window?.rootViewController
+	var controller = keyWindow?.rootViewController
 
 	while (controller?.presentedViewController != null) {
-		controller = controller?.presentedViewController
+		controller = controller.presentedViewController
 	}
 
 	return controller
@@ -106,7 +107,7 @@ actual suspend fun pickImage(): ImageResult? =
 			}
 
 			val picker = UIImagePickerController().apply {
-				sourceType = UIImagePickerControllerSourceTypePhotoLibrary
+				sourceType = UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypePhotoLibrary
 			}
 			val delegate = ImagePickerDelegate { result ->
 				continuation.resume(result)

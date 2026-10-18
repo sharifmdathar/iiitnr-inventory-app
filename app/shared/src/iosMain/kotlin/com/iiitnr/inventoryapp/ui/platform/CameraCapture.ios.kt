@@ -91,7 +91,7 @@ actual fun CameraCaptureContent(
                                 scope.launch {
                                     when (val result = state.controller.takePictureToFile()) {
                                         is ImageCaptureResult.SuccessWithFile -> {
-                                            val nsData = NSData.dataWithContentsOfURL(NSURL.fileURLWithPath(result.filePath))
+                                            val nsData = NSData.dataWithContentsOfFile(result.filePath)
                                             if (nsData != null) {
                                                 onResult(ImageResult(nsData.toByteArray(), "capture.jpg"))
                                             } else {
