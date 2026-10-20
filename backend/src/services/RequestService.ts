@@ -370,6 +370,7 @@ export async function rejectRenewRequestTransaction(
 export async function returnRequestTransaction(
   existingRequest: { id: string } | NonNullable<RequestWithRelations>,
   returnItems?: ReturnItemInput[],
+  options: { preserveStatus?: boolean } = {},
 ) {
   const returnedAt = new Date().toISOString();
   await db.transaction(async (tx) => {
@@ -473,10 +474,14 @@ export async function returnRequestTransaction(
         ? RequestStatus.PARTIALLY_RETURNED
         : RequestStatus.RETURNED;
 
+    // An expired request keeps EXPIRED after a late return: the deadline was
+    // still missed. The stock movement above is what actually matters.
+    const statusToSet = options.preserveStatus ? lockedRequest.status : newStatus;
+
     await tx
       .update(request)
       .set({
-        status: newStatus,
+        status: statusToSet,
         updatedAt: returnedAt,
         returnedAt: newStatus === RequestStatus.RETURNED ? returnedAt : null,
       })

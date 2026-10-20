@@ -658,7 +658,15 @@ async function handleExpiredStatusUpdate(
     return;
   }
 
-  await RequestService.returnRequestTransaction(existingRequest);
+  const body = req.body as UpdateStatusBody;
+  const writtenOffBefore = new Map(
+    existingRequest.requestItems.map((item) => [item.componentId, item.writtenOffQuantity ?? 0]),
+  );
+
+  // preserveStatus: a late return does not undo the fact that the deadline was missed.
+  await RequestService.returnRequestTransaction(existingRequest, body.returnItems, {
+    preserveStatus: true,
+  });
   const updatedRequest = await RequestService.fetchAndShapeRequest(existingRequest.id);
 
   await logAudit(
@@ -668,15 +676,37 @@ async function handleExpiredStatusUpdate(
       entityType: 'Request',
       entityId: existingRequest.id,
       oldValues: { status: existingRequest.status },
-      newValues: { status: newStatus },
+      newValues: { status: updatedRequest?.status ?? RequestStatus.EXPIRED },
     },
     req,
   );
 
+  for (const item of updatedRequest?.items ?? []) {
+    const before = writtenOffBefore.get(item.componentId) ?? 0;
+    const after = item.writtenOffQuantity ?? 0;
+    if (after >= before) continue;
+
+    await logAudit(
+      {
+        userId: getUserIdFromRequest(req),
+        action: AuditActionType.INVENTORY_ADJUST,
+        entityType: 'Component',
+        entityId: item.componentId,
+        newValues: { totalQuantityDelta: before - after },
+        metadata: {
+          reason: 'RECLAIMED_AFTER_EXPIRY',
+          requestId: existingRequest.id,
+          quantity: before - after,
+        },
+      },
+      req,
+    );
+  }
+
   if (updatedRequest) {
     await notifyTransitionSafely(
       { log: { error: (err: unknown) => req.log.error(err) } },
-      { ...updatedRequest, status: RequestStatus.RETURNED },
+      { ...updatedRequest, status: RequestStatus.EXPIRED },
       currentUser.sub,
     );
   }

@@ -1446,12 +1446,17 @@ describe('Request API', () => {
 
       assert.equal(response.statusCode, 200);
       const body = response.json();
-      assert.equal(body.request.status, 'RETURNED');
+      // The deadline was missed, so the request stays EXPIRED after the late return.
+      assert.equal(body.request.status, 'EXPIRED');
       const updatedReq = await findRequestById(req.id);
+      assert.equal(updatedReq?.status, 'EXPIRED');
       assert.equal(updatedReq?.items[0].fulfilledQuantity, 4);
       assert.equal(updatedReq?.items[0].returnedQuantity, 4);
+      // Expiry wrote the 4 units off the total, the late return reclaimed them.
+      assert.equal(updatedReq?.items[0].writtenOffQuantity, 0);
       const updatedComponent = await findComponentById(item.id);
       assert.equal(updatedComponent?.availableQuantity, 10);
+      assert.equal(updatedComponent?.totalQuantity, 10);
     });
 
     test('RENEWED request cannot be set to ISSUED', async () => {
@@ -2309,5 +2314,50 @@ describe('Write-off and reclaim', () => {
     const comp = await findComponentById(item.id);
     assert.equal(comp?.totalQuantity, 7);
     assert.equal(comp?.availableQuantity, 7);
+  });
+});
+
+describe('Expired partial return via API', () => {
+  test('returnItems are honoured and the request stays EXPIRED', async () => {
+    const item = await createComponent({
+      name: 'Expired Partial API Sensor',
+      totalQuantity: 10,
+      availableQuantity: 4,
+    });
+    createdComponentIds.push(item.id);
+    const req = await createRequest({
+      userId: studentId,
+      targetFacultyId: facultyId,
+      projectTitle: 'Expired Partial API',
+      status: 'ISSUED',
+      items: [{ componentId: item.id, quantity: 6, fulfilledQuantity: 6 }],
+    });
+    await db
+      .update(request)
+      .set({ returnDueAt: new Date(Date.now() - 60_000).toISOString() })
+      .where(eq(request.id, req.id));
+    await expireOverdueRequests();
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: `/requests/${req.id}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: {
+        status: 'RETURNED',
+        returnItems: [{ componentId: item.id, quantity: 4 }],
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().request.status, 'EXPIRED');
+
+    const itemRow = (await findRequestById(req.id))?.items[0];
+    assert.equal(itemRow?.returnedQuantity, 4);
+    // 6 written off, 4 of them came back, 2 stay lost.
+    assert.equal(itemRow?.writtenOffQuantity, 2);
+
+    const comp = await findComponentById(item.id);
+    assert.equal(comp?.availableQuantity, 8);
+    assert.equal(comp?.totalQuantity, 8);
   });
 });
