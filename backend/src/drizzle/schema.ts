@@ -139,6 +139,7 @@ export const requestItem = pgTable(
     quantity: integer().notNull(),
     fulfilledQuantity: integer().default(0).notNull(),
     returnedQuantity: integer().default(0).notNull(),
+    writtenOffQuantity: integer().default(0).notNull(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
