@@ -34,6 +34,42 @@ class ModelSerializationTest {
     }
 
     @Test
+    fun requestItemDecodesWithDefaultWrittenOffQuantity() {
+        val item =
+            json.decodeFromString<RequestItem>(
+                """
+                {
+                  "id": "item-1",
+                  "quantity": 3,
+                  "fulfilledQuantity": 3,
+                  "returnedQuantity": 1
+                }
+                """.trimIndent(),
+            )
+
+        assertEquals("item-1", item.id)
+        assertEquals(3, item.quantity)
+        assertEquals(3, item.fulfilledQuantity)
+        assertEquals(1, item.returnedQuantity)
+        assertEquals(0, item.writtenOffQuantity)
+
+        val itemWithWrittenOff =
+            json.decodeFromString<RequestItem>(
+                """
+                {
+                  "id": "item-2",
+                  "quantity": 5,
+                  "fulfilledQuantity": 5,
+                  "returnedQuantity": 2,
+                  "writtenOffQuantity": 3
+                }
+                """.trimIndent(),
+            )
+
+        assertEquals(3, itemWithWrittenOff.writtenOffQuantity)
+    }
+
+    @Test
     fun requestDecodesNestedItemsAndComponents() {
         val response =
             json.decodeFromString<RequestResponse>(

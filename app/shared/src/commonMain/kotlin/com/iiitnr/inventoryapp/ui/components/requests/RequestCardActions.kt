@@ -234,13 +234,22 @@ private fun ExpiredRequestActions(
     onReturnRequest: ((String) -> Unit)?,
     onShowQr: ((Request) -> Unit)?,
 ) {
+    val totalOutstanding =
+        request.items.sumOf { (it.fulfilledQuantity - it.returnedQuantity).coerceAtLeast(0) }
+    val totalHeld =
+        request.items.sumOf {
+            (it.fulfilledQuantity - it.returnedQuantity - it.writtenOffQuantity).coerceAtLeast(0)
+        }
+    val isReclaim = totalOutstanding > 0 && totalHeld == 0
+
     RequestLifecycleActionRow(
         request = request,
         isFaculty = isFaculty,
         onReturnRequest = onReturnRequest,
         onRequestRenew = null,
         onShowQr = onShowQr,
-        returnContentDescription = "Record overdue return to inventory",
+        returnContentDescription =
+            if (isReclaim) "Reclaim written-off items to inventory" else "Record overdue return to inventory",
         returnTint = MaterialTheme.colorScheme.error,
         showRenew = false,
         qrContentDescription = "Show QR for LA to scan when returning overdue items",
@@ -259,6 +268,8 @@ private fun RequestLifecycleActionRow(
     showRenew: Boolean = true,
     qrContentDescription: String = "Show QR for LA to scan when returning items",
 ) {
+    val hasReturnableItems = request.items.any { (it.fulfilledQuantity - it.returnedQuantity) > 0 }
+
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (showRenew && !isFaculty && onRequestRenew != null) {
             IconButton(onClick = { onRequestRenew(request.id) }) {
@@ -269,7 +280,7 @@ private fun RequestLifecycleActionRow(
                 )
             }
         }
-        if (!isFaculty && onShowQr != null) {
+        if (!isFaculty && onShowQr != null && hasReturnableItems) {
             IconButton(onClick = { onShowQr(request) }) {
                 Icon(
                     imageVector = Icons.Default.QrCode2,
@@ -278,7 +289,7 @@ private fun RequestLifecycleActionRow(
                 )
             }
         }
-        if (onReturnRequest != null) {
+        if (onReturnRequest != null && hasReturnableItems) {
             IconButton(onClick = { onReturnRequest(request.id) }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.AssignmentReturn,
