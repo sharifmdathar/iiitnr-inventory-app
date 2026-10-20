@@ -8,6 +8,7 @@ import { buildApp } from '../src/app.js';
 import { db } from '../src/drizzle/db.js';
 import { component, request } from '../src/drizzle/schema.js';
 import * as RequestService from '../src/services/RequestService.js';
+import { expireOverdueRequests } from '../src/services/request-expiry.js';
 import {
   createComponent,
   createRequest,
@@ -646,6 +647,71 @@ describe('Request API', () => {
         'a pending renewal must not expire while faculty have not decided',
       );
       assert.equal((await findRequestById(req.id))?.status, 'REQUESTED_RENEW');
+    });
+
+    test('expiring a request writes the outstanding stock off the component total', async () => {
+      const item = await createComponent({
+        name: 'Write Off Sensor',
+        totalQuantity: 10,
+        availableQuantity: 6,
+      });
+      createdComponentIds.push(item.id);
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Write Off Checkout',
+        status: 'ISSUED',
+        items: [{ componentId: item.id, quantity: 4, fulfilledQuantity: 4 }],
+      });
+      const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
+      await db.update(request).set({ returnDueAt: overdueAt }).where(eq(request.id, req.id));
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/requests?status=EXPIRED',
+        headers: { authorization: `Bearer ${adminToken}` },
+      });
+
+      assert.equal(response.statusCode, 200);
+      assert.equal((await findRequestById(req.id))?.status, 'EXPIRED');
+
+      const updatedItem = (await findRequestById(req.id))?.items[0];
+      assert.equal(updatedItem?.writtenOffQuantity, 4);
+      assert.equal(updatedItem?.returnedQuantity, 0);
+
+      const updatedComponent = await findComponentById(item.id);
+      // Written off: leaves totalQuantity, but available was already reduced at issue.
+      assert.equal(updatedComponent?.totalQuantity, 6);
+      assert.equal(updatedComponent?.availableQuantity, 6);
+    });
+
+    test('repeated expiry sweeps do not write off twice', async () => {
+      const item = await createComponent({
+        name: 'Idempotent Write Off Sensor',
+        totalQuantity: 10,
+        availableQuantity: 7,
+      });
+      createdComponentIds.push(item.id);
+      const req = await createRequest({
+        userId: studentId,
+        targetFacultyId: facultyId,
+        projectTitle: 'Idempotent Write Off',
+        status: 'ISSUED',
+        items: [{ componentId: item.id, quantity: 3, fulfilledQuantity: 3 }],
+      });
+      const overdueAt = new Date(Date.now() - 60 * 1000).toISOString();
+      await db.update(request).set({ returnDueAt: overdueAt }).where(eq(request.id, req.id));
+
+      const firstSweep = await expireOverdueRequests();
+      assert.ok(firstSweep.some((r) => r.id === req.id));
+      const afterFirst = await findComponentById(item.id);
+      assert.equal(afterFirst?.totalQuantity, 7);
+
+      const secondSweep = await expireOverdueRequests();
+      assert.ok(!secondSweep.some((r) => r.id === req.id));
+      const afterSecond = await findComponentById(item.id);
+      assert.equal(afterSecond?.totalQuantity, 7);
+      assert.equal((await findRequestById(req.id))?.items[0].writtenOffQuantity, 3);
     });
 
     test('faculty sees all requests targeting them', async () => {
