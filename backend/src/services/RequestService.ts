@@ -396,23 +396,23 @@ export async function returnRequestTransaction(
     for (const item of requestItems) {
       const issuedQty = item.fulfilledQuantity ?? 0;
       const alreadyReturnedQty = item.returnedQuantity ?? 0;
-      const currentlyHeldQty = issuedQty - alreadyReturnedQty;
+      const alreadyWrittenOffQty = item.writtenOffQuantity ?? 0;
+      // What can still come back, including stock written off on expiry.
+      const outstandingQty = issuedQty - alreadyReturnedQty;
+      // What the student physically holds: written-off stock is not with them.
+      const currentlyHeldQty = outstandingQty - alreadyWrittenOffQty;
 
-      if (currentlyHeldQty <= 0) {
+      if (outstandingQty <= 0) {
         continue;
       }
 
       const returnItem = returnItems?.find((i) => i.componentId === item.componentId);
 
-      if (returnItem && returnItem.quantity > currentlyHeldQty) {
-        throw new ExcessReturnQuantityError(
-          item.componentId,
-          returnItem.quantity,
-          currentlyHeldQty,
-        );
+      if (returnItem && returnItem.quantity > outstandingQty) {
+        throw new ExcessReturnQuantityError(item.componentId, returnItem.quantity, outstandingQty);
       }
 
-      const returnQty = returnItem ? returnItem.quantity : returnItems ? 0 : currentlyHeldQty;
+      const returnQty = returnItem ? returnItem.quantity : returnItems ? 0 : outstandingQty;
 
       if (returnQty <= 0) {
         hasIssuedRemaining = true;
@@ -436,17 +436,23 @@ export async function returnRequestTransaction(
         throw new NotFoundError('Component', item.componentId);
       }
 
+      // Stock coming back after a write-off is reclaimed: it returns to both
+      // available and total, so the component stops counting it as lost.
+      const reclaimedQty = Math.min(Math.max(0, returnQty - currentlyHeldQty), alreadyWrittenOffQty);
       const newReturned = alreadyReturnedQty + returnQty;
+      const newWrittenOff = alreadyWrittenOffQty - reclaimedQty;
+
       await tx
         .update(requestItem)
         .set({
           returnedQuantity: newReturned,
+          writtenOffQuantity: newWrittenOff,
           updatedAt: returnedAt,
         })
         .where(eq(requestItem.id, item.id));
 
       const nextAvailable = lockedComp.availableQuantity + returnQty;
-      const nextTotal = Math.max(lockedComp.totalQuantity, nextAvailable);
+      const nextTotal = Math.max(lockedComp.totalQuantity + reclaimedQty, nextAvailable);
 
       await tx
         .update(component)

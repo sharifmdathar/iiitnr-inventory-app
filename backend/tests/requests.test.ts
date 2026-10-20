@@ -2202,3 +2202,112 @@ describe('Request API', () => {
     });
   });
 });
+
+describe('Write-off and reclaim', () => {
+  const setOverdue = (requestId: string) =>
+    db
+      .update(request)
+      .set({ returnDueAt: new Date(Date.now() - 60_000).toISOString() })
+      .where(eq(request.id, requestId));
+
+  test('partial return after expiry reclaims only the quantity that came back', async () => {
+    const item = await createComponent({
+      name: 'Reclaim Partial Sensor',
+      totalQuantity: 10,
+      availableQuantity: 5,
+    });
+    createdComponentIds.push(item.id);
+    const req = await createRequest({
+      userId: studentId,
+      targetFacultyId: facultyId,
+      projectTitle: 'Reclaim Partial',
+      status: 'ISSUED',
+      items: [{ componentId: item.id, quantity: 5, fulfilledQuantity: 5 }],
+    });
+    await setOverdue(req.id);
+    await expireOverdueRequests();
+
+    let comp = await findComponentById(item.id);
+    assert.equal(comp?.totalQuantity, 5);
+    assert.equal(comp?.availableQuantity, 5);
+
+    // 3 of the 5 written-off units come back.
+    await RequestService.returnRequestTransaction({ id: req.id }, [
+      { componentId: item.id, quantity: 3 },
+    ]);
+
+    comp = await findComponentById(item.id);
+    assert.equal(comp?.availableQuantity, 8);
+    assert.equal(comp?.totalQuantity, 8);
+    let itemRow = (await findRequestById(req.id))?.items[0];
+    assert.equal(itemRow?.returnedQuantity, 3);
+    assert.equal(itemRow?.writtenOffQuantity, 2);
+
+    // The remaining 2 arrive later: full round trip back to the original state.
+    await RequestService.returnRequestTransaction({ id: req.id }, [
+      { componentId: item.id, quantity: 2 },
+    ]);
+
+    comp = await findComponentById(item.id);
+    assert.equal(comp?.availableQuantity, 10);
+    assert.equal(comp?.totalQuantity, 10);
+    itemRow = (await findRequestById(req.id))?.items[0];
+    assert.equal(itemRow?.returnedQuantity, 5);
+    assert.equal(itemRow?.writtenOffQuantity, 0);
+  });
+
+  test('returning stock that was never written off does not inflate the total', async () => {
+    const item = await createComponent({
+      name: 'No Reclaim Sensor',
+      totalQuantity: 10,
+      availableQuantity: 6,
+    });
+    createdComponentIds.push(item.id);
+    const req = await createRequest({
+      userId: studentId,
+      targetFacultyId: facultyId,
+      projectTitle: 'No Reclaim',
+      status: 'ISSUED',
+      items: [{ componentId: item.id, quantity: 4, fulfilledQuantity: 4 }],
+    });
+
+    await RequestService.returnRequestTransaction({ id: req.id }, [
+      { componentId: item.id, quantity: 4 },
+    ]);
+
+    const comp = await findComponentById(item.id);
+    assert.equal(comp?.availableQuantity, 10);
+    assert.equal(comp?.totalQuantity, 10);
+    assert.equal((await findRequestById(req.id))?.items[0].writtenOffQuantity, 0);
+  });
+
+  test('returning more than the outstanding quantity is rejected after expiry', async () => {
+    const item = await createComponent({
+      name: 'Over Reclaim Sensor',
+      totalQuantity: 10,
+      availableQuantity: 7,
+    });
+    createdComponentIds.push(item.id);
+    const req = await createRequest({
+      userId: studentId,
+      targetFacultyId: facultyId,
+      projectTitle: 'Over Reclaim',
+      status: 'ISSUED',
+      items: [{ componentId: item.id, quantity: 3, fulfilledQuantity: 3 }],
+    });
+    await setOverdue(req.id);
+    await expireOverdueRequests();
+
+    await assert.rejects(
+      () =>
+        RequestService.returnRequestTransaction({ id: req.id }, [
+          { componentId: item.id, quantity: 4 },
+        ]),
+      /excess/i,
+    );
+
+    const comp = await findComponentById(item.id);
+    assert.equal(comp?.totalQuantity, 7);
+    assert.equal(comp?.availableQuantity, 7);
+  });
+});
