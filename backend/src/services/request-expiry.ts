@@ -11,7 +11,6 @@ const expirableStatuses: RequestStatusValue[] = [
   RequestStatus.ISSUED,
   RequestStatus.PARTIALLY_ISSUED,
   RequestStatus.PARTIALLY_RETURNED,
-  RequestStatus.REQUESTED_RENEW,
   RequestStatus.RENEWED,
 ];
 
