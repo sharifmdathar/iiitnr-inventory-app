@@ -16,6 +16,21 @@ CREATE TABLE SyncMetadata (
     lastModified TEXT
 );
 
+CREATE TABLE RequestDraftItem (
+    userId TEXT NOT NULL,
+    componentId TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    updatedAt TEXT NOT NULL,
+    PRIMARY KEY (userId, componentId)
+);
+
+CREATE TABLE RequestDraft (
+    userId TEXT PRIMARY KEY,
+    projectTitle TEXT,
+    targetFacultyId TEXT,
+    updatedAt TEXT NOT NULL
+);
+
 insertComponent:
 INSERT OR REPLACE INTO Component(id, name, description, imageUrl, totalQuantity, availableQuantity, category, location, createdAt, updatedAt)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
@@ -32,3 +47,33 @@ VALUES ('components_sync', ?);
 
 getLastModified:
 SELECT lastModified FROM SyncMetadata WHERE key = 'components_sync';
+
+upsertDraftItem:
+INSERT OR REPLACE INTO RequestDraftItem(userId, componentId, quantity, updatedAt)
+VALUES (?, ?, ?, ?);
+
+deleteDraftItem:
+DELETE FROM RequestDraftItem WHERE userId = ? AND componentId = ?;
+
+deleteAllDraftItems:
+DELETE FROM RequestDraftItem WHERE userId = ?;
+
+selectDraftItemsWithAvailability:
+SELECT
+    d.componentId AS componentId,
+    d.quantity AS quantity,
+    c.availableQuantity AS availableQuantity,
+    c.name AS name
+FROM RequestDraftItem d
+LEFT JOIN Component c ON c.id = d.componentId
+WHERE d.userId = ?;
+
+upsertDraft:
+INSERT OR REPLACE INTO RequestDraft(userId, projectTitle, targetFacultyId, updatedAt)
+VALUES (?, ?, ?, ?);
+
+selectDraft:
+SELECT * FROM RequestDraft WHERE userId = ?;
+
+deleteDraft:
+DELETE FROM RequestDraft WHERE userId = ?;

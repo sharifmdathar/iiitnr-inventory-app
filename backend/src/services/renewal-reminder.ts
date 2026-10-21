@@ -4,7 +4,7 @@ import { request } from '../drizzle/schema.js';
 import { user } from '../drizzle/schema.js';
 import { RequestStatus } from '../utils/enums.js';
 import type { RequestStatusValue } from '../utils/enums.js';
-import { sendMail } from './MailService.js';
+import { isMailEnabled, sendMail } from './MailService.js';
 
 const RENEWAL_REMINDER_DAYS = 7;
 const RENEWABLE_STATUSES: RequestStatusValue[] = [
@@ -105,10 +105,15 @@ export async function runRenewalReminderSweep(): Promise<{
   candidates: number;
   sent: number;
   failed: number;
+  skipped: boolean;
 }> {
+  if (!isMailEnabled()) {
+    return { candidates: 0, sent: 0, failed: 0, skipped: true };
+  }
+
   const candidates = await findRenewalReminderCandidates();
   const { sent, failed } = await sendRenewalReminders(candidates);
-  return { candidates: candidates.length, sent, failed };
+  return { candidates: candidates.length, sent, failed, skipped: false };
 }
 
 export function startRenewalReminderSweep(

@@ -54,41 +54,7 @@ class RequestsViewModel(
         if (user.role != UserRole.ADMIN && user.role != UserRole.LA && user.role != UserRole.FACULTY) return null
         if (requests.isEmpty()) return null
 
-        val csvHeader = "Request ID,User Email,User Name,Target Faculty,Project Title,Status,Created At,Items Summary"
-        val csvRows =
-            requests.map { r ->
-                val itemsSummary =
-                    r.items.joinToString("; ") { item ->
-                        val name = item.component?.name ?: item.componentId
-                        val parts = mutableListOf("Req:${item.quantity}")
-                        if (item.fulfilledQuantity > 0) {
-                            parts.add("Ful:${item.fulfilledQuantity}")
-                        }
-                        if (item.returnedQuantity > 0) {
-                            parts.add("Ret:${item.returnedQuantity}")
-                        }
-                        "$name (${parts.joinToString(", ")})"
-                    }
-                listOf(
-                    escapeCsvField(r.id),
-                    escapeCsvField(r.user?.email),
-                    escapeCsvField(r.user?.name),
-                    escapeCsvField(r.targetFaculty?.name ?: r.targetFaculty?.email),
-                    escapeCsvField(r.projectTitle),
-                    escapeCsvField(r.status.name),
-                    escapeCsvField(r.createdAt),
-                    escapeCsvField(itemsSummary),
-                ).joinToString(",")
-            }
-        return listOf(csvHeader, *csvRows.toTypedArray()).joinToString("\n")
-    }
-
-    private fun escapeCsvField(field: String?): String {
-        if (field.isNullOrEmpty()) return ""
-        if (field.contains(",") || field.contains("\"") || field.contains("\n") || field.contains("\r")) {
-            return "\"${field.replace("\"", "\"\"")}\""
-        }
-        return field
+        return buildRequestsCsv(requests)
     }
 
     val filteredRequests: List<Request>
@@ -333,4 +299,49 @@ class RequestsViewModel(
         const val MAX_POLL_DELAY_MS = 60_000L
         const val SSE_RECONNECT_DELAY_MS = 3_000L
     }
+}
+
+/** The CSV the client exports — it has to stay in step with the backend's. */
+internal fun buildRequestsCsv(requests: List<Request>): String {
+    val csvHeader =
+        "Request ID,User Email,User Name,Target Faculty,Project Title,Status,Created At,Return Due At,Late Fee (INR),Items Summary"
+    val csvRows =
+        requests.map { r ->
+            val itemsSummary =
+                r.items.joinToString("; ") { item ->
+                    val name = item.component?.name ?: item.componentId
+                    val parts = mutableListOf("Req:${item.quantity}")
+                    if (item.fulfilledQuantity > 0) {
+                        parts.add("Ful:${item.fulfilledQuantity}")
+                    }
+                    if (item.returnedQuantity > 0) {
+                        parts.add("Ret:${item.returnedQuantity}")
+                    }
+                    if (item.writtenOffQuantity > 0) {
+                        parts.add("Wrn:${item.writtenOffQuantity}")
+                    }
+                    "$name (${parts.joinToString(", ")})"
+                }
+            listOf(
+                escapeCsvField(r.id),
+                escapeCsvField(r.user?.email),
+                escapeCsvField(r.user?.name),
+                escapeCsvField(r.targetFaculty?.name ?: r.targetFaculty?.email),
+                escapeCsvField(r.projectTitle),
+                escapeCsvField(r.status.name),
+                escapeCsvField(r.createdAt),
+                escapeCsvField(r.returnDueAt),
+                escapeCsvField(r.lateFeeAccrued.toString()),
+                escapeCsvField(itemsSummary),
+            ).joinToString(",")
+        }
+    return listOf(csvHeader, *csvRows.toTypedArray()).joinToString("\n")
+}
+
+private fun escapeCsvField(field: String?): String {
+    if (field.isNullOrEmpty()) return ""
+    if (field.contains(",") || field.contains("\"") || field.contains("\n") || field.contains("\r")) {
+        return "\"${field.replace("\"", "\"\"")}\""
+    }
+    return field
 }

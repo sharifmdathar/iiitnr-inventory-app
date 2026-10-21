@@ -67,5 +67,8 @@ fun buildDatesLine(
     request.fulfilledAt?.let { tokens += "Fulfilled: ${getRelativeDays(it, today)}" }
     request.lastRenewDate?.let { tokens += "Renewed: ${getRelativeDays(it, today)}" }
     request.returnedAt?.let { tokens += "Returned: ${getRelativeDays(it, today)}" }
+    if (request.lateFeeAccrued > 0) {
+        tokens += "Charge: ₹${request.lateFeeAccrued}"
+    }
     return tokens.joinToString(" · ")
 }

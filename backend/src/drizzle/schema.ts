@@ -5,6 +5,7 @@ import {
   text,
   integer,
   boolean,
+  jsonb,
   uniqueIndex,
   index,
   foreignKey,
@@ -90,6 +91,8 @@ export const request = pgTable(
     lastRenewDate: timestamp({ precision: 3, mode: 'string' }),
     lastRenewReason: text(),
     renewalReminderSentAt: timestamp({ precision: 3, mode: 'string' }),
+    renewalRequestedAt: timestamp({ precision: 3, mode: 'string' }),
+    lateFeeAccrued: integer().default(0).notNull(),
   },
   (table) => [
     index('Request_targetFacultyId_idx').using(
@@ -258,5 +261,55 @@ export const auditLog = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('set null'),
+  ],
+);
+
+export const requestEmailKind = pgEnum('RequestEmailKind', [
+  'RENEWAL_CHASE',
+  'EXPIRY_NOTICE',
+  'LATE_FEE',
+]);
+
+export const requestEmail = pgTable(
+  'RequestEmail',
+  {
+    id: text().primaryKey().notNull(),
+    requestId: text().notNull(),
+    recipientId: text().notNull(),
+    kind: requestEmailKind().notNull(),
+    variant: text().notNull(),
+    subject: text(),
+    metadata: jsonb(),
+    sentAt: timestamp({ precision: 3, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('RequestEmail_dedupe_key').using(
+      'btree',
+      table.requestId.asc().nullsLast().op('text_ops'),
+      table.recipientId.asc().nullsLast().op('text_ops'),
+      table.kind.asc().nullsLast(),
+      table.variant.asc().nullsLast().op('text_ops'),
+    ),
+    index('RequestEmail_requestId_idx').using(
+      'btree',
+      table.requestId.asc().nullsLast().op('text_ops'),
+    ),
+    index('RequestEmail_sentAt_idx').using('btree', table.sentAt.asc().nullsLast()),
+    foreignKey({
+      columns: [table.requestId],
+      foreignColumns: [request.id],
+      name: 'RequestEmail_requestId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.recipientId],
+      foreignColumns: [user.id],
+      name: 'RequestEmail_recipientId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
   ],
 );

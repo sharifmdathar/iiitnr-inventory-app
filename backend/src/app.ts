@@ -14,6 +14,10 @@ import { pool } from './drizzle/db.js';
 import routes from './routes/index.js';
 import { startRequestExpirySweep } from './services/request-expiry.js';
 import { startRenewalReminderSweep } from './services/renewal-reminder.js';
+import { startRenewalChaseSweep } from './services/renewal-chase.js';
+import { startLateFeeSweep } from './services/late-fee.js';
+import { sendExpiryNoticesForRequests } from './services/expiry-notice.js';
+import { isMailEnabled } from './services/MailService.js';
 import { notifyRequestsExpired } from './services/NotificationService.js';
 import { notifyRequestsUpdated } from './utils/events.js';
 import { DomainError } from './utils/errors.js';
@@ -295,8 +299,16 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
 
   let stopRequestExpirySweep: (() => void) | undefined;
   let stopRenewalReminderSweep: (() => void) | undefined;
+  let stopRenewalChaseSweep: (() => void) | undefined;
+  let stopLateFeeSweep: (() => void) | undefined;
   if (!env.isTest) {
     app.addHook('onReady', (done) => {
+      if (isMailEnabled()) {
+        app.log.info('Outgoing mail is enabled (MAIL_ENABLED=true)');
+      } else {
+        app.log.info('Outgoing mail is disabled');
+      }
+
       stopRequestExpirySweep = startRequestExpirySweep(
         (err) => {
           app.log.error({ err }, 'Request expiry sweep failed');
@@ -306,10 +318,20 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
           notifyRequestsExpired(expired)
             .catch((err) => app.log.error({ err }, 'Failed to notify expired requests'))
             .finally(() => notifyRequestsUpdated());
+
+          sendExpiryNoticesForRequests(expired.map((request) => request.id)).catch((err) =>
+            app.log.error({ err }, 'Failed to send expiry notices'),
+          );
         },
       );
       stopRenewalReminderSweep = startRenewalReminderSweep((err) =>
         app.log.error({ err }, 'Renewal reminder sweep failed'),
+      );
+      stopRenewalChaseSweep = startRenewalChaseSweep((err) =>
+        app.log.error({ err }, 'Renewal chase sweep failed'),
+      );
+      stopLateFeeSweep = startLateFeeSweep((err) =>
+        app.log.error({ err }, 'Late fee sweep failed'),
       );
       done();
     });
@@ -318,6 +340,8 @@ function setupHooks(app: FastifyInstance, env: AppEnvironment) {
   app.addHook('onClose', async () => {
     stopRequestExpirySweep?.();
     stopRenewalReminderSweep?.();
+    stopRenewalChaseSweep?.();
+    stopLateFeeSweep?.();
     if (!env.isTest) {
       await pool.end();
     }

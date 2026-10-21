@@ -186,10 +186,7 @@ kotlin {
             }
 
         if (isMac) {
-            val iosMain = findByName("iosMain") ?: create("iosMain")
-            iosMain.dependsOn(commonMain)
-            getByName("iosArm64Main").dependsOn(iosMain)
-            getByName("iosSimulatorArm64Main").dependsOn(iosMain)
+            val iosMain = sourceSets.getByName("iosMain")
             iosMain.dependencies {
                 implementation(libs.ktor.client.darwin)
                 implementation(libs.sqldelight.driver.native)

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.cache.ComponentsCache
+import com.iiitnr.inventoryapp.data.cache.DraftCache
 import com.iiitnr.inventoryapp.data.models.AppError
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
@@ -26,6 +27,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class ComponentsViewModel(
     val tokenManager: TokenManager,
     private val componentsCache: ComponentsCache? = null,
+    private val draftCache: DraftCache? = null,
 ) : ViewModel() {
     var components by mutableStateOf<List<Component>>(emptyList())
         private set
@@ -54,8 +56,25 @@ class ComponentsViewModel(
 
     var facultyOptions by mutableStateOf<List<User>>(emptyList())
         private set
-    var selectedFacultyId by mutableStateOf<String?>(null)
-    var projectTitle by mutableStateOf("")
+
+    private var _projectTitle by mutableStateOf("")
+    var projectTitle: String
+        get() = _projectTitle
+        set(value) {
+            if (_projectTitle == value) return
+            _projectTitle = value
+            persistDraft()
+        }
+
+    private var _selectedFacultyId by mutableStateOf<String?>(null)
+    var selectedFacultyId: String?
+        get() = _selectedFacultyId
+        set(value) {
+            if (_selectedFacultyId == value) return
+            _selectedFacultyId = value
+            persistDraft()
+        }
+
     var isLoadingFaculty by mutableStateOf(false)
         private set
     var pendingRequestsCount by mutableStateOf(0)
@@ -66,6 +85,10 @@ class ComponentsViewModel(
 
     private val _snackbarMessages = MutableSharedFlow<String>()
     val snackbarMessages = _snackbarMessages.asSharedFlow()
+
+    private var currentUserId: String? = null
+
+    private var isRestoringDraft = false
 
     val filteredComponents: List<Component>
         get() {
@@ -132,7 +155,71 @@ class ComponentsViewModel(
                 if (token != null) {
                     val response = ApiClient.authApiService.getMe("Bearer $token")
                     userRole = response.user.role
+                    currentUserId = response.user.id
+                    restoreDraft()
                 }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /**
+     * Restores the request the user was putting together, clamping quantities
+     * to the stock that is available now.
+     */
+    private suspend fun restoreDraft() {
+        val userId = currentUserId ?: return
+        val cache = draftCache ?: return
+
+        isRestoringDraft = true
+        try {
+            val items = cache.getItems(userId)
+            val quantities =
+                items
+                    .mapNotNull { item ->
+                        val available = item.availableQuantity ?: return@mapNotNull null
+                        val quantity = item.quantity.coerceIn(0, available)
+                        if (quantity > 0) item.componentId to quantity else null
+                    }.toMap()
+
+            val draft = cache.getDraft(userId)
+
+            // The user may already have started a new cart while the draft
+            // was being read — never overwrite that.
+            if (cartQuantities.isNotEmpty()) return
+
+            if (quantities.isNotEmpty() || draft?.projectTitle != null || draft?.targetFacultyId != null) {
+                cartQuantities = quantities
+                _projectTitle = draft?.projectTitle.orEmpty()
+                _selectedFacultyId = draft?.targetFacultyId
+
+                // Store the reconciled draft, so the stale lines are dropped.
+                cache.save(
+                    userId = userId,
+                    quantities = quantities,
+                    projectTitle = _projectTitle,
+                    targetFacultyId = _selectedFacultyId,
+                )
+            }
+        } catch (_: Exception) {
+        } finally {
+            isRestoringDraft = false
+        }
+    }
+
+    private fun persistDraft() {
+        if (isRestoringDraft) return
+        val userId = currentUserId ?: return
+        val cache = draftCache ?: return
+
+        viewModelScope.launch {
+            try {
+                cache.save(
+                    userId = userId,
+                    quantities = cartQuantities,
+                    projectTitle = _projectTitle,
+                    targetFacultyId = _selectedFacultyId,
+                )
             } catch (_: Exception) {
             }
         }
@@ -222,14 +309,31 @@ class ComponentsViewModel(
             } else {
                 cartQuantities - component.id
             }
+        persistDraft()
     }
 
     fun removeFromCart(componentId: String) {
         cartQuantities = cartQuantities - componentId
+        persistDraft()
     }
 
     fun clearCart() {
         cartQuantities = emptyMap()
+        _projectTitle = ""
+        _selectedFacultyId = null
+        clearPersistedDraft()
+    }
+
+    private fun clearPersistedDraft() {
+        val userId = currentUserId ?: return
+        val cache = draftCache ?: return
+
+        viewModelScope.launch {
+            try {
+                cache.clear(userId)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     fun submitRequest() {

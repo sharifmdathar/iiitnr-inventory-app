@@ -226,6 +226,20 @@ function buildNotificationPlan(req: ShapedRequestForNotification): NotificationP
             req,
           )}. Please return the items as soon as possible.`,
         },
+        faculty: {
+          type: NotificationType.REQUEST_EXPIRED,
+          title: 'A request you supervise has expired',
+          body: `${requestLabel(req)} by ${formatStudent(req)} was due by ${dueDateText(
+            req,
+          )}. The items have been written off the inventory.`,
+        },
+        staff: {
+          type: NotificationType.REQUEST_EXPIRED,
+          title: 'Inventory write-off on expiry',
+          body: `${requestLabel(req)} by ${formatStudent(req)} expired on ${dueDateText(
+            req,
+          )}. The outstanding items have been written off the inventory.`,
+        },
       };
 
     case RequestStatus.REQUESTED_RENEW:

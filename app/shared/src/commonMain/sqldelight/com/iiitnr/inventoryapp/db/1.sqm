@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS RequestDraftItem (
+    userId TEXT NOT NULL,
+    componentId TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    updatedAt TEXT NOT NULL,
+    PRIMARY KEY (userId, componentId)
+);
+
+CREATE TABLE IF NOT EXISTS RequestDraft (
+    userId TEXT PRIMARY KEY,
+    projectTitle TEXT,
+    targetFacultyId TEXT,
+    updatedAt TEXT NOT NULL
+);

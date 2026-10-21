@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AssignmentReturn
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
@@ -335,6 +336,15 @@ private fun RequestDetailDatesFlow(
                         },
                 )
             }
+        }
+
+        if (request.lateFeeAccrued > 0) {
+            DateItem(
+                icon = Icons.Default.Payments,
+                label = "Late Charge",
+                value = "₹${request.lateFeeAccrued}",
+                tint = MaterialTheme.colorScheme.error,
+            )
         }
 
         request.returnedAt?.let {

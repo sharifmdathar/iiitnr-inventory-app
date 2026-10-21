@@ -1,5 +1,6 @@
 package com.iiitnr.inventoryapp.data.cache
 
+import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.iiitnr.inventoryapp.db.AppDatabase
@@ -8,10 +9,7 @@ actual class DriverFactory {
     actual fun createDriver(): SqlDriver {
         val databasePath = getDatabasePath()
         val driver: SqlDriver = JdbcSqliteDriver("jdbc:sqlite:$databasePath")
-        try {
-            AppDatabase.Schema.create(driver)
-        } catch (_: Exception) {
-        }
+        migrateSchema(driver)
         return driver
     }
 
@@ -50,4 +48,45 @@ actual class DriverFactory {
 
         return java.io.File(dir, "inventory.db").absolutePath
     }
+}
+
+/**
+ * The JDBC driver has no schema callback of its own, so the schema version is
+ * tracked in `PRAGMA user_version` and the migrations are applied here.
+ */
+internal fun migrateSchema(driver: SqlDriver) {
+    val schema = AppDatabase.Schema
+    val currentVersion = readUserVersion(driver)
+
+    if (currentVersion == 0L) {
+        // Either a brand new database, or one created before the version was
+        // tracked — in which case the tables already exist.
+        val created = runCatching { schema.create(driver).value }.isSuccess
+        if (!created) {
+            schema.migrate(driver, 1L, schema.version).value
+        }
+    } else if (currentVersion < schema.version) {
+        schema.migrate(driver, currentVersion, schema.version).value
+    }
+
+    writeUserVersion(driver, schema.version)
+}
+
+private fun readUserVersion(driver: SqlDriver): Long =
+    driver
+        .executeQuery(
+            identifier = null,
+            sql = "PRAGMA user_version",
+            mapper = { cursor ->
+                val version = if (cursor.next().value) cursor.getLong(0) ?: 0L else 0L
+                QueryResult.Value(version)
+            },
+            parameters = 0,
+        ).value
+
+private fun writeUserVersion(
+    driver: SqlDriver,
+    version: Long,
+) {
+    driver.execute(null, "PRAGMA user_version = $version", 0)
 }

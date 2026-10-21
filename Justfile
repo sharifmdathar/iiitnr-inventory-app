@@ -36,6 +36,7 @@ logs:
     cd backend && podman compose logs -f
 
 test:
+    just db-down
     cd backend && podman-compose -f compose.db.yaml --profile test up -d
     cd backend && bun test --parallel=1
     cd backend && podman-compose -f compose.db.yaml --profile test down
@@ -84,6 +85,12 @@ lint-fix:
 typecheck:
     cd backend && bun run typecheck
 
+gen-schema:
+    cd backend && bun run scripts/generate-schema-docs.ts
+
+check-schema:
+    cd backend && bun run scripts/generate-schema-docs.ts --check
+
 [unix]
 fmt:
     cd backend && bun run format
@@ -131,6 +138,7 @@ release version:
 push:
     cd backend && bun run typecheck
     # cd backend && bun run lint
+    check-schema
     just test
     just detekt
     git push

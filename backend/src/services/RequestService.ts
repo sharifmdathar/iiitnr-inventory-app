@@ -306,6 +306,7 @@ export async function requestForRenewalTransaction(
         status: RequestStatus.REQUESTED_RENEW,
         updatedAt: requestedRenewalAt,
         lastRenewReason,
+        renewalRequestedAt: requestedRenewalAt,
       })
       .where(eq(request.id, existingRequest.id));
     notifyRequestsUpdated();
@@ -439,7 +440,10 @@ export async function returnRequestTransaction(
 
       // Stock coming back after a write-off is reclaimed: it returns to both
       // available and total, so the component stops counting it as lost.
-      const reclaimedQty = Math.min(Math.max(0, returnQty - currentlyHeldQty), alreadyWrittenOffQty);
+      const reclaimedQty = Math.min(
+        Math.max(0, returnQty - currentlyHeldQty),
+        alreadyWrittenOffQty,
+      );
       const newReturned = alreadyReturnedQty + returnQty;
       const newWrittenOff = alreadyWrittenOffQty - reclaimedQty;
 

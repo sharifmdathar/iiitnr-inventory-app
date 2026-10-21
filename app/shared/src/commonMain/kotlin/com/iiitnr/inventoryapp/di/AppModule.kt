@@ -32,7 +32,7 @@ val storageModule =
 val viewModelModule =
     module {
         viewModel { RequestsViewModel(get()) }
-        viewModel { ComponentsViewModel(get(), getOrNull()) }
+        viewModel { ComponentsViewModel(get(), getOrNull(), getOrNull()) }
         viewModel { AuthViewModel(get()) }
         viewModel { ProfileViewModel(get()) }
         viewModel { AuditLogViewModel(get()) }

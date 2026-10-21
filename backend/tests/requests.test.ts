@@ -926,7 +926,7 @@ describe('Request API', () => {
           assert.ok(response.payload.includes('Export Request Item (Req:2)'));
           assert.ok(
             response.payload.includes(
-              'Request ID,User Email,User Name,Target Faculty,Project Title,Status,Created At,Items Summary',
+              'Request ID,User Email,User Name,Target Faculty,Project Title,Status,Created At,Return Due At,Late Fee (INR),Items Summary',
             ),
           );
         } finally {

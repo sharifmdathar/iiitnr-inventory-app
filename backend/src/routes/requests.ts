@@ -901,6 +901,8 @@ function generateRequestsCsv(
     'Project Title',
     'Status',
     'Created At',
+    'Return Due At',
+    'Late Fee (INR)',
     'Items Summary',
   ].join(',');
 
@@ -926,6 +928,8 @@ function generateRequestsCsv(
       escapeCsvField(req.projectTitle),
       escapeCsvField(req.status),
       escapeCsvField(req.createdAt),
+      escapeCsvField(req.returnDueAt),
+      escapeCsvField(String(req.lateFeeAccrued ?? 0)),
       escapeCsvField(itemsSummary),
     ].join(',');
   });

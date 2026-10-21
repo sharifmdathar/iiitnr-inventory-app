@@ -106,8 +106,7 @@ jobs:
           GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
           GOOGLE_DESKTOP_REDIRECT_URI: ${{ secrets.GOOGLE_DESKTOP_REDIRECT_URI }}
         run: |
-          .\gradlew.bat :desktop:packageExe -PbuildInstallers=true --parallel --build-cache
-          .\gradlew.bat :desktop:packageMsi -PbuildInstallers=true --parallel --build-cache
+          .\gradlew.bat :desktop:packageExe :desktop:packageMsi -PbuildInstallers=true --parallel --build-cache
 
       - name: Locate and copy EXE + MSI
         env:
