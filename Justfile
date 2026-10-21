@@ -129,6 +129,7 @@ deploy-web:
 deploy:
     git pull
     just deploy-web
+    podman compose -f backend/compose.prod.yaml down
     podman compose -f backend/compose.prod.yaml up --build -d --force-recreate backend
 
 release version:
