@@ -17,4 +17,7 @@ const migrationsFolder = process.env.MIGRATIONS_FOLDER ?? join(__dirname, 'drizz
   } finally {
     await pool.end();
   }
-})();
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
