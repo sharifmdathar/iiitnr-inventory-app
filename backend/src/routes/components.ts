@@ -445,8 +445,31 @@ function parseCsvRows(
     const cellMap: CsvCellMap = {};
     for (let c = 0; c < columnFields.length; c++) {
       const field = columnFields[c];
-      if (field) {
-        cellMap[field] = cells[c] ?? '';
+      const value = cells[c] ?? '';
+      switch (field) {
+        case 'name':
+          cellMap.name = value;
+          break;
+        case 'description':
+          cellMap.description = value;
+          break;
+        case 'imageUrl':
+          cellMap.imageUrl = value;
+          break;
+        case 'totalQuantity':
+          cellMap.totalQuantity = value;
+          break;
+        case 'availableQuantity':
+          cellMap.availableQuantity = value;
+          break;
+        case 'category':
+          cellMap.category = value;
+          break;
+        case 'location':
+          cellMap.location = value;
+          break;
+        default:
+          break;
       }
     }
 

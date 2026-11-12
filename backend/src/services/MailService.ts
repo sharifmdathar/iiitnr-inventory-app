@@ -71,15 +71,19 @@ export function resetMailTransporter(): void {
 
 export async function sendMail(to: string, subject: string, text: string): Promise<boolean> {
   if (!isMailEnabled()) {
-    console.log(`[mail disabled] would send "${subject}" to ${to}`);
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[mail disabled] would send "${subject}" to ${to}`);
+    }
     return false;
   }
 
   if (!isDeliverableAddress(to)) {
-    console.error(`Failed to send email: "${to}" is not a deliverable address`, {
-      to,
-      subject,
-    });
+    if (process.env.NODE_ENV !== 'test') {
+      console.error(`Failed to send email: "${to}" is not a deliverable address`, {
+        to,
+        subject,
+      });
+    }
     return false;
   }
 
@@ -93,7 +97,9 @@ export async function sendMail(to: string, subject: string, text: string): Promi
     await tx.sendMail({ from, to, subject, text });
     return true;
   } catch (err) {
-    console.error('Failed to send email', { to, subject, err });
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Failed to send email', { to, subject, err });
+    }
     return false;
   }
 }

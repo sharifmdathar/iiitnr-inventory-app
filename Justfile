@@ -130,7 +130,7 @@ deploy-web:
 deploy:
     git pull
     just deploy-web
-    podman compose -f backend/compose.prod.yaml down
+    podman compose -f backend/compose.prod.yaml down backend
     podman compose -f backend/compose.prod.yaml up --build -d --force-recreate backend
 
 release version:
@@ -140,7 +140,7 @@ release version:
 push:
     cd backend && bun run typecheck
     # cd backend && bun run lint
-    check-schema
+    just check-schema
     just test
     just detekt
     git push
