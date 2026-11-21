@@ -177,6 +177,7 @@ run:
       --env-file .env \
       -p {{port}}:{{port}} \
       -v ./uploads:/app/uploads \
+      -v ./private-uploads:/app/private-uploads \
       {{img}}:{{tag}}
 
 [group('container')]
@@ -186,6 +187,7 @@ run-ro:
       --env-file .env -e SKIP_SEED=1 \
       -p {{port}}:{{port}} \
       -v ./uploads:/app/uploads \
+      -v ./private-uploads:/app/private-uploads \
       {{img}}:{{tag}}
 
 [group('container')]
@@ -202,12 +204,70 @@ deploy-web:
     cp -r {{app}}/web/build/dist/wasmJs/productionExecutable/. /srv/web/
     echo "Web app deployed to /srv/web"
 
+# Check everything `deploy` assumes about the host *before* the running container
+# is replaced. The backend refuses to boot without the institute UPI details and
+# without a proofs directory it can write to, so a missing `.env` entry or a
+# root-owned `private-uploads/` would take the site down at recreate time.
+[unix]
+deploy-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{backend}}"
+
+    if [ ! -f .env ]; then
+      echo "❌ backend/.env is missing — copy .env.example and fill it in"
+      exit 1
+    fi
+
+    # buildApp() calls getPaymentConfig(), which throws when either is empty.
+    ok=1
+    for v in UPI_VPA UPI_PAYEE_NAME; do
+      if [ -z "${!v:-}" ]; then
+        echo "❌ $v is empty in backend/.env — the backend refuses to start without it"
+        ok=0
+      fi
+    done
+    if [ "$ok" -ne 1 ]; then
+      echo '   set the institute UPI details, then re-run `just deploy`'
+      exit 1
+    fi
+
+    mkdir -p uploads/images private-uploads/payments
+
+    # The container probes private-uploads/ as uid 65532 at boot, so test the bind
+    # mount with the image's own user instead of discovering it after the restart.
+    if podman image exists localhost/backend_backend:latest; then
+      probe() {
+        podman run --rm --entrypoint /usr/local/bin/bun \
+          -v "$PWD/private-uploads:/app/private-uploads" \
+          localhost/backend_backend:latest \
+          -e 'await Bun.write("/app/private-uploads/payments/.probe","ok"); await Bun.file("/app/private-uploads/payments/.probe").delete()' \
+          >/dev/null 2>&1
+      }
+      if ! probe; then
+        echo '❌ private-uploads/ is not writable by uid 65532 inside the container'
+        if podman info --format json 2>/dev/null | tr -d ' ' | grep -q '"rootless":true'; then
+          echo '   podman is rootless here, so chown inside the user namespace:'
+          echo '     podman unshare chown -R 65532:65532 private-uploads'
+        else
+          echo '   fix it on the host, then re-run `just deploy`:'
+          echo "     sudo chown -R 65532:65532 $PWD/private-uploads $PWD/uploads"
+        fi
+        exit 1
+      fi
+    else
+      echo '… localhost/backend_backend:latest does not exist yet — skipping the writability probe'
+    fi
+
+    echo '✅ deploy preflight passed'
+
 [unix]
 deploy:
     git pull
     cp VERSION {{backend}}/VERSION
     @if [ -z "${GOOGLE_WEB_CLIENT_ID:-}" ]; then \
       echo "ERROR: GOOGLE_WEB_CLIENT_ID not set (check backend/.env)"; exit 1; fi
+    just deploy-check
     podman tag localhost/backend_backend:latest localhost/backend_backend:previous
     podman compose -f {{backend}}/compose.prod.yaml up -d --build --force-recreate --remove-orphans backend caddy
     just deploy-web
