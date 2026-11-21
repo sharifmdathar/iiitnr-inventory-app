@@ -77,17 +77,25 @@ User-uploaded files live on a **persistent volume**, the same way `uploads/`
 
 Both folders must be on persistent storage in the deployment; `compose.prod.yaml`
 mounts `./uploads:/app/uploads` and `./private-uploads:/app/private-uploads`.
-The container runs as uid `65532`, so create both host directories up front and
-hand them to that uid — otherwise the mkdir at boot and the proof upload fail:
+The container runs as uid `65532`, so both host directories must belong to that
+uid — otherwise the mkdir at boot and the proof upload fail:
 
 ```bash
 mkdir -p uploads private-uploads/payments
 sudo chown -R 65532:65532 uploads private-uploads
 ```
 
-The entrypoint probes `private-uploads/` at boot and refuses to start when it is
-not writable, so a mis-owned mount fails at deploy time rather than after a
-student has paid. Proofs written before the move to `private-uploads/` (rows holding a path
+`just deploy` runs `just deploy-check` first: it creates both directories,
+refuses to continue when `UPI_VPA` / `UPI_PAYEE_NAME` are empty in
+`backend/.env`, and probes the proofs directory as uid `65532` with the current
+image, printing the exact `podman unshare chown` (rootless) or `sudo chown`
+(rootful) command when it is not writable. All of it runs *before* the running
+container is replaced, so a bad config no longer takes the site down at recreate
+time.
+
+The entrypoint repeats the proofs probe at boot and exits non-zero when the
+directory is not writable, so a mis-owned mount can never be discovered only
+after a student has paid. Proofs written before the move to `private-uploads/` (rows holding a path
 instead of a bare file name) are repaired once with
 `bun run scripts/move-payment-proofs.ts`, then the old files are deleted by hand.
 
