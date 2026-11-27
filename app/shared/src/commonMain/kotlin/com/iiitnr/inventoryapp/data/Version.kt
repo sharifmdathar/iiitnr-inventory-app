@@ -1,5 +1,7 @@
 package com.iiitnr.inventoryapp.data
 
+import com.iiitnr.inventoryapp.data.api.ApiClient
+
 object Version {
     const val CURRENT_VERSION = GeneratedVersion.CURRENT_VERSION
 
@@ -19,4 +21,9 @@ object Version {
         }
         return false
     }
+}
+
+suspend fun checkForUpdate(): String? {
+    val serverVersion = ApiClient.versionApiService.fetchServerVersion().version
+    return if (Version.isVersionNewer(Version.CURRENT_VERSION, serverVersion)) serverVersion else null
 }

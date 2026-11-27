@@ -22,11 +22,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.savedstate.read
-import com.iiitnr.inventoryapp.data.Version
-import com.iiitnr.inventoryapp.data.api.ApiClient
 import com.iiitnr.inventoryapp.data.api.AuthEvent
 import com.iiitnr.inventoryapp.data.api.AuthEventManager
+import com.iiitnr.inventoryapp.data.checkForUpdate
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.ui.screens.AboutScreen
 import com.iiitnr.inventoryapp.ui.screens.AuditLogScreen
 import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
 import com.iiitnr.inventoryapp.ui.screens.FinesAdminScreen
@@ -75,8 +75,7 @@ fun App(
             }
             scope.launch {
                 try {
-                    val serverVersion = ApiClient.versionApiService.fetchServerVersion().version
-                    if (Version.isVersionNewer(Version.CURRENT_VERSION, serverVersion)) {
+                    checkForUpdate()?.let { serverVersion ->
                         val result =
                             snackbarHostState.showSnackbar(
                                 message = "Update available: $serverVersion",
@@ -233,7 +232,15 @@ fun App(
                                 navController.navigate("fines")
                             }, onNavigateToFinesAdmin = {
                                 navController.navigate("fines_admin")
+                            }, onNavigateToAbout = {
+                                navController.navigate("about")
                             })
+                        }
+                        composable("about") {
+                            AboutScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                onUpdateAction = onUpdateAction,
+                            )
                         }
                         composable("notifications") {
                             NotificationsScreen(

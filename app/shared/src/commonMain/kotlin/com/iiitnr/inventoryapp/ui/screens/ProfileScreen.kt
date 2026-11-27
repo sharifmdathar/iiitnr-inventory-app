@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
@@ -95,6 +96,7 @@ fun ProfileScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToFines: () -> Unit = {},
     onNavigateToFinesAdmin: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
     themeSettings: ThemeSettings = koinInject(),
 ) {
@@ -136,6 +138,7 @@ fun ProfileScreen(
             onNavigateToFinesAdmin = onNavigateToFinesAdmin,
             onNavigateToAuditLog = onNavigateToAuditLog,
             onNavigateToUserManagement = onNavigateToUserManagement,
+            onNavigateToAbout = onNavigateToAbout,
         )
     }
 
@@ -186,6 +189,7 @@ private fun ProfileBody(
     onNavigateToFinesAdmin: () -> Unit,
     onNavigateToAuditLog: () -> Unit,
     onNavigateToUserManagement: () -> Unit,
+    onNavigateToAbout: () -> Unit,
 ) {
     Box(
         modifier =
@@ -226,6 +230,7 @@ private fun ProfileBody(
                         onNavigateToFinesAdmin = onNavigateToFinesAdmin,
                         onNavigateToAuditLog = onNavigateToAuditLog,
                         onNavigateToUserManagement = onNavigateToUserManagement,
+                        onNavigateToAbout = onNavigateToAbout,
                     )
                 }
             }
@@ -494,7 +499,7 @@ private fun ThemeModeCell(
     }
 }
 
-/** Grouped navigation rows; fines row follows the role, ADMIN-only entries stay gated. */
+/** Grouped navigation sections, matching the About screen's card layout. */
 @Composable
 private fun NavigationCard(
     userRole: UserRole,
@@ -504,24 +509,46 @@ private fun NavigationCard(
     onNavigateToFinesAdmin: () -> Unit,
     onNavigateToAuditLog: () -> Unit,
     onNavigateToUserManagement: () -> Unit,
+    onNavigateToAbout: () -> Unit,
 ) {
-    val rows =
-        buildList {
-            add(NavRow("Requests", Icons.Outlined.Receipt, onNavigateToRequests))
-            add(NavRow("Notifications", Icons.Outlined.Notifications, onNavigateToNotifications))
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        val finesRow =
             when (userRole) {
-                UserRole.STUDENT -> add(NavRow("Fines", Icons.Outlined.Payments, onNavigateToFines))
+                UserRole.STUDENT -> NavRow("Fines", Icons.Outlined.Payments, onNavigateToFines)
                 UserRole.LA, UserRole.ADMIN ->
-                    add(NavRow("Outstanding Fines", Icons.Outlined.Payments, onNavigateToFinesAdmin))
+                    NavRow("Outstanding Fines", Icons.Outlined.Payments, onNavigateToFinesAdmin)
 
-                else -> {}
+                else -> null
             }
-            if (userRole == UserRole.ADMIN) {
-                add(NavRow("Audit Log", Icons.Outlined.History, onNavigateToAuditLog))
-                add(NavRow("Manage Users", Icons.Outlined.People, onNavigateToUserManagement))
+        val generalRows =
+            buildList {
+                add(NavRow("Requests", Icons.Outlined.Receipt, onNavigateToRequests))
+                add(NavRow("Notifications", Icons.Outlined.Notifications, onNavigateToNotifications))
+                finesRow?.let(::add)
             }
+        NavSection(title = "General", rows = generalRows)
+        if (userRole == UserRole.ADMIN) {
+            NavSection(
+                title = "Administration",
+                rows =
+                    listOf(
+                        NavRow("Audit Log", Icons.Outlined.History, onNavigateToAuditLog),
+                        NavRow("Manage Users", Icons.Outlined.People, onNavigateToUserManagement),
+                    ),
+            )
         }
+        NavSection(
+            title = "App",
+            rows = listOf(NavRow("About & feedback", Icons.Outlined.Info, onNavigateToAbout)),
+        )
+    }
+}
 
+@Composable
+private fun NavSection(
+    title: String,
+    rows: List<NavRow>,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -532,6 +559,12 @@ private fun NavigationCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(16.dp),
+            )
             rows.forEachIndexed { index, row ->
                 ListItem(
                     headlineContent = { Text(row.label) },
