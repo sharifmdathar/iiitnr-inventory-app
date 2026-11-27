@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
@@ -80,6 +81,7 @@ fun FinesAdminScreen(
             Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 PaymentVerificationsEntry(
                     onClick = onNavigateToPaymentVerifications,
+                    maxWidth = if (isExpanded) WideContentWidth else NarrowContentWidth,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 FinesAdminBody(
@@ -151,30 +153,36 @@ private fun FinesAdminBody(
  * Fines icon for anything student-fine-related.
  */
 @Composable
-private fun PaymentVerificationsEntry(onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text("Payment Verifications") },
-        leadingContent = {
-            Icon(
-                imageVector = Icons.Default.Verified,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        },
-        trailingContent = {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .handCursor()
-                .clickable(onClick = onClick),
-    )
+private fun PaymentVerificationsEntry(
+    onClick: () -> Unit,
+    maxWidth: Dp,
+) {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        ListItem(
+            headlineContent = { Text("Payment Verifications") },
+            leadingContent = {
+                Icon(
+                    imageVector = Icons.Default.Verified,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            trailingContent = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            modifier =
+                Modifier
+                    .widthIn(max = maxWidth)
+                    .fillMaxWidth()
+                    .handCursor()
+                    .clickable(onClick = onClick),
+        )
+    }
 }
 
 @Composable

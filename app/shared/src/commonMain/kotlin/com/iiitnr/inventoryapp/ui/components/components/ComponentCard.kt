@@ -27,17 +27,10 @@ import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +50,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.ui.components.common.InfoChip
+import com.iiitnr.inventoryapp.ui.components.common.TooltipIconButton
 import com.iiitnr.inventoryapp.ui.components.common.handCursor
 import com.iiitnr.inventoryapp.ui.theme.inventoryColors
 
@@ -131,14 +125,14 @@ fun ComponentCard(
                 }
                 Row {
                     if (!isReadOnly && cartQuantities.isEmpty()) {
-                        IconButton(onClick = onEdit, modifier = Modifier.handCursor()) {
+                        TooltipIconButton(tooltip = "Edit", onClick = onEdit) {
                             Icon(
                                 Icons.Default.Edit,
                                 contentDescription = "Edit",
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
-                        IconButton(onClick = onDelete, modifier = Modifier.handCursor()) {
+                        TooltipIconButton(tooltip = "Delete", onClick = onDelete) {
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Delete",
@@ -153,9 +147,9 @@ fun ComponentCard(
                         )
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
+                            TooltipIconButton(
+                                tooltip = "Decrease quantity",
                                 onClick = { onUpdateCartQuantity?.invoke(-1) },
-                                modifier = Modifier.handCursor(),
                             ) {
                                 Icon(
                                     Icons.Default.Remove,
@@ -168,10 +162,10 @@ fun ComponentCard(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary,
                             )
-                            IconButton(
+                            TooltipIconButton(
+                                tooltip = "Increase quantity",
                                 onClick = { onUpdateCartQuantity?.invoke(1) },
                                 enabled = cartQuantity < component.availableQuantity,
-                                modifier = Modifier.handCursor(),
                             ) {
                                 Icon(
                                     Icons.Default.Add,
@@ -246,33 +240,22 @@ fun ComponentCard(
 }
 
 /** Add-to-request control with a hover hint. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddToRequestButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-        tooltip = { PlainTooltip { Text("Add to request") } },
-        state = rememberTooltipState(),
-    ) {
-        IconButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = Modifier.handCursor(),
-        ) {
-            Icon(
-                Icons.AutoMirrored.Outlined.PlaylistAdd,
-                contentDescription = "Add to request",
-                tint =
-                    if (enabled) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.outline
-                    },
-            )
-        }
+    TooltipIconButton(tooltip = "Add to request", onClick = onClick, enabled = enabled) {
+        Icon(
+            Icons.AutoMirrored.Outlined.PlaylistAdd,
+            contentDescription = "Add to request",
+            tint =
+                if (enabled) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outline
+                },
+        )
     }
 }
 

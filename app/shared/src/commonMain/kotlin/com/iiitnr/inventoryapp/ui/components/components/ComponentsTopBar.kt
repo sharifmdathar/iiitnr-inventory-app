@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
+import com.iiitnr.inventoryapp.ui.components.common.TooltipIconButton
 import com.iiitnr.inventoryapp.ui.components.common.handCursor
 
 @Composable
@@ -70,7 +71,7 @@ fun ComponentsTopBar(
                 pendingRequestsCount = pendingRequestsCount,
             )
             onNavigateToFines?.let { nav ->
-                IconButton(onClick = nav, modifier = Modifier.handCursor()) {
+                TooltipIconButton(tooltip = "Fines", onClick = nav) {
                     Icon(
                         imageVector = Icons.Default.Payments,
                         contentDescription = "Fines",
@@ -83,10 +84,7 @@ fun ComponentsTopBar(
                     onClick = onNavigateToNotifications,
                 )
             }
-            IconButton(
-                onClick = onNavigateToHome,
-                modifier = Modifier.handCursor(),
-            ) {
+            TooltipIconButton(tooltip = "Profile", onClick = onNavigateToHome) {
                 Icon(
                     imageVector = Icons.Outlined.AccountCircle,
                     contentDescription = "Profile",
@@ -112,7 +110,11 @@ private fun CsvActions(
     val showExport = showExportCsv && onExportCsv != null
 
     if (showImport) {
-        IconButton(onClick = onImportCsv, enabled = !isImportingCsv, modifier = Modifier.handCursor()) {
+        TooltipIconButton(
+            tooltip = "Import CSV",
+            onClick = onImportCsv,
+            enabled = !isImportingCsv,
+        ) {
             Icon(
                 imageVector = Icons.Outlined.FileUpload,
                 contentDescription = "Import CSV",
@@ -120,7 +122,7 @@ private fun CsvActions(
         }
     }
     if (showExport) {
-        IconButton(onClick = onExportCsv, modifier = Modifier.handCursor()) {
+        TooltipIconButton(tooltip = "Export CSV", onClick = onExportCsv) {
             Icon(
                 imageVector = Icons.Outlined.FileDownload,
                 contentDescription = "Export CSV",

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -62,7 +61,7 @@ fun AppTopBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (onNavigateBack != null) {
-                    IconButton(onClick = onNavigateBack, modifier = Modifier.handCursor()) {
+                    TooltipIconButton(tooltip = "Back", onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
