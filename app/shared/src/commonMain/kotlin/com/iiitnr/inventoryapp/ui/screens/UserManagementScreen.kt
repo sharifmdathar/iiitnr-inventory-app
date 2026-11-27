@@ -1,7 +1,6 @@
 package com.iiitnr.inventoryapp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -284,7 +283,8 @@ private fun UserCard(
         )
 
     Card(
-        modifier = Modifier.fillMaxWidth().handCursor().clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().handCursor(),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isDark) 1.dp else 0.dp),
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, roleColor.copy(alpha = 0.35f)),
