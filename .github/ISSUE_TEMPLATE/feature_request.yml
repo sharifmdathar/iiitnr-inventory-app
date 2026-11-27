@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest an idea or improvement for the inventory app
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation that made you wish for this feature.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: A rough sketch of the solution is fine.
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where does this apply?
+      options:
+        - Web (browser)
+        - Android app
+        - Desktop app
+        - iOS app
+        - Everywhere
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds you use today
