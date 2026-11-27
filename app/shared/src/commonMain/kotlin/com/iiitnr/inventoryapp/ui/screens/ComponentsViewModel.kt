@@ -44,6 +44,7 @@ class ComponentsViewModel(
     var errorMessage by mutableStateOf<String?>(null)
         private set
     var userRole by mutableStateOf<UserRole?>(null)
+    var currentUser by mutableStateOf<User?>(null)
         private set
     var cartQuantities by mutableStateOf<Map<String, Int>>(emptyMap())
 
@@ -160,6 +161,7 @@ class ComponentsViewModel(
                 val token = tokenManager.token.first()
                 if (token != null) {
                     val response = authApiService.getMe(token)
+                    currentUser = response.user
                     userRole = response.user.role
                     currentUserId = response.user.id
                     restoreDraft()

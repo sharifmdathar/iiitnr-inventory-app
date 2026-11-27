@@ -19,12 +19,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.History
@@ -63,21 +62,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.SubcomposeAsyncImage
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.data.models.UserRole
 import com.iiitnr.inventoryapp.data.storage.ThemeSettings
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.NarrowContentWidth
 import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
+import com.iiitnr.inventoryapp.ui.components.common.ProfilePicture
+import com.iiitnr.inventoryapp.ui.components.common.TooltipIconButton
 import com.iiitnr.inventoryapp.ui.components.common.handCursor
 import com.iiitnr.inventoryapp.ui.components.common.userRoleColor
 import com.iiitnr.inventoryapp.ui.theme.LocalIsDarkTheme
@@ -124,11 +121,11 @@ fun ProfileScreen(
                             unreadCount = notificationsViewModel.unreadCount,
                             onClick = onNavigateToNotifications,
                         )
-                        TextButton(
-                            onClick = { showLogoutConfirm = true },
-                            modifier = Modifier.handCursor(),
-                        ) {
-                            Text("Logout")
+                        TooltipIconButton(tooltip = "Log out", onClick = { showLogoutConfirm = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Logout,
+                                contentDescription = "Log out",
+                            )
                         }
                     },
                 )
@@ -534,57 +531,3 @@ private class NavRow(
     val icon: ImageVector,
     val onClick: () -> Unit,
 )
-
-@Composable
-fun ProfilePicture(
-    imageUrl: String?,
-    modifier: Modifier = Modifier,
-    size: Dp = 96.dp,
-) {
-    if (imageUrl != null) {
-        val sanitizedUrl = imageUrl.replace("http://", "https://")
-        SubcomposeAsyncImage(
-            model = sanitizedUrl,
-            contentDescription = "Profile picture",
-            modifier =
-                modifier
-                    .size(size)
-                    .clip(CircleShape),
-            contentScale = ContentScale.Crop,
-            loading = { ProfilePicturePlaceholder(size = size) },
-            error = { ProfilePicturePlaceholder(size = size) },
-        )
-    } else {
-        ProfilePicturePlaceholder(size = size, modifier = modifier)
-    }
-}
-
-/**
- * Stand-in for a missing URL and for a failed load, so a broken profile picture
- * never renders the platform broken-image glyph.
- */
-@Composable
-private fun ProfilePicturePlaceholder(
-    size: Dp,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier =
-            modifier
-                .size(size)
-                .clip(CircleShape),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(size / 2),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}

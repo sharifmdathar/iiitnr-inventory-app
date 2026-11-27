@@ -133,6 +133,7 @@ fun ComponentsScreen(
                 isImportingCsv = viewModel.isImportingCsv,
                 unreadNotificationCount = notificationsViewModel.unreadCount,
                 onNavigateToNotifications = onNavigateToNotifications,
+                profileImageUrl = viewModel.currentUser?.imageUrl,
                 onNavigateToFines =
                     when (viewModel.userRole) {
                         UserRole.STUDENT -> onNavigateToFines
