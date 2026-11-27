@@ -1,6 +1,7 @@
 package com.iiitnr.inventoryapp.ui.components.common
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -13,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun SearchBar(
@@ -25,6 +27,7 @@ fun SearchBar(
         value = searchQuery,
         onValueChange = onSearchQueryChange,
         modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
         placeholder = { Text(placeholder) },
         leadingIcon = {
             Icon(

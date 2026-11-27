@@ -229,6 +229,10 @@ fun App(
                                 navController.navigate("user_management")
                             }, onNavigateToNotifications = {
                                 navController.navigate("notifications")
+                            }, onNavigateToFines = {
+                                navController.navigate("fines")
+                            }, onNavigateToFinesAdmin = {
+                                navController.navigate("fines_admin")
                             })
                         }
                         composable("notifications") {

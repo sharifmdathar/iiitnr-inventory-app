@@ -1,7 +1,6 @@
 package com.iiitnr.inventoryapp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.iiitnr.inventoryapp.data.models.Request
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
@@ -81,9 +79,7 @@ fun FinesAdminScreen(
             Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 PaymentVerificationsEntry(
                     onClick = onNavigateToPaymentVerifications,
-                    maxWidth = if (isExpanded) WideContentWidth else NarrowContentWidth,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 FinesAdminBody(
                     viewModel = viewModel,
                     isExpanded = isExpanded,
@@ -149,39 +145,42 @@ private fun FinesAdminBody(
 
 /**
  * Entry row at the top of the LA fines screen that opens the pending-payment
- * verification list. Lives here (not under Profile) because LAs reach for the
- * Fines icon for anything student-fine-related.
+ * verification list. Styled like the Profile screen's navigation rows
+ * (bordered card with a labeled row) so it reads as a link to its own screen;
+ * capped to the profile content width and inset on narrow screens.
  */
 @Composable
-private fun PaymentVerificationsEntry(
-    onClick: () -> Unit,
-    maxWidth: Dp,
-) {
-    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-        ListItem(
-            headlineContent = { Text("Payment Verifications") },
-            leadingContent = {
-                Icon(
-                    imageVector = Icons.Default.Verified,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            },
-            trailingContent = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            modifier =
-                Modifier
-                    .widthIn(max = maxWidth)
-                    .fillMaxWidth()
-                    .handCursor()
-                    .clickable(onClick = onClick),
-        )
+private fun PaymentVerificationsEntry(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Card(
+            onClick = onClick,
+            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().handCursor(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
+            ListItem(
+                headlineContent = { Text("Payment Verifications") },
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Default.Verified,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                trailingContent = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            )
+        }
     }
 }
 
