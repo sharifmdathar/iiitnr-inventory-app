@@ -7,6 +7,8 @@ import { buildApp } from '../src/app.js';
 import { db } from '../src/drizzle/db.js';
 import { user, auditLog } from '../src/drizzle/schema.js';
 import { findOrCreateGoogleUser } from '../src/routes/auth.js';
+import { notifyRoleReviewRequest } from '../src/services/role-verification.js';
+import { setMailSender } from '../src/services/email-service.js';
 
 let app: Awaited<ReturnType<typeof buildApp>>;
 const createdUserIds: string[] = [];
@@ -391,6 +393,106 @@ describe('Authentication API', () => {
       createdUserIds.push(created.id);
 
       assert.notEqual(created.role, 'ADMIN');
+    });
+
+    const randomLetters = (n: number): string =>
+      Array.from(
+        { length: n },
+        () => 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)],
+      ).join('');
+
+    test('grants a letters-only email the LA role it requests', async () => {
+      const email = `${randomLetters(8)}@iiitnr.edu.in`;
+
+      const created = await findOrCreateGoogleUser(
+        'google-sub-letters-la',
+        email,
+        'Letters Only La',
+        null,
+        'LA',
+      );
+      createdUserIds.push(created.id);
+
+      assert.equal(created.role, 'LA');
+    });
+
+    test('keeps a roll-number email a student even when LA is requested', async () => {
+      const yy = Math.floor(Math.random() * 100)
+        .toString()
+        .padStart(2, '0');
+      const email = `student${yy}100@iiitnr.edu.in`;
+
+      const created = await findOrCreateGoogleUser(
+        'google-sub-roll-student',
+        email,
+        'Roll Number Student',
+        null,
+        'LA',
+      );
+      createdUserIds.push(created.id);
+
+      assert.equal(created.role, 'STUDENT');
+    });
+
+    test('keeps a mixed-digit non-roll email a student even when FACULTY is requested', async () => {
+      const email = `ravi${crypto.randomUUID().slice(0, 4)}@iiitnr.edu.in`;
+
+      const created = await findOrCreateGoogleUser(
+        'google-sub-mixed-faculty',
+        email,
+        'Mixed Digit Faculty',
+        null,
+        'FACULTY',
+      );
+      createdUserIds.push(created.id);
+
+      assert.equal(created.role, 'STUDENT');
+    });
+
+    test('defaults a letters-only email with no requested role to STUDENT', async () => {
+      const email = `${randomLetters(8)}@iiitnr.edu.in`;
+
+      const created = await findOrCreateGoogleUser(
+        'google-sub-letters-no-request',
+        email,
+        'Letters Only No Request',
+        null,
+      );
+      createdUserIds.push(created.id);
+
+      assert.equal(created.role, 'STUDENT');
+    });
+
+    test('notifies the admin when a signup requests an elevated role', async () => {
+      const sent: Array<{ to: string; subject: string; text: string }> = [];
+      const originalMailEnabled = process.env.MAIL_ENABLED;
+      const originalAdminEmail = process.env.ADMIN_EMAIL;
+      process.env.MAIL_ENABLED = 'true';
+      process.env.ADMIN_EMAIL = 'admin@example.com';
+      setMailSender(async (to, subject, text) => {
+        sent.push({ to, subject, text });
+        return true;
+      });
+      try {
+        await notifyRoleReviewRequest(
+          { id: 'u1', email: 'student24100@iiitnr.edu.in', name: 'Student' },
+          'FACULTY',
+          'STUDENT',
+        );
+      } finally {
+        setMailSender(null);
+        if (originalMailEnabled === undefined) delete process.env.MAIL_ENABLED;
+        else process.env.MAIL_ENABLED = originalMailEnabled;
+        if (originalAdminEmail === undefined) delete process.env.ADMIN_EMAIL;
+        else process.env.ADMIN_EMAIL = originalAdminEmail;
+      }
+
+      assert.equal(sent.length, 1);
+      assert.equal(sent[0].to, 'admin@example.com');
+      assert.ok(sent[0].subject.includes('FACULTY role request needs review'));
+      assert.ok(sent[0].text.includes('student24100@iiitnr.edu.in'));
+      assert.ok(sent[0].text.includes('Currently STUDENT'));
+      assert.ok(sent[0].text.includes('Review and elevate'));
     });
   });
 

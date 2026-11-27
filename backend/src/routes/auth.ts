@@ -9,7 +9,14 @@ import type { UserRoleValue } from '../utils/enums.js';
 import { logAudit } from '../utils/audit.js';
 import { isValidationError, sanitizeString } from '../utils/validation.js';
 import type { ValidationError } from '../utils/validation.js';
-import { deriveIiitnrProfileFromEmail, pickDerivedProfileUpdates } from '../utils/iiitnr-email.js';
+import {
+  deriveIiitnrProfileFromEmail,
+  pickDerivedProfileUpdates,
+  type IiitnrDerivedProfile,
+} from '../utils/iiitnr-email.js';
+import { notifyRoleReviewRequest } from '../services/role-verification.js';
+
+const SELF_ASSIGNABLE_ROLES = [UserRole.STUDENT, UserRole.FACULTY, UserRole.LA] as const;
 import { clearSessionCookie, setSessionCookie } from '../utils/session-cookie.js';
 
 interface RegisterBody {
@@ -86,17 +93,6 @@ const loginSchema = {
     additionalProperties: false,
   },
 } as const;
-
-// Roles a user may pick for themselves at Google sign-up. ADMIN is deliberately
-// absent: elevation to admin must go through an existing admin.
-const SELF_ASSIGNABLE_ROLES = [UserRole.STUDENT, UserRole.FACULTY, UserRole.LA] as const;
-
-function resolveSelfAssignedRole(requestedRole?: UserRoleValue): UserRoleValue | undefined {
-  if (!requestedRole) return undefined;
-  return (SELF_ASSIGNABLE_ROLES as readonly UserRoleValue[]).includes(requestedRole)
-    ? requestedRole
-    : undefined;
-}
 
 const googleSchema = {
   body: {
@@ -339,23 +335,23 @@ async function createUser(data: {
   return created;
 }
 
-function buildGoogleUserCreatePayload(
-  email: string,
-  name: string | null,
-  googleId: string,
-  imageUrl: string | null,
-  requestedRole?: UserRoleValue,
-) {
-  const derived = deriveIiitnrProfileFromEmail(email);
-  return {
-    email,
-    name: name ?? undefined,
-    googleId,
-    imageUrl,
-    role: resolveSelfAssignedRole(requestedRole) ?? derived?.role ?? UserRole.PENDING,
-    batch: derived?.batch ?? null,
-    branch: derived?.branch ?? null,
-  };
+interface ResolvedSignupRole {
+  role: UserRoleValue;
+  needsReview: boolean;
+}
+
+function resolveSignupRole(
+  requestedRole: UserRoleValue | undefined,
+  derived: IiitnrDerivedProfile | null,
+): ResolvedSignupRole {
+  if (requestedRole === UserRole.LA || requestedRole === UserRole.FACULTY) {
+    return {
+      role: derived?.role === UserRole.LA ? requestedRole : UserRole.STUDENT,
+      needsReview: true,
+    };
+  }
+
+  return { role: UserRole.STUDENT, needsReview: false };
 }
 
 export async function findOrCreateGoogleUser(
@@ -372,11 +368,22 @@ export async function findOrCreateGoogleUser(
   });
 
   if (!existingUser) {
-    const created = await createUser(
-      buildGoogleUserCreatePayload(normalizedEmail, name, googleId, imageUrl, requestedRole),
-    );
+    const derived = deriveIiitnrProfileFromEmail(normalizedEmail);
+    const { role, needsReview } = resolveSignupRole(requestedRole, derived);
+    const created = await createUser({
+      email: normalizedEmail,
+      name: name ?? undefined,
+      googleId,
+      imageUrl,
+      role,
+      batch: derived?.batch ?? null,
+      branch: derived?.branch ?? null,
+    });
 
     if (!created) throw new Error('User creation failed');
+    if (needsReview && requestedRole) {
+      void notifyRoleReviewRequest(created, requestedRole, role);
+    }
     return created;
   }
 

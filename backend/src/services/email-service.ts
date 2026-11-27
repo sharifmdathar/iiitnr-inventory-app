@@ -124,6 +124,10 @@ async function releaseEmail(input: TrackedEmailInput): Promise<void> {
   }
 }
 
+export async function sendDirectEmail(to: string, subject: string, text: string): Promise<boolean> {
+  return mailSender(to, subject, text);
+}
+
 export async function sendTrackedEmail(input: TrackedEmailInput): Promise<boolean> {
   if (!(await claimEmail(input))) {
     return false;
