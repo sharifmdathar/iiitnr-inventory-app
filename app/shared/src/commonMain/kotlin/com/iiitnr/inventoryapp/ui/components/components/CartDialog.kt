@@ -22,7 +22,6 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -41,7 +40,7 @@ import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.User
 import com.iiitnr.inventoryapp.ui.components.common.InventoryTable
 import com.iiitnr.inventoryapp.ui.components.common.TableColumn
-import com.iiitnr.inventoryapp.ui.components.common.handCursor
+import com.iiitnr.inventoryapp.ui.components.common.TooltipIconButton
 
 @Composable
 fun CartDialog(
@@ -111,13 +110,14 @@ fun CartDialog(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
-                                        IconButton(
+                                        TooltipIconButton(
+                                            tooltip = "Decrease quantity",
                                             onClick = { onUpdateQuantity(component, -1) },
-                                            modifier = Modifier.size(32.dp).handCursor(),
+                                            modifier = Modifier.size(32.dp),
                                         ) {
                                             Icon(
                                                 Icons.Default.Remove,
-                                                contentDescription = "Decrease",
+                                                contentDescription = "Decrease quantity",
                                                 modifier = Modifier.size(18.dp),
                                             )
                                         }
@@ -126,24 +126,26 @@ fun CartDialog(
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Bold,
                                         )
-                                        IconButton(
+                                        TooltipIconButton(
+                                            tooltip = "Increase quantity",
                                             onClick = { onUpdateQuantity(component, 1) },
                                             enabled = quantity < component.availableQuantity,
-                                            modifier = Modifier.size(32.dp).handCursor(),
+                                            modifier = Modifier.size(32.dp),
                                         ) {
                                             Icon(
                                                 Icons.Default.Add,
-                                                contentDescription = "Increase",
+                                                contentDescription = "Increase quantity",
                                                 modifier = Modifier.size(18.dp),
                                             )
                                         }
-                                        IconButton(
+                                        TooltipIconButton(
+                                            tooltip = "Remove from request",
                                             onClick = { onRemoveItem(component) },
-                                            modifier = Modifier.size(32.dp).handCursor(),
+                                            modifier = Modifier.size(32.dp),
                                         ) {
                                             Icon(
                                                 Icons.Default.Delete,
-                                                contentDescription = "Remove",
+                                                contentDescription = "Remove from request",
                                                 tint = MaterialTheme.colorScheme.error,
                                                 modifier = Modifier.size(18.dp),
                                             )

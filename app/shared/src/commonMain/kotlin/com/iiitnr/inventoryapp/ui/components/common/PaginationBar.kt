@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -67,24 +66,24 @@ fun PaginationBar(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(
+                    TooltipIconButton(
+                        tooltip = "Previous page",
                         onClick = onPrevious,
                         enabled = currentOffset > 0,
-                        modifier = Modifier.handCursor(),
                     ) {
-                        Icon(Icons.Default.ChevronLeft, "Previous")
+                        Icon(Icons.Default.ChevronLeft, "Previous page")
                     }
                     Text(
                         text = "Page $currentPage of $totalPages",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
-                    IconButton(
+                    TooltipIconButton(
+                        tooltip = "Next page",
                         onClick = onNext,
                         enabled = currentOffset + pageSize < totalCount,
-                        modifier = Modifier.handCursor(),
                     ) {
-                        Icon(Icons.Default.ChevronRight, "Next")
+                        Icon(Icons.Default.ChevronRight, "Next page")
                     }
                     Spacer(Modifier.padding(horizontal = 6.dp))
                     Text(

@@ -27,7 +27,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -46,6 +45,7 @@ import com.iiitnr.inventoryapp.data.models.Component
 import com.iiitnr.inventoryapp.data.models.ComponentCategory
 import com.iiitnr.inventoryapp.data.models.ComponentLocation
 import com.iiitnr.inventoryapp.data.models.ComponentRequest
+import com.iiitnr.inventoryapp.ui.components.common.TooltipIconButton
 import com.iiitnr.inventoryapp.ui.components.common.handCursor
 
 @Composable
@@ -252,14 +252,14 @@ private fun ComponentDialogFields(
                     Text("Camera", maxLines = 1)
                 }
                 if (imageUrl.isNotBlank()) {
-                    IconButton(
+                    TooltipIconButton(
+                        tooltip = "Remove image",
                         onClick = onRemoveImage,
                         enabled = !isUploading,
-                        modifier = Modifier.handCursor(),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Remove Image",
+                            contentDescription = "Remove image",
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp),
                         )

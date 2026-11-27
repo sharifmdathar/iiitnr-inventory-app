@@ -4,13 +4,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
-import com.iiitnr.inventoryapp.ui.components.common.handCursor
+import com.iiitnr.inventoryapp.ui.components.common.TooltipIconButton
 
 @Composable
 fun RequestsTopBar(
@@ -30,7 +29,7 @@ fun RequestsTopBar(
         maxContentWidth = maxContentWidth,
         actions = {
             if (showExportCsv && onExportCsv != null) {
-                IconButton(onClick = onExportCsv, modifier = Modifier.handCursor()) {
+                TooltipIconButton(tooltip = "Export requests to CSV", onClick = onExportCsv) {
                     Icon(
                         imageVector = Icons.Outlined.FileDownload,
                         contentDescription = "Export requests to CSV",
@@ -44,7 +43,10 @@ fun RequestsTopBar(
                 )
             }
             if (onScanRequestClick != null) {
-                IconButton(onClick = onScanRequestClick, modifier = Modifier.handCursor()) {
+                TooltipIconButton(
+                    tooltip = "Scan request QR or enter request ID",
+                    onClick = onScanRequestClick,
+                ) {
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
                         contentDescription = "Scan request QR or enter request ID",
