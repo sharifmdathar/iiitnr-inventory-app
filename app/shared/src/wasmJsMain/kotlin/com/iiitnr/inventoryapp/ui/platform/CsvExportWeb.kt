@@ -45,9 +45,11 @@ fun pickCsvFileWeb(onResult: (String?) -> Unit) {
 }
 
 @OptIn(ExperimentalWasmJsInterop::class)
+@Suppress("UnusedParameter") // used inside the js() body, which detekt cannot see
 private fun decodeUtf8(buffer: ArrayBuffer): JsString = js("new TextDecoder('utf-8').decode(buffer)")
 
 @OptIn(ExperimentalWasmJsInterop::class)
+@Suppress("UnusedParameter") // used inside the js() body, which detekt cannot see
 private fun downloadCsvFile(
     filename: String,
     content: String,
