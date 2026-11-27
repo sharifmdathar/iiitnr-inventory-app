@@ -3,6 +3,8 @@ import androidx.compose.ui.window.ComposeViewport
 import com.iiitnr.inventoryapp.data.auth.GoogleWebSignInHelper
 import com.iiitnr.inventoryapp.di.initKoin
 import com.iiitnr.inventoryapp.shared.App
+import com.iiitnr.inventoryapp.ui.platform.exportCsvWeb
+import com.iiitnr.inventoryapp.ui.platform.pickCsvFileWeb
 import com.iiitnr.inventoryapp.ui.theme.AppTheme
 import com.iiitnr.inventoryapp.ui.theme.rememberThemeMode
 import kotlinx.browser.document
@@ -33,6 +35,9 @@ fun main() {
                         callback(idToken)
                     }
                 },
+                onExportComponentsCsv = { csvContent -> exportCsvWeb("components.csv", csvContent) },
+                onExportRequestsCsv = { csvContent -> exportCsvWeb("requests.csv", csvContent) },
+                onImportComponentsCsv = { completion -> pickCsvFileWeb(completion) },
             )
         }
     }
