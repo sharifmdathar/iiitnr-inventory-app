@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.NotificationBell
+import com.iiitnr.inventoryapp.ui.components.common.ProfilePicture
 import com.iiitnr.inventoryapp.ui.components.common.TooltipIconButton
 import com.iiitnr.inventoryapp.ui.components.common.handCursor
 
@@ -51,6 +52,7 @@ fun ComponentsTopBar(
     unreadNotificationCount: Int = 0,
     onNavigateToNotifications: (() -> Unit)? = null,
     onNavigateToFines: (() -> Unit)? = null,
+    profileImageUrl: String? = null,
     maxContentWidth: Dp = Dp.Unspecified,
     modifier: Modifier = Modifier,
 ) {
@@ -85,10 +87,14 @@ fun ComponentsTopBar(
                 )
             }
             TooltipIconButton(tooltip = "Profile", onClick = onNavigateToHome) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountCircle,
-                    contentDescription = "Profile",
-                )
+                if (profileImageUrl != null) {
+                    ProfilePicture(imageUrl = profileImageUrl, size = 24.dp)
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.AccountCircle,
+                        contentDescription = "Profile",
+                    )
+                }
             }
         },
     )
