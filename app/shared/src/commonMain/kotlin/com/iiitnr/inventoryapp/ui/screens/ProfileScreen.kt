@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.School
@@ -92,6 +93,8 @@ fun ProfileScreen(
     onNavigateToAuditLog: () -> Unit = {},
     onNavigateToUserManagement: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToFines: () -> Unit = {},
+    onNavigateToFinesAdmin: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
     themeSettings: ThemeSettings = koinInject(),
 ) {
@@ -108,26 +111,13 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             Column {
-                AppTopBar(
-                    title = "Profile",
+                ProfileTopBar(
                     onNavigateBack = onNavigateBack,
-                    maxContentWidth = NarrowContentWidth,
-                    actions = {
-                        ThemeModeButton(
-                            themeMode = themeMode,
-                            onThemeModeChange = { mode -> scope.launch { themeSettings.setThemeMode(mode) } },
-                        )
-                        NotificationBell(
-                            unreadCount = notificationsViewModel.unreadCount,
-                            onClick = onNavigateToNotifications,
-                        )
-                        TooltipIconButton(tooltip = "Log out", onClick = { showLogoutConfirm = true }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Logout,
-                                contentDescription = "Log out",
-                            )
-                        }
-                    },
+                    themeMode = themeMode,
+                    onThemeModeChange = { mode -> scope.launch { themeSettings.setThemeMode(mode) } },
+                    unreadCount = notificationsViewModel.unreadCount,
+                    onNavigateToNotifications = onNavigateToNotifications,
+                    onLogoutClick = { showLogoutConfirm = true },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
@@ -142,6 +132,8 @@ fun ProfileScreen(
             onThemeModeChange = { mode -> scope.launch { themeSettings.setThemeMode(mode) } },
             onNavigateToRequests = onNavigateToRequests,
             onNavigateToNotifications = onNavigateToNotifications,
+            onNavigateToFines = onNavigateToFines,
+            onNavigateToFinesAdmin = onNavigateToFinesAdmin,
             onNavigateToAuditLog = onNavigateToAuditLog,
             onNavigateToUserManagement = onNavigateToUserManagement,
         )
@@ -190,6 +182,8 @@ private fun ProfileBody(
     onThemeModeChange: (ThemeMode) -> Unit,
     onNavigateToRequests: () -> Unit,
     onNavigateToNotifications: () -> Unit,
+    onNavigateToFines: () -> Unit,
+    onNavigateToFinesAdmin: () -> Unit,
     onNavigateToAuditLog: () -> Unit,
     onNavigateToUserManagement: () -> Unit,
 ) {
@@ -228,6 +222,8 @@ private fun ProfileBody(
                         userRole = userData.role,
                         onNavigateToRequests = onNavigateToRequests,
                         onNavigateToNotifications = onNavigateToNotifications,
+                        onNavigateToFines = onNavigateToFines,
+                        onNavigateToFinesAdmin = onNavigateToFinesAdmin,
                         onNavigateToAuditLog = onNavigateToAuditLog,
                         onNavigateToUserManagement = onNavigateToUserManagement,
                     )
@@ -235,6 +231,38 @@ private fun ProfileBody(
             }
         }
     }
+}
+
+@Composable
+private fun ProfileTopBar(
+    onNavigateBack: () -> Unit,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    unreadCount: Int,
+    onNavigateToNotifications: () -> Unit,
+    onLogoutClick: () -> Unit,
+) {
+    AppTopBar(
+        title = "Profile",
+        onNavigateBack = onNavigateBack,
+        maxContentWidth = NarrowContentWidth,
+        actions = {
+            ThemeModeButton(
+                themeMode = themeMode,
+                onThemeModeChange = onThemeModeChange,
+            )
+            NotificationBell(
+                unreadCount = unreadCount,
+                onClick = onNavigateToNotifications,
+            )
+            TooltipIconButton(tooltip = "Log out", onClick = onLogoutClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Logout,
+                    contentDescription = "Log out",
+                )
+            }
+        },
+    )
 }
 
 /** Cycles SYSTEM -> LIGHT -> DARK -> SYSTEM from the top bar. */
@@ -466,12 +494,14 @@ private fun ThemeModeCell(
     }
 }
 
-/** Grouped navigation rows; ADMIN-only entries stay gated. */
+/** Grouped navigation rows; fines row follows the role, ADMIN-only entries stay gated. */
 @Composable
 private fun NavigationCard(
     userRole: UserRole,
     onNavigateToRequests: () -> Unit,
     onNavigateToNotifications: () -> Unit,
+    onNavigateToFines: () -> Unit,
+    onNavigateToFinesAdmin: () -> Unit,
     onNavigateToAuditLog: () -> Unit,
     onNavigateToUserManagement: () -> Unit,
 ) {
@@ -479,6 +509,13 @@ private fun NavigationCard(
         buildList {
             add(NavRow("Requests", Icons.Outlined.Receipt, onNavigateToRequests))
             add(NavRow("Notifications", Icons.Outlined.Notifications, onNavigateToNotifications))
+            when (userRole) {
+                UserRole.STUDENT -> add(NavRow("Fines", Icons.Outlined.Payments, onNavigateToFines))
+                UserRole.LA, UserRole.ADMIN ->
+                    add(NavRow("Outstanding Fines", Icons.Outlined.Payments, onNavigateToFinesAdmin))
+
+                else -> {}
+            }
             if (userRole == UserRole.ADMIN) {
                 add(NavRow("Audit Log", Icons.Outlined.History, onNavigateToAuditLog))
                 add(NavRow("Manage Users", Icons.Outlined.People, onNavigateToUserManagement))
