@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,7 +57,10 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -102,6 +106,7 @@ fun ProfileScreen(
 
     val themeMode by themeSettings.themeMode.collectAsState()
     val scope = rememberCoroutineScope()
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -120,9 +125,7 @@ fun ProfileScreen(
                             onClick = onNavigateToNotifications,
                         )
                         TextButton(
-                            onClick = {
-                                viewModel.logout(onLogout)
-                            },
+                            onClick = { showLogoutConfirm = true },
                             modifier = Modifier.handCursor(),
                         ) {
                             Text("Logout")
@@ -146,6 +149,38 @@ fun ProfileScreen(
             onNavigateToUserManagement = onNavigateToUserManagement,
         )
     }
+
+    if (showLogoutConfirm) {
+        LogoutConfirmDialog(
+            onDismiss = { showLogoutConfirm = false },
+            onConfirm = {
+                showLogoutConfirm = false
+                viewModel.logout(onLogout)
+            },
+        )
+    }
+}
+
+@Composable
+private fun LogoutConfirmDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Log out") },
+        text = { Text("Are you sure you want to log out? You will need to sign in again.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Log out", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable
