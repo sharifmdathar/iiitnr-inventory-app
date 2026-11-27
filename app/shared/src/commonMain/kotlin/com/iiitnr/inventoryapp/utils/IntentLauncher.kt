@@ -10,9 +10,10 @@ sealed class LaunchResult {
     ) : LaunchResult()
 }
 
-/** Opens a UPI deep link through the operating system's app chooser. */
 interface IntentLauncher {
     fun launchUpi(uri: String): LaunchResult
+
+    fun launchUrl(url: String): LaunchResult
 }
 
 expect fun createIntentLauncher(): IntentLauncher
