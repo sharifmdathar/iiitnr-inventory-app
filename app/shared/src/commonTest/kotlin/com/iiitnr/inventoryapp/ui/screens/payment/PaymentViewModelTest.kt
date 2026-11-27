@@ -312,6 +312,8 @@ class PaymentViewModelTest {
         var result: LaunchResult = LaunchResult.Launched
 
         override fun launchUpi(uri: String): LaunchResult = result
+
+        override fun launchUrl(url: String): LaunchResult = result
     }
 
     private class FakeProofPicker : ProofPicker {

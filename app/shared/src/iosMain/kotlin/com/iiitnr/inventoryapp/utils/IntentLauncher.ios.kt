@@ -17,6 +17,15 @@ private class IosIntentLauncher : IntentLauncher {
             LaunchResult.Error("Could not open a UPI app")
         }
     }
+
+    override fun launchUrl(url: String): LaunchResult {
+        val nsUrl = NSURL.URLWithString(url) ?: return LaunchResult.Error("Invalid link")
+        return if (UIApplication.sharedApplication.openURL(nsUrl)) {
+            LaunchResult.Launched
+        } else {
+            LaunchResult.Error("Could not open the link")
+        }
+    }
 }
 
 actual fun createIntentLauncher(): IntentLauncher = IosIntentLauncher()
