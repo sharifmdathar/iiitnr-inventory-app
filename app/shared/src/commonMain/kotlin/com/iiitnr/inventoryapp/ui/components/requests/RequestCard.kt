@@ -1,7 +1,6 @@
 package com.iiitnr.inventoryapp.ui.components.requests
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,7 +60,8 @@ fun RequestCard(
     val borderWidth = if (isSelected) 2.dp else 1.dp
 
     Card(
-        modifier = modifier.fillMaxWidth().handCursor().clickable { onCardClick(request) },
+        onClick = { onCardClick(request) },
+        modifier = modifier.fillMaxWidth().handCursor(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = cardShape,
         border = BorderStroke(borderWidth, borderColor),
