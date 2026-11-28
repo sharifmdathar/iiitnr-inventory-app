@@ -1,7 +1,7 @@
 services:
   db:
     container_name: db
-    image: docker.io/postgres:18.7-alpine
+    image: docker.io/postgres:19.0-alpine
     restart: unless-stopped
     profiles:
       - main
@@ -16,7 +16,7 @@ services:
       - pgdata:/var/lib/postgresql
 
   db-test:
-    image: docker.io/postgres:18.7-alpine
+    image: docker.io/postgres:19.0-alpine
     restart: unless-stopped
     profiles:
       - test
