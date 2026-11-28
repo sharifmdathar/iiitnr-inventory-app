@@ -55,7 +55,7 @@ services:
       - app
 
   db:
-    image: docker.io/postgres:18.7-alpine
+    image: docker.io/postgres:19.0-alpine
     restart: unless-stopped
     env_file: .env
     environment:
