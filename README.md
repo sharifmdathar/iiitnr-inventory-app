@@ -250,9 +250,9 @@ platform tools** (`adb`) for `just andro`.
    ```
 
 3. **Configure Environment Variables:**
-   Copy `backend/.env.example` and fill in the blanks:
+   Copy `.env.example` and fill in the blanks:
    ```bash
-   cp backend/.env.example backend/.env
+   cp .env.example .env
    ```
 
    **Required** — the backend will not start without these:
@@ -305,11 +305,11 @@ cd app
 #### 2. Running the Android Client
 Open the `app` directory in **Android Studio**. Make sure the target emulator or physical device is connected, and select the `android` module configuration and click **Run**.
 
-*Note: the Android **debug** build points at the hosted backend
-(`app/shared/src/androidMain/.../DevBaseUrl.android.kt`), while the desktop and
-web debug builds point at `http://localhost:4000`. To use a local backend from
-an Android emulator, change `devBaseUrl()` to `http://10.0.2.2:4000` — that is
-how the emulator reaches the host machine.*
+*Note: the Android **debug** build defaults to `http://10.0.2.2:4000`, the
+emulator's route to the host machine, while desktop and web use
+`http://localhost:4000`. Override the Android URL with
+`-PdevBaseUrl=http://<host>:4000` (or set it in `~/.gradle/gradle.properties`)
+when using a physical device.*
 
 *Or from the command line, with a device connected via adb:*
 ```bash
@@ -385,6 +385,8 @@ If you have `just` runner installed, you can use the following shortcuts from th
 | [docs/request-lifecycle.md](docs/request-lifecycle.md) | The request state machine, status reference and the background sweeps |
 | [docs/deployment.md](docs/deployment.md) | Production topology, environment variables and the deploy procedure |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common failures and how to fix them |
+| [docs/ui-conventions.md](docs/ui-conventions.md) | Compose width caps, bars, cards, theming and control conventions |
+| [CHANGELOG.md](CHANGELOG.md) | User-facing release notes — edit the root file; the app copy is generated |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow, quality gates, commit and review conventions |
 
 **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md). The short version:

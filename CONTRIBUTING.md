@@ -17,6 +17,7 @@ If you only read one section, read [Before you commit](#before-you-commit).
 | `app/shared/` | Shared Compose UI + data layer (the actual app lives here) |
 | `app/android/`, `app/desktop/`, `app/web/`, `app/iosApp/` | Platform runners |
 | `docs/` | Long-form docs — `schema.md` is **generated**, everything else is hand-written |
+| `CHANGELOG.md` | User-facing release notes; copied into the app at build time |
 | `Justfile` | Task runner for every workflow in this file |
 
 ---
@@ -44,14 +45,19 @@ reproduce it exactly.
 
 ## Before you commit
 
-`just check` is the single gate. If it passes, CI's pull-request checks pass.
-Everything below is a subset of it, for when you want a faster loop.
+`just check` is the single gate for CI's pull-request checks. The other recipes
+below are faster loops or extra coverage.
 
 | Command | Covers | When to run |
 |---|---|---|
 | `just check-fast` | typecheck, eslint, prettier, ktlint, detekt, schema docs, `:shared:jvmTest`, `:android:assembleDebug` | before every commit (~8 s once warm) |
 | `just check` | `check-fast` **+** the backend test suite in a throwaway Postgres | before every push / PR (~16 s once warm) |
 | `just check-full` | `just check` **+** the WasmJs web bundle | before merging anything touching `app/shared/`, `app/web/`, or backend code that the web build consumes |
+| `just check-ui` | ktlint, detekt, desktop, shared/web WasmJs and Android compiles, `:shared:jvmTest` | when touching `app/shared/` UI |
+
+`check-ui` is supplemental: it is not part of `check`, so run it in addition
+when you change shared Compose UI. It adds the desktop compile; `check-full`
+adds the backend tests and the web bundle.
 
 `just push` runs `just check` and then pushes, so you cannot forget it.
 
@@ -98,25 +104,23 @@ Each gate exists because something specific slipped through without it:
 
 ### What CI runs
 
-The `CI` workflow has one filter job and two real jobs, and it only builds the
-sides you touched (`backend/**` vs `app/**`):
+`ci.yml` has one filter job and two real jobs. It builds the backend for
+`backend/**` and the Kotlin side for `app/**`; both sides also run when a
+workflow or `mise.toml` changes.
 
-```
-Backend (lint, typecheck, test)   bun run typecheck · schema docs --check · bun test · eslint
-Kotlin  (ktlint, detekt, test, build)
-                                  ./gradlew ktlintCheck detekt
-                                  ./gradlew :shared:jvmTest
-                                  ./gradlew :android:assembleDebug
-```
+- **Backend** — typecheck, schema-docs check, `bun test`, eslint.
+- **Kotlin** — `ktlintCheck`, `detekt`, `:shared:jvmTest`,
+  `:android:assembleDebug`.
 
-Two workflows are **not** part of the pull-request gate because they need macOS
-or a release trigger: `ios-test.yml` (manual, `workflow_dispatch`) and
-`release.yml` (on published releases). If you change `iosMain` code, run the iOS
-job manually from the Actions tab — a broken iOS target will not be caught here.
+Two workflows are **not** part of the pull-request gate: `ios-test.yml` is
+manual (`workflow_dispatch`), and `release.yml` runs on published releases. If
+you change `iosMain` code, run the iOS job from the Actions tab — a broken iOS
+target will not be caught here.
 
-> **Keep this list honest.** `check-fast` must stay a superset of CI's
-> pull-request gate. If you add a step to `ci.yml`, add it to `check-fast` in the
-> same PR, or the local gate silently rots and `main` starts failing.
+> **Keep this list honest.** `just check` must stay a superset of CI's
+> pull-request gate. `check-fast` intentionally skips the DB-backed backend
+> suite, so add CI-only backend test steps to `just check`, not `check-fast`.
+> Otherwise the local gate silently rots and `main` starts failing.
 
 ---
 
@@ -147,99 +151,11 @@ buried inside a behavioural change.
 
 ---
 
-## UI & Responsive Layout Conventions
+## UI work
 
-The client is one Compose codebase running on phones, desktop and the web, so
-these rules are what keep a screen looking the same everywhere. The design
-system lives in `app/shared/src/commonMain/.../ui/` — extend it there rather
-than re-inventing pieces per screen.
-
-### Width caps
-
-Two constants in `ui/components/common/Responsive.kt` cover every screen:
-
-| Constant | Width | Use for |
-|---|---|---|
-| `WideContentWidth` | `1280.dp` | adaptive grids, and `Expanded` (`>= 900.dp`) Master–Detail layouts |
-| `NarrowContentWidth` | `900.dp` | single-column screens, and the `AppTopBar` of focused screens |
-
-- Wrap responsive screens in `ResponsiveContent { widthClass -> … }` and branch
-  on `ScreenWidthClass.Compact` / `Medium` / `Expanded`.
-- Focused-screen bodies stay narrower than the bar above them: auth forms are
-  `420.dp` and the profile body is `560.dp`, centred inside
-  `NarrowContentWidth`.
-- Do **not** hardcode `1280.dp`, `1000.dp`, `900.dp` or `800.dp` caps in a
-  screen. If a new tier is genuinely needed, add it to `Responsive.kt` first.
-
-### Headers, dividers and footers
-
-- Pass `maxContentWidth` to `AppTopBar` and `PaginationBar` so titles, actions
-  and page controls line up with the content grid; the bar and footer
-  backgrounds still span the full window.
-- Bar titles use `colorScheme.onSurface`. `primary` is for card and list-item
-  titles, not for the bar.
-- Put a full-width
-  `HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)` below a
-  fixed header block (search + filters) and below `AppTopBar`, before the
-  scrollable content. The divider stays edge-to-edge even when the content above
-  it is capped.
-
-### Cards, tints and badges
-
-- **Neutral cards** — `surfaceContainerLow`, `elevation = 0.dp`, and
-  `BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)`. No drop
-  shadows; the hairline border does the separating.
-- **Semantic-tinted cards** — blend the hue onto the surface instead of stacking
-  alpha:
-
-  ```kotlin
-  lerp(
-      start = MaterialTheme.colorScheme.surfaceContainerLow,
-      stop = semanticColor,
-      fraction = if (LocalIsDarkTheme.current) 0.14f else 0.07f,
-  )
-  ```
-
-  Use `0.22f` dark / `0.12f` light when the row is selected (`RequestCard`).
-  Borders are the semantic hue at 35% alpha, `2.dp` when selected
-  (`RequestCard`, `AuditLogCard`); neutral selectable cards select with `1.5.dp`
-  `primary`.
-- **Badges and pills** — `0.24f` alpha in dark, `0.14f` in light.
-
-### Theming
-
-Never call `isSystemInDarkTheme()` inside a composable. Read
-`LocalIsDarkTheme.current`; the client's only `isSystemInDarkTheme()` call lives
-in `ThemeMode.resolveIsDark()`, which resolves the persisted `ThemeMode`.
-Semantic colours come from `MaterialTheme.inventoryColors`.
-
-### Controls and ergonomics
-
-- Filters are borderless `TextButton` pills — selected is `primary` (or the
-  relevant semantic colour), unselected is `onSurfaceVariant`. No `FilterChip`.
-- Dropdowns use `ExposedDropdownMenu` with
-  `Modifier.exposedDropdownSize(matchAnchorWidth = true)`, so the menu matches
-  the field instead of shrinking to its widest item.
-- Images use `SubcomposeAsyncImage` with a category/icon placeholder for
-  `loading`, for `error`, and for a null URL — never a broken-image glyph.
-- Icon-only actions get a `TooltipBox`; clickable elements get
-  `Modifier.handCursor()`.
-- Never stretch a button full-width on `Expanded`; buttons belong in a dialog or
-  inside a capped column.
-
-### UI verification
-
-`just check` stays the required gate, but it compiles only the JVM and Android
-targets. For anything touching `app/shared/` UI, also compile every target:
-
-```bash
-cd app && ./gradlew ktlintCheck detekt \
-  :desktop:compileKotlinJvm :shared:compileKotlinWasmJs \
-  :web:compileKotlinWasmJs :android:compileDebugKotlin :shared:jvmTest
-```
-
-That catches a Compose API that exists on the JVM but not in the web toolchain,
-which `jvmTest` alone happily misses.
+Compose rules (width caps, bars, cards, theming) live in
+[docs/ui-conventions.md](docs/ui-conventions.md). Read it before changing a
+screen; run `just check-ui` for shared UI changes.
 
 ---
 
@@ -265,6 +181,33 @@ or the DB-backed suites will fail to connect.
 
 ---
 
+## Changelog
+
+User-visible changes need a release note in [`CHANGELOG.md`](CHANGELOG.md), in
+the same PR as the code. That includes new features, UI/UX changes, fixes and
+security changes. Refactors, tests, CI and dependency chores do not need an
+entry.
+
+Edit the repository-root `CHANGELOG.md` only. Gradle copies it into the app's
+Compose resources at build time; the nested copy is generated and git-ignored.
+While a release is in progress, add bullets under `## Unreleased` — the
+maintainer renames it to the version number when releasing. Every bullet must
+start with a recognized kind (case-insensitive, aliases in the file header):
+
+```markdown
+- new: …
+- improved: …
+- ui: …
+- fix: …
+- security: …
+```
+
+Bullets are displayed grouped in that order (`new`, `improved`, `ui`, `fix`,
+`security`); keep related bullets together and write them for users, not as a
+commit log.
+
+---
+
 ## Commits
 
 Write commits that stand on their own, because history is not squashed — see
@@ -283,21 +226,33 @@ Write commits that stand on their own, because history is not squashed — see
 ## Pull requests
 
 1. Branch off `main`: `feat/short-description`, `fix/short-description`.
-2. Make sure `just check` passes before you push. For UI changes, also run the
-   per-target gate in
-   [UI & Responsive Layout Conventions](#ui--responsive-layout-conventions).
-3. Open the PR with:
+2. Make sure `just check` passes before you push. For UI changes, also run
+   `just check-ui` — see [UI work](#ui-work).
+3. Add a [`CHANGELOG.md`](CHANGELOG.md) bullet for user-visible changes — see
+   [Changelog](#changelog).
+4. Open the PR with:
    - **what changed** and **why**,
    - **how you verified it** (commands you ran, screenshots for UI work),
    - anything the reviewer should look at closely, and known gaps.
-4. Keep it focused. Unrelated cleanups belong in their own PR.
-5. CI must be green before merge. If a job is skipped, say why in the PR.
+5. Keep it focused. Unrelated cleanups belong in their own PR.
+6. CI must be green before merge. If a job is skipped, say why in the PR.
 
 ### Reviewing
 
 Check that the diff actually matches the description, that new logic has a test,
 and that no secrets, debug logging, or commented-out code came along for the
 ride.
+
+### Dependency updates
+
+Renovate opens dependency PRs from `renovate.json`. GitHub Actions minor,
+patch, digest and pin updates are automerged after CI; container images,
+backend/Gradle updates and every major update need review. Don't enable
+Dependabot version updates alongside it; Dependabot alerts are still useful.
+
+The Mend Renovate GitHub App must be installed on the repository with access to
+contents, pull requests, issues and workflows. Without that installation the
+config is inert.
 
 ---
 

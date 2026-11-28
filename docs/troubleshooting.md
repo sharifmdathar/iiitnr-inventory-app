@@ -121,15 +121,10 @@ renewal reminder email.
 
 ### The Android emulator cannot reach a local backend
 
-The Android **debug** build points at the hosted backend
-(`https://iiitnr-inventory-backend.onrender.com`, see
-`app/shared/src/androidMain/.../DevBaseUrl.android.kt`). The desktop and web
-debug builds point at `http://localhost:4000`.
-
-To use a locally running backend from an Android emulator, change
-`devBaseUrl()` to `http://10.0.2.2:4000` — `10.0.2.2` is how the emulator
-reaches the host machine's `localhost`. A physical device needs the host's LAN
-IP instead.
+The Android **debug** build defaults to `http://10.0.2.2:4000`, the emulator's
+route to the host machine; desktop and web use `http://localhost:4000`.
+Override the Android URL with `-PdevBaseUrl=http://<host>:4000` (or set it in
+`~/.gradle/gradle.properties`) for a physical device, using the host's LAN IP.
 
 ### The app shows an update banner
 
