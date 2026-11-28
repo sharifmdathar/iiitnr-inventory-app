@@ -90,6 +90,10 @@ val populateGoogleConfig = tasks.register("populateGoogleConfig") {
 }
 
 tasks.named("jvmProcessResources") {
+    // Real dependency, not just input tracking: on a fresh CI checkout the
+    // config file does not exist until populateGoogleConfig writes it, so
+    // resources must be processed after that task has run.
+    dependsOn(populateGoogleConfig)
     inputs.files(googleConfigPropertiesFile)
 }
 

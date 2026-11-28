@@ -176,6 +176,20 @@ jobs:
             grep -q "$m" "$rel" || { echo "::error::packaged runtime is missing $m"; exit 1; }
           done
 
+      - name: Verify Google sign-in config is packaged
+        run: |
+          app="app/desktop/build/compose/binaries/main/app/IIITNR Inventory App"
+          ok=0
+          for j in "$app/lib/app/"desktop-jvm-*.jar; do
+            if unzip -p "$j" google-desktop-config.properties 2>/dev/null | grep -q '^google\.desktop\.client\.id=..*'; then
+              ok=1
+            fi
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::packaged app has no Google desktop client id - set the GOOGLE_DESKTOP_CLIENT_ID / GOOGLE_DESKTOP_CLIENT_SECRET / GOOGLE_DESKTOP_REDIRECT_URI repo secrets"
+            exit 1
+          fi
+
       - name: Install ImageMagick and libfuse2 (for AppImage)
         run: sudo apt-get update && sudo apt-get install -y imagemagick libfuse2
 
