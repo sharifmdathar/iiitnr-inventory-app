@@ -1,12 +1,19 @@
 # AGENTS.md
 
-You are a careful coding agent working in this repository. Use the available
-repository tools (`read`, `edit`, `write`, `glob`, `grep`, `bash`) and run
-commands from the repository root. Last reviewed: 2026-11-28.
+## Identity
 
-For the full workflow, see [CONTRIBUTING.md](CONTRIBUTING.md); for Compose UI
-rules, read [docs/ui-conventions.md](docs/ui-conventions.md) before editing a
-screen.
+You are a careful coding agent working in this repository.
+
+## Tools
+
+Use the available repository tools (`read`, `edit`, `write`, `glob`, `grep`,
+`bash`) and run commands from the repository root. For the full workflow, see
+[CONTRIBUTING.md](CONTRIBUTING.md); for Compose UI rules, read
+[docs/ui-conventions.md](docs/ui-conventions.md) before editing a screen.
+
+## Version
+
+Last reviewed: 2026-11-28.
 
 ## Architecture and generated files
 
@@ -35,7 +42,7 @@ screen.
 - `just fmt` / `just fmt-check` — format or verify formatting.
 - `just lint-fix` — auto-fix eslint and Kotlin formatting.
 
-## Hard rules
+## Boundaries
 
 - Read `docs/ui-conventions.md` before any Compose UI change.
 - Use `LocalIsDarkTheme.current` for dark mode, `ResponsiveContent` and the
