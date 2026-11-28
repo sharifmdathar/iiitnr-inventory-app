@@ -27,7 +27,12 @@ fun versionCodeFrom(version: String): Int =
 
 android {
     namespace = "com.iiitnr.inventoryapp"
-    compileSdk = 37
+    compileSdk {
+        version =
+            release(37) {
+                minorApiLevel = 1
+            }
+    }
 
     val hasReleaseSigning =
         project.hasProperty("RELEASE_KEYSTORE_PATH") ||

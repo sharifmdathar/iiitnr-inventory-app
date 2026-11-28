@@ -26,6 +26,13 @@ jobs:
           distribution: temurin
           java-version: 25
 
+      - name: Install Android SDK 37.1
+        run: |
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          sdkmanager="$(find "$sdk_root" -path '*/cmdline-tools/*/bin/sdkmanager' -type f | sort -V | tail -n 1)"
+          test -n "$sdkmanager"
+          yes | "$sdkmanager" "platforms;android-37.1" > /dev/null
+
       - name: Decode release keystore
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}

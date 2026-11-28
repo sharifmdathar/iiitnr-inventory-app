@@ -91,7 +91,12 @@ kotlin {
     }
     android {
         namespace = "com.iiitnr.inventoryapp.shared"
-        compileSdk = 37
+        compileSdk {
+            version =
+                release(37) {
+                    minorApiLevel = 1
+                }
+        }
         androidResources { enable = true }
         withHostTest {}
         compilerOptions {
