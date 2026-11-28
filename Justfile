@@ -126,6 +126,13 @@ check *ARGS:
 check-full *ARGS:
     @./bin/check.sh --full {{ARGS}}
 
+# Multi-target UI gate: compiles desktop, shared/web WasmJs and Android, runs JVM tests.
+[group('quality')]
+check-ui:
+    cd {{app}} && {{gradle}} ktlintCheck detekt \
+      :desktop:compileKotlinJvm :shared:compileKotlinWasmJs \
+      :web:compileKotlinWasmJs :android:compileDebugKotlin :shared:jvmTest
+
 # Sequential equivalent of `check`, for environments without bash (e.g. Windows).
 [group('quality')]
 check-seq: typecheck lint detekt check-schema fmt-check app-test app-build test
