@@ -305,11 +305,11 @@ cd app
 #### 2. Running the Android Client
 Open the `app` directory in **Android Studio**. Make sure the target emulator or physical device is connected, and select the `android` module configuration and click **Run**.
 
-*Note: the Android **debug** build defaults to `http://10.0.2.2:4000`, the
-emulator's route to the host machine, while desktop and web use
-`http://localhost:4000`. Override the Android URL with
-`-PdevBaseUrl=http://<host>:4000` (or set it in `~/.gradle/gradle.properties`)
-when using a physical device.*
+*Note: Android, desktop and web debug builds use `http://localhost:4000`; the
+iOS debug build targets the deployed Render backend. On Android, `just andro`
+runs `adb reverse tcp:4000 tcp:4000` before installing, so the device's
+`localhost` reaches the host backend. If you launch from Android Studio, run
+that command yourself.*
 
 *Or from the command line, with a device connected via adb:*
 ```bash

@@ -160,13 +160,17 @@ desk:
 andro:
     rm -f {{app}}/android/build/outputs/apk/debug/com.iiitnr.inventoryapp-*.apk
     cd {{app}} && {{gradle}} assembleDebug -PappDebug=true
-    adb install {{app}}/android/build/outputs/apk/debug/com.iiitnr.inventoryapp-*.apk
+    adb reverse tcp:4000 tcp:4000
+    adb install --no-streaming -r {{app}}/android/build/outputs/apk/debug/com.iiitnr.inventoryapp-*.apk
+    adb shell am start -n com.iiitnr.inventoryapp.debug/com.iiitnr.inventoryapp.MainActivity
 
 [windows]
 andro:
     del /q {{app}}\android\build\outputs\apk\debug\com.iiitnr.inventoryapp-*.apk 2>nul
     cd {{app}} && {{gradle}} assembleDebug -PappDebug=true
-    for %%f in ({{app}}\android\build\outputs\apk\debug\com.iiitnr.inventoryapp-*.apk) do adb install %%f
+    adb reverse tcp:4000 tcp:4000
+    for %%f in ({{app}}\android\build\outputs\apk\debug\com.iiitnr.inventoryapp-*.apk) do adb install --no-streaming -r %%f
+    adb shell am start -n com.iiitnr.inventoryapp.debug/com.iiitnr.inventoryapp.MainActivity
 
 
 [group('container')]

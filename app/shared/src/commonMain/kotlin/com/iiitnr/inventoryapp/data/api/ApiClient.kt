@@ -21,6 +21,8 @@ import kotlinx.serialization.json.Json
 
 expect fun createHttpClient(block: HttpClientConfig<*>.() -> Unit = {}): HttpClient
 
+internal const val LOCAL_DEV_BASE_URL = "http://localhost:4000"
+
 expect fun devBaseUrl(): String
 
 object ApiClient {

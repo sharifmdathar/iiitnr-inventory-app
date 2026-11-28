@@ -119,12 +119,19 @@ renewal reminder email.
 
 ## Client
 
-### The Android emulator cannot reach a local backend
+### The Android device or emulator cannot reach a local backend
 
-The Android **debug** build defaults to `http://10.0.2.2:4000`, the emulator's
-route to the host machine; desktop and web use `http://localhost:4000`.
-Override the Android URL with `-PdevBaseUrl=http://<host>:4000` (or set it in
-`~/.gradle/gradle.properties`) for a physical device, using the host's LAN IP.
+Android, desktop and web debug builds use `http://localhost:4000`. On Android,
+forward the device's `localhost` to the host:
+
+```bash
+adb reverse tcp:4000 tcp:4000
+```
+
+`just andro` does this automatically, but the tunnel is cleared whenever the
+device or the adb server reconnects, so re-run it after a reconnect. For
+installs over WSL/USBIPD, `adb install --no-streaming -r <apk>` is more reliable
+than the default streaming install.
 
 ### The app shows an update banner
 
