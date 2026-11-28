@@ -1,7 +1,7 @@
 services:
   db:
     container_name: db
-    image: docker.io/postgres:alpine
+    image: docker.io/postgres:18.7-alpine
     restart: unless-stopped
     profiles:
       - main
@@ -12,10 +12,11 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PostgreSQL 18 keeps its data under /var/lib/postgresql/<major>/docker.
+      - pgdata:/var/lib/postgresql
 
   db-test:
-    image: docker.io/postgres:alpine
+    image: docker.io/postgres:18.7-alpine
     restart: unless-stopped
     profiles:
       - test
