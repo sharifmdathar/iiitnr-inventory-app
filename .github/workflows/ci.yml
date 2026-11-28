@@ -28,10 +28,17 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-              - '.github/workflows/ci.yml'
+              - '.github/workflows/**'
+              - 'mise.toml'
+              - 'VERSION'
+              - 'Justfile'
             kotlin:
               - 'app/**'
-              - '.github/workflows/ci.yml'
+              - '.github/workflows/**'
+              - 'mise.toml'
+              - 'CHANGELOG.md'
+              - 'VERSION'
+              - 'Justfile'
 
   backend:
     name: Backend (lint, typecheck, test)
@@ -44,7 +51,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18.7-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -125,3 +132,9 @@ jobs:
 
       - name: Assemble Android debug
         run: ./gradlew :android:assembleDebug --no-daemon
+
+      - name: Verify changelog is packaged in the APK
+        run: |
+          apk="$(find android/build/outputs/apk/debug -name '*.apk' -print -quit)"
+          test -n "$apk"
+          unzip -l "$apk" | grep -q 'assets/.*CHANGELOG\.md'
