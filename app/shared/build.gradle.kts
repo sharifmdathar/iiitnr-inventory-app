@@ -15,37 +15,10 @@ val versionFile = rootProject.layout.projectDirectory.file("../VERSION")
 val generatedVersionDir = layout.buildDirectory.dir("generated/source/appVersion/commonMain/kotlin")
 
 val isDebugBuild = (project.findProperty("appDebug") as String?)?.toBoolean() ?: false
-val devBaseUrlOverride = (project.findProperty("devBaseUrl") as String?)?.takeIf { it.isNotBlank() }
-val androidDevBaseUrl = devBaseUrlOverride ?: "http://10.0.2.2:4000"
-val generatedDevBaseUrlDir = layout.buildDirectory.dir("generated/source/devBaseUrl/androidMain/kotlin")
 val generatedBuildFlagsDir =
     layout.buildDirectory.dir("generated/source/buildFlags/commonMain/kotlin")
 val changelogFile = rootProject.layout.projectDirectory.file("../CHANGELOG.md")
 val changelogResourceDir = layout.projectDirectory.dir("src/commonMain/composeResources/files")
-
-val generateDevBaseUrlKt =
-    tasks.register("generateDevBaseUrlKt") {
-        description = "Generates Android dev base URL"
-        group = "build"
-        val url = androidDevBaseUrl
-        val outputDir = generatedDevBaseUrlDir.get().asFile
-        inputs.property("devBaseUrl", url)
-        outputs.dir(outputDir)
-        doLast {
-            val f = outputDir.resolve("com/iiitnr/inventoryapp/data/api/GeneratedDevBaseUrl.kt")
-            outputDir.deleteRecursively()
-            f.parentFile.mkdirs()
-            f.writeText(
-                """
-                package com.iiitnr.inventoryapp.data.api
-
-                internal object GeneratedDevBaseUrl {
-                    const val URL = "$url"
-                }
-                """.trimIndent() + "\n",
-            )
-        }
-    }
 
 val generateBuildFlagsKt =
     tasks.register("generateBuildFlagsKt") {
@@ -201,7 +174,6 @@ kotlin {
 
         val androidMain =
             sourceSets.getByName("androidMain") {
-                kotlin.srcDir(generateDevBaseUrlKt)
                 dependencies {
                     api("io.insert-koin:koin-android:${libs.versions.koin.get()}")
                     implementation(libs.kotlinx.coroutines.android)
