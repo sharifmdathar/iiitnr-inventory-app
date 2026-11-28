@@ -1,5 +1,3 @@
-import groovy.json.JsonSlurper
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -9,13 +7,11 @@ plugins {
 
 val appVersion =
     providers
-        .fileContents(rootProject.layout.projectDirectory.file("../backend/package.json"))
+        .fileContents(rootProject.layout.projectDirectory.file("../VERSION"))
         .asText
-        .map { packageJson ->
-            (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
-                ?.toString()
-                ?.takeIf { it.isNotBlank() }
-                ?: error("Could not find version in backend/package.json")
+        .map { version ->
+            version.trim().takeIf { it.isNotBlank() }
+                ?: error("VERSION file is empty")
         }
 
 fun versionCodeFrom(version: String): Int =

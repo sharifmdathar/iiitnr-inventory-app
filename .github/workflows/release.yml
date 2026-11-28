@@ -56,7 +56,7 @@ jobs:
 
       - name: Locate and prepare APK asset
         run: |
-          VERSION=$(node -e "console.log(require('../backend/package.json').version)")
+          VERSION=$(tr -d '[:space:]' < ../VERSION)
           mkdir -p apk-artifacts
           APK_FILE=$(find android/build/outputs/apk/release -name "*.apk" | head -n 1)
           if [ -f "$APK_FILE" ]; then

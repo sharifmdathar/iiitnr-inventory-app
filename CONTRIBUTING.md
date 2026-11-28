@@ -289,8 +289,9 @@ just release 1.18.0    # pushes main, creates a GitHub release with generated no
 just deploy            # rebuild backend container + publish web bundle
 ```
 
-Bump `VERSION` and `backend/package.json` together — the backend reads `VERSION`
-at build time and the client compares it against `/version`.
+Bump `VERSION`; the Android and desktop builds and release asset names read it
+directly. Keep `backend/package.json` in sync for the backend's package metadata
+and version test.
 
 ---
 
