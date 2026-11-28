@@ -1,4 +1,3 @@
-import groovy.json.JsonSlurper
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.io.File
 import java.util.Properties
@@ -11,13 +10,11 @@ plugins {
 }
 
 val appVersion =
-    providers.fileContents(rootProject.layout.projectDirectory.file("../backend/package.json"))
+    providers.fileContents(rootProject.layout.projectDirectory.file("../VERSION"))
         .asText
-        .map { packageJson ->
-            (JsonSlurper().parseText(packageJson) as Map<*, *>)["version"]
-                ?.toString()
-                ?.takeIf { it.isNotBlank() }
-                ?: error("Could not find version in backend/package.json")
+        .map { version ->
+            version.trim().takeIf { it.isNotBlank() }
+                ?: error("VERSION file is empty")
         }
 
 kotlin {
