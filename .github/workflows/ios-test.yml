@@ -1,7 +1,12 @@
-name: Test iOS Build
+name: iOS (manual)
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Optional release tag to attach the XCFramework to (e.g. v1.18.1)"
+        required: false
+        type: string
 
 jobs:
   build-ios:
@@ -30,6 +35,29 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew --no-configuration-cache :shared:assembleSharedReleaseXCFramework --parallel --build-cache
+
+      - name: Zip XCFramework
+        run: |
+          mkdir -p ios-artifacts
+          cd app/shared/build/XCFrameworks/release
+          zip -r ../../../../../ios-artifacts/IIITNR-Inventory-App-iOS-shared.xcframework.zip shared.xcframework
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ios-release-xcframework
+          path: ios-artifacts/IIITNR-Inventory-App-iOS-shared.xcframework.zip
+          retention-days: 7
+
+      - name: Attach to release
+        if: ${{ inputs.tag_name != '' }}
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          files: ios-artifacts/IIITNR-Inventory-App-iOS-shared.xcframework.zip
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test-ios:
     name: iOS simulator tests
