@@ -20,6 +20,9 @@ preserved; grouping the file the same way just makes it easier to read.
 -->
 # Changelog
 
+## 1.18.1
+- fix: Packaged apps (Windows installers, Linux AppImage) no longer fail at launch with "Failed to launch JVM" — the bundled runtime was missing the java.sql module
+
 ## 1.18.0
 - new: About & feedback in Profile Screen: reach the team, report bugs, request features, check for updates
 - new: Pay fines in the app: pay over UPI, submit your payment proof, and LAs verify it + you're notified of the decision

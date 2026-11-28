@@ -145,3 +145,12 @@ jobs:
           apk="$(find android/build/outputs/apk/debug -name '*.apk' -print -quit)"
           test -n "$apk"
           unzip -l "$apk" | grep -q 'assets/.*CHANGELOG\.md'
+
+      - name: Verify desktop runtime image keeps required modules
+        run: |
+          ./gradlew :desktop:createRuntimeImage --no-daemon
+          rel="$(grep -rl '^MODULES=' desktop/build/compose/tmp | head -1)"
+          test -n "$rel"
+          for m in java.base java.desktop java.sql jdk.unsupported; do
+            grep -q "$m" "$rel" || { echo "::error::packaged runtime is missing $m"; exit 1; }
+          done

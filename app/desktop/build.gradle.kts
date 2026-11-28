@@ -127,7 +127,28 @@ compose.desktop {
 
             description = "IIITNR Inventory Management Application"
             vendor = "IIITNR"
+            // Modules for the trimmed jlink runtime image. Compose's defaults
+            // miss java.sql, which the SQLite JDBC driver needs — packaged
+            // apps then fail at launch with "Failed to launch JVM:
+            // java/sql/DriverManager". The additions come from
+            // `./gradlew :desktop:suggestRuntimeModules` (jdeps over the
+            // shipped jars); rerun it after adding dependencies that touch
+            // new JDK modules. CI fails if java.sql ever drops out again.
             includeAllModules = false
+            modules(
+                "java.base",
+                "java.datatransfer",
+                "java.desktop",
+                "java.instrument",
+                "java.logging",
+                "java.management",
+                "java.prefs",
+                "java.sql",
+                "java.xml",
+                "jdk.crypto.ec",
+                "jdk.httpserver",
+                "jdk.unsupported",
+            )
 
             val appIconPng = project(":android").file("src/main/ic_launcher-playstore.png")
             val appIconIco = project.file("icon.ico")
