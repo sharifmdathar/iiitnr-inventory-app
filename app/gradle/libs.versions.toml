@@ -1,9 +1,9 @@
 [versions]
 activityCompose            = "1.13.0"
-agp                        = "9.5.1"
+agp                        = "9.5.2"
 camerak                    = "1.2"
 coil                       = "3.6.3"
-composeBom                 = "2026.09.00"
+composeBom                 = "2026.11.01"
 composeMultiplatform       = "1.12.2"
 coreKtx                    = "1.19.1"
 credentials                = "1.6.0"
