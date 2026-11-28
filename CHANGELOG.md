@@ -20,7 +20,7 @@ preserved; grouping the file the same way just makes it easier to read.
 -->
 # Changelog
 
-## Unreleased
+## 1.18.0
 - new: About & feedback in Profile Screen: reach the team, report bugs, request features, check for updates
 - new: Pay fines in the app: pay over UPI, submit your payment proof, and LAs verify it + you're notified of the decision
 - new: "What's new" notes appear once after the app updates or on a fresh install (this dialog!)
