@@ -212,7 +212,7 @@ jobs:
           retention-days: 1
 
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-26
 
     steps:
       - name: Checkout
