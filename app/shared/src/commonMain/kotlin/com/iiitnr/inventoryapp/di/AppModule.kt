@@ -1,6 +1,9 @@
 package com.iiitnr.inventoryapp.di
 
+import com.iiitnr.inventoryapp.data.ChangelogRepository
 import com.iiitnr.inventoryapp.data.api.ApiClient
+import com.iiitnr.inventoryapp.data.storage.WhatsNewSettings
+import com.iiitnr.inventoryapp.data.storage.createWebKeyValueStore
 import com.iiitnr.inventoryapp.ui.platform.DefaultProofPicker
 import com.iiitnr.inventoryapp.ui.platform.ProofPicker
 import com.iiitnr.inventoryapp.ui.screens.AuditLogViewModel
@@ -39,6 +42,13 @@ val apiModule =
 val storageModule =
     module {
         // Platform specific storage provided in platformModule
+        single {
+            WhatsNewSettings(
+                database = getOrNull(),
+                fallbackStore = createWebKeyValueStore(),
+            )
+        }
+        single { ChangelogRepository() }
     }
 
 val viewModelModule =

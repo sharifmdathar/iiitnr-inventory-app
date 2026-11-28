@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.HistoryEdu
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Card
@@ -50,6 +51,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.iiitnr.inventoryapp.data.ChangelogEntry
+import com.iiitnr.inventoryapp.data.ChangelogRepository
 import com.iiitnr.inventoryapp.data.GeneratedVersion
 import com.iiitnr.inventoryapp.data.checkForUpdate
 import com.iiitnr.inventoryapp.shared.Res
@@ -59,6 +62,7 @@ import com.iiitnr.inventoryapp.shared.faculty_in_charge
 import com.iiitnr.inventoryapp.ui.components.common.AppTopBar
 import com.iiitnr.inventoryapp.ui.components.common.GithubIcon
 import com.iiitnr.inventoryapp.ui.components.common.NarrowContentWidth
+import com.iiitnr.inventoryapp.ui.components.common.WhatsNewDialog
 import com.iiitnr.inventoryapp.ui.components.common.handCursor
 import com.iiitnr.inventoryapp.utils.LaunchResult
 import com.iiitnr.inventoryapp.utils.createIntentLauncher
@@ -66,6 +70,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private const val REPO_URL = "https://github.com/sharifmdathar/iiitnr-inventory-app"
@@ -97,6 +102,7 @@ fun AboutScreen(
     onNavigateBack: () -> Unit,
     onUpdateAction: (() -> Unit)? = null,
     viewModel: ProfileViewModel = koinViewModel(),
+    changelogRepository: ChangelogRepository = koinInject(),
 ) {
     val user = viewModel.user
     val snackbarHostState = remember { SnackbarHostState() }
@@ -176,6 +182,7 @@ fun AboutScreen(
                     state = updateState,
                     onCheck = ::checkNow,
                     onUpdate = ::performUpdate,
+                    changelogRepository = changelogRepository,
                 )
                 TeamCard(
                     onOpenFacultyPage = { openLink(FACULTY_PAGE_URL) },
@@ -200,13 +207,53 @@ private fun UpdatesCard(
     state: UpdateCheck,
     onCheck: () -> Unit,
     onUpdate: () -> Unit,
+    changelogRepository: ChangelogRepository,
 ) {
+    var showChangelog by remember { mutableStateOf(false) }
+    var changelogEntries by remember { mutableStateOf<List<ChangelogEntry>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        changelogEntries = changelogRepository.entries()
+    }
+
     AboutCard {
-        when (state) {
-            is UpdateCheck.Available -> UpdateAvailableRow(state.serverVersion, onUpdate)
-            else -> UpdateCheckRow(state, onCheck)
+        if (state is UpdateCheck.Available) {
+            UpdateAvailableRow(state.serverVersion, onUpdate)
+        }
+        WhatsNewRow(
+            onClick = { if (changelogEntries.isNotEmpty()) showChangelog = true },
+        )
+        if (state !is UpdateCheck.Available) {
+            UpdateCheckRow(state, onCheck)
         }
     }
+
+    if (showChangelog) {
+        WhatsNewDialog(entries = changelogEntries, onDismiss = { showChangelog = false })
+    }
+}
+
+@Composable
+private fun WhatsNewRow(onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text("What's new") },
+        leadingContent = {
+            Icon(
+                imageVector = Icons.Outlined.HistoryEdu,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.handCursor().clickable(onClick = onClick),
+    )
 }
 
 @Composable

@@ -2,6 +2,7 @@ package com.iiitnr.inventoryapp.data.storage
 
 import com.iiitnr.inventoryapp.db.AppDatabase
 import com.iiitnr.inventoryapp.ui.theme.ThemeMode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,7 +33,11 @@ class ThemeSettings(
 
         val settingsQueries = queries ?: return
         withContext(Dispatchers.Default) {
-            runCatching { settingsQueries.upsertSetting(THEME_MODE_KEY, mode.name) }
+            runCatching {
+                settingsQueries.upsertSetting(THEME_MODE_KEY, mode.name)
+            }.onFailure { failure ->
+                if (failure is CancellationException) throw failure
+            }
         }
     }
 
