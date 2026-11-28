@@ -1,0 +1,219 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "Asia/Kolkata",
+  "schedule": [
+    "before 7am on monday"
+  ],
+  "prConcurrentLimit": 6,
+  "prHourlyLimit": 2,
+  "minimumReleaseAge": "3 days",
+  "constraints": {
+    "bun": "1.4.x"
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 7am on the first day of the month"
+    ]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Keep Kotlin, Compose, AGP and their AndroidX/KMP companions compatible",
+      "groupName": "Kotlin / Compose / AGP",
+      "matchManagers": [
+        "gradle"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchPackageNames": [
+        "org.jetbrains.kotlin*",
+        "org.jetbrains.compose*",
+        "org.jetbrains.androidx*",
+        "androidx.compose*",
+        "com.android*",
+        "!org.jetbrains.kotlinx*"
+      ]
+    },
+    {
+      "description": "Group the rest of AndroidX and Google Play services",
+      "groupName": "AndroidX and Google Play services",
+      "matchManagers": [
+        "gradle"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchPackageNames": [
+        "androidx.activity*",
+        "androidx.core*",
+        "androidx.lifecycle*",
+        "androidx.datastore*",
+        "androidx.credentials*",
+        "androidx.test*",
+        "com.google.android*"
+      ]
+    },
+    {
+      "description": "Group Kotlin libraries that version independently of the compiler",
+      "groupName": "Kotlin libraries",
+      "matchManagers": [
+        "gradle"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchPackageNames": [
+        "io.ktor*",
+        "io.insert-koin*",
+        "app.cash.sqldelight*",
+        "io.coil-kt*",
+        "org.jetbrains.kotlinx*",
+        "dev.icerock.moko*",
+        "io.github.alexzhirkevich*",
+        "io.github.kashif-mehmood-km*"
+      ]
+    },
+    {
+      "description": "Group Gradle lint and quality tooling",
+      "groupName": "Gradle tooling",
+      "matchManagers": [
+        "gradle"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchPackageNames": [
+        "dev.detekt*",
+        "org.jlleitschuh.gradle.ktlint*"
+      ]
+    },
+    {
+      "description": "Group Fastify packages and plugins",
+      "groupName": "Fastify",
+      "matchManagers": [
+        "bun"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchPackageNames": [
+        "fastify",
+        "@fastify/*",
+        "fastify-sse-v2"
+      ]
+    },
+    {
+      "description": "Group backend runtime libraries",
+      "groupName": "Backend runtime",
+      "matchManagers": [
+        "bun"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchPackageNames": [
+        "ajv",
+        "bcryptjs",
+        "dotenv",
+        "drizzle-orm",
+        "google-auth-library",
+        "it-pushable",
+        "nodemailer",
+        "pg",
+        "xss"
+      ]
+    },
+    {
+      "description": "Group backend development tooling",
+      "groupName": "Backend tooling",
+      "matchManagers": [
+        "bun"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchPackageNames": [
+        "@eslint/*",
+        "@types/*",
+        "@typescript-eslint/*",
+        "@typescript/*",
+        "drizzle-kit",
+        "eslint*",
+        "globals",
+        "pino-pretty",
+        "prettier",
+        "tsx",
+        "typescript",
+        "typescript-eslint"
+      ]
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "groupName": "GitHub Actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin"
+      ]
+    },
+    {
+      "description": "Group container image updates",
+      "groupName": "Container images",
+      "matchManagers": [
+        "dockerfile",
+        "docker-compose"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin"
+      ]
+    },
+    {
+      "description": "Group mise tool versions",
+      "groupName": "mise tools",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ]
+    },
+    {
+      "description": "Automerge low-risk GitHub Actions updates after CI",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin"
+      ],
+      "automerge": true
+    }
+  ]
+}
