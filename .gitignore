@@ -1,2 +1,5 @@
 # Local runtime data created while packaging/testing
 /inventory.db
+
+# Generated from the root CHANGELOG.md by :shared:copyChangelogToComposeResources
+/app/shared/src/commonMain/composeResources/files/CHANGELOG.md

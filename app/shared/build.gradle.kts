@@ -20,6 +20,8 @@ val androidDevBaseUrl = devBaseUrlOverride ?: "http://10.0.2.2:4000"
 val generatedDevBaseUrlDir = layout.buildDirectory.dir("generated/source/devBaseUrl/androidMain/kotlin")
 val generatedBuildFlagsDir =
     layout.buildDirectory.dir("generated/source/buildFlags/commonMain/kotlin")
+val changelogFile = rootProject.layout.projectDirectory.file("../CHANGELOG.md")
+val changelogResourceDir = layout.projectDirectory.dir("src/commonMain/composeResources/files")
 
 val generateDevBaseUrlKt =
     tasks.register("generateDevBaseUrlKt") {
@@ -71,6 +73,14 @@ val generateBuildFlagsKt =
         }
     }
 
+val copyChangelog =
+    tasks.register<Copy>("copyChangelogToComposeResources") {
+        description = "Copies the repository-level CHANGELOG.md into Compose resources"
+        group = "build"
+        from(changelogFile)
+        into(changelogResourceDir)
+    }
+
 val generateVersionKt =
     tasks.register("generateVersionKt") {
         description = "Generates Version for the App"
@@ -109,6 +119,7 @@ kotlin {
     android {
         namespace = "com.iiitnr.inventoryapp.shared"
         compileSdk = 37
+        androidResources { enable = true }
         withHostTest {}
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25)
@@ -259,6 +270,17 @@ sqldelight {
 compose.resources {
     packageOfResClass = "com.iiitnr.inventoryapp.shared"
 }
+
+tasks
+    .matching {
+        it.name.startsWith("prepareComposeResourcesTask") ||
+            it.name.startsWith("copyNonXmlValueResources") ||
+            it.name.startsWith("convertXmlValueResources") ||
+            it.name.startsWith("generateResourceAccessors") ||
+            it.name.startsWith("generateComposeResClass")
+    }.configureEach {
+        dependsOn(copyChangelog)
+    }
 
 detekt {
     buildUponDefaultConfig = true

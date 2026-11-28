@@ -22,10 +22,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.savedstate.read
+import com.iiitnr.inventoryapp.data.ChangelogEntry
+import com.iiitnr.inventoryapp.data.ChangelogRepository
+import com.iiitnr.inventoryapp.data.Version
 import com.iiitnr.inventoryapp.data.api.AuthEvent
 import com.iiitnr.inventoryapp.data.api.AuthEventManager
 import com.iiitnr.inventoryapp.data.checkForUpdate
 import com.iiitnr.inventoryapp.data.storage.TokenManager
+import com.iiitnr.inventoryapp.data.storage.WhatsNewSettings
+import com.iiitnr.inventoryapp.data.storage.whatsNewEntriesToShow
+import com.iiitnr.inventoryapp.ui.components.common.WhatsNewDialog
 import com.iiitnr.inventoryapp.ui.screens.AboutScreen
 import com.iiitnr.inventoryapp.ui.screens.AuditLogScreen
 import com.iiitnr.inventoryapp.ui.screens.ComponentsScreen
@@ -58,6 +64,8 @@ fun App(
     onExportRequestsCsv: ((String) -> Boolean)? = null,
     onImportComponentsCsv: (((String?) -> Unit) -> Unit)? = null,
     tokenManager: TokenManager = koinInject(),
+    whatsNewSettings: WhatsNewSettings = koinInject(),
+    changelogRepository: ChangelogRepository = koinInject(),
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         val navController = rememberNavController()
@@ -65,6 +73,17 @@ fun App(
         val snackbarHostState = remember { SnackbarHostState() }
         val uriHandler = LocalUriHandler.current
         var startDestination by remember { mutableStateOf<String?>(null) }
+        var whatsNewEntries by remember { mutableStateOf<List<ChangelogEntry>?>(null) }
+
+        LaunchedEffect(startDestination) {
+            if (startDestination == null) return@LaunchedEffect
+            val entries = whatsNewEntriesToShow(whatsNewSettings, changelogRepository.entries())
+            if (!entries.isNullOrEmpty()) {
+                whatsNewEntries = entries
+            } else {
+                whatsNewSettings.setLastSeenVersion(Version.CURRENT_VERSION)
+            }
+        }
 
         LaunchedEffect(Unit) {
             scope.launch {
@@ -114,6 +133,15 @@ fun App(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             modifier = Modifier.fillMaxSize(),
         ) { paddingValues ->
+            whatsNewEntries?.let { entries ->
+                WhatsNewDialog(
+                    entries = entries,
+                    onDismiss = {
+                        whatsNewEntries = null
+                        scope.launch { whatsNewSettings.setLastSeenVersion(Version.CURRENT_VERSION) }
+                    },
+                )
+            }
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 startDestination?.let { destination ->
                     NavHost(
