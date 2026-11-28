@@ -20,10 +20,6 @@ preserved; grouping the file the same way just makes it easier to read.
 -->
 # Changelog
 
-## 1.18.1
-- fix: Packaged apps (Windows installers, Linux AppImage) no longer fail at launch with "Failed to launch JVM" — the bundled runtime was missing the java.sql module
-- fix: Google sign-in now works in packaged desktop builds — the role cards on the login screen were silently doing nothing
-
 ## 1.18.0
 - new: About & feedback in Profile Screen: reach the team, report bugs, request features, check for updates
 - new: Pay fines in the app: pay over UPI, submit your payment proof, and LAs verify it + you're notified of the decision
@@ -34,6 +30,8 @@ preserved; grouping the file the same way just makes it easier to read.
 - fix: Theme selection and "What's new" progress now persist across launches on Android, desktop and iOS
 - fix: CSV export/import works in the web app again
 - security: Signup role requests (LA/Faculty) are reviewed by an admin before elevation
+- fix: Packaged desktop apps (Windows installers, Linux AppImage) no longer fail at launch with "Failed to launch JVM" — the bundled runtime was missing the java.sql module
+- fix: Google sign-in now works in packaged desktop builds — the role cards on the login screen were silently doing nothing
 
 ## 1.17.9
 - new: Fines for everyone: students see their total owed and a per-request breakdown, while LA/Admin get outstanding fines with per-student drill-down
