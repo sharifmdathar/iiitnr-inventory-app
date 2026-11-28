@@ -168,6 +168,14 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :desktop:packageDistributionForCurrentOS --parallel --build-cache
 
+      - name: Verify runtime image keeps required modules
+        run: |
+          rel="app/desktop/build/compose/binaries/main/app/IIITNR Inventory App/lib/runtime/release"
+          test -f "$rel"
+          for m in java.base java.desktop java.sql jdk.unsupported; do
+            grep -q "$m" "$rel" || { echo "::error::packaged runtime is missing $m"; exit 1; }
+          done
+
       - name: Install ImageMagick and libfuse2 (for AppImage)
         run: sudo apt-get update && sudo apt-get install -y imagemagick libfuse2
 
