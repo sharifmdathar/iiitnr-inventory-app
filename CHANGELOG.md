@@ -22,6 +22,7 @@ preserved; grouping the file the same way just makes it easier to read.
 
 ## 1.18.1
 - fix: Packaged apps (Windows installers, Linux AppImage) no longer fail at launch with "Failed to launch JVM" — the bundled runtime was missing the java.sql module
+- fix: Google sign-in now works in packaged desktop builds — the role cards on the login screen were silently doing nothing
 
 ## 1.18.0
 - new: About & feedback in Profile Screen: reach the team, report bugs, request features, check for updates
