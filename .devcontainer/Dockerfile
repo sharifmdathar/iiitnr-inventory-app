@@ -1,4 +1,4 @@
-FROM docker.io/library/alpine:3.23.4
+FROM docker.io/library/alpine:3.24.4
 
 ENV BUN_INSTALL=/root/.bun
 ENV PATH="$BUN_INSTALL/bin:$PATH"
